@@ -5,19 +5,13 @@ from vrdscommon import common_utils
 
 
 class BaseDatasetConfig(common_utils.CommonConfiguration):
-    """
-    Configuration class that can be used to have fields for the
-    configuration instead of just going off the dictionary.
+    '''
+    Base Dataset Configuration class that can be used to have fields
+    for the configuration instead of just going off the dictionary.
 
-    This class extends dict so values can be accessed in the same manner as a dictionary, like configobj['key'].
-
-    Common variables on the superclass to be accessed:
-
-    >>> configobj.datadir
-    >>> configobj.exportdir
-    >>> configobj.artifactdir
-    >>> configobj.transformdir
-    """
+    This class extends dict so values can be accessed in the same manner
+    as a dictionary, like configobj['key'].
+    '''
 
     def __init__(self, dictionary=None):
         if dictionary:
@@ -34,7 +28,7 @@ class BaseDatasetConfig(common_utils.CommonConfiguration):
         Return a BaseDatasetConfig object with
         same attribute values.
         Useful if different configs are
-        required for train/val datasets.
+        required, e.g. for train/val datasets.
         '''
         if deep:
             return BaseDatasetConfig(self)
@@ -42,19 +36,13 @@ class BaseDatasetConfig(common_utils.CommonConfiguration):
 
 
 class BaseModelConfig(common_utils.CommonConfiguration):
-    """
-    Configuration class that can be used to have fields for the
-    configuration instead of just going off the dictionary.
+    '''
+    Base Model Configuration class that can be used to have fields
+    for the configuration instead of just going off the dictionary.
 
-    This class extends dict so values can be accessed in the same manner as a dictionary, like configobj['key'].
-
-    Common variables on the superclass to be accessed:
-
-    >>> configobj.datadir
-    >>> configobj.exportdir
-    >>> configobj.artifactdir
-    >>> configobj.transformdir
-    """
+    This class extends dict so values can be accessed in the same manner
+    as a dictionary, like configobj['key'].
+    '''
 
     def __init__(self, dictionary=None, model_type='classification'):
         if dictionary:
@@ -67,3 +55,13 @@ class BaseModelConfig(common_utils.CommonConfiguration):
 
     def _initialize_additional_config(self):
         pass
+
+    def copy(self, deep=True):
+        '''
+        Return a BaseModelConfig object with
+        same attribute values.
+        Useful if different configs are required.
+        '''
+        if deep:
+            return BaseModelConfig(self)
+        return BaseModelConfig()
