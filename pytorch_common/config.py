@@ -7,7 +7,7 @@ import os
 import torch
 import pkg_resources
 
-from .additional_configs import DatasetConfig, ModelConfig
+from .additional_configs import BaseDatasetConfig, BaseModelConfig
 from .utils import make_dirs, set_seed
 
 
@@ -43,8 +43,8 @@ class Config(common_utils.CommonConfiguration):
         self.configdir = os.path.join(self.packagedir, 'configs')
 
         # Set dataset and model configs
-        self.dataset_config = DatasetConfig(self.dataset_config)
-        self.model_config = ModelConfig(self.model_config, self.model_type)
+        self.dataset_config = BaseDatasetConfig(self.dataset_config)
+        self.model_config = BaseModelConfig(self.model_config, self.model_type)
 
         self._set_additional_dirs() # Set and create additional required directories
 

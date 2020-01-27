@@ -4,7 +4,7 @@ Sample config.py for loading configuration from yaml files
 from vrdscommon import common_utils
 
 
-class DatasetConfig(common_utils.CommonConfiguration):
+class BaseDatasetConfig(common_utils.CommonConfiguration):
     """
     Configuration class that can be used to have fields for the
     configuration instead of just going off the dictionary.
@@ -31,17 +31,17 @@ class DatasetConfig(common_utils.CommonConfiguration):
 
     def copy(self, deep=True):
         '''
-        Return a DatasetConfig object with
+        Return a BaseDatasetConfig object with
         same attribute values.
         Useful if different configs are
         required for train/val datasets.
         '''
         if deep:
-            return DatasetConfig(self)
-        return DatasetConfig()
+            return BaseDatasetConfig(self)
+        return BaseDatasetConfig()
 
 
-class ModelConfig(common_utils.CommonConfiguration):
+class BaseModelConfig(common_utils.CommonConfiguration):
     """
     Configuration class that can be used to have fields for the
     configuration instead of just going off the dictionary.
