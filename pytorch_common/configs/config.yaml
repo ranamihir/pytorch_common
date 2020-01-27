@@ -1,16 +1,6 @@
 # this file gets loaded first by default
 datadir: ~/vrds/output/pytorch_common
 
-# min, max rows for job reporter
-min_rows: 100
-max_rows: 1000000
-
-target: booked
-
-# Relative location of required sql files
-training_sql: pytorch_common/sql/training_data.sql
-inference_sql: pytorch_common/sql/inference_data.sql
-
 checkpoint_dir: checkpoints
 plot_dir: plots
 
@@ -72,5 +62,3 @@ device: 'cuda:0' # Default device
 device_ids: -1
 
 seed: 0
-
-output_table: '{vrdsprefix}_pytorch_common'
