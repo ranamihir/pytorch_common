@@ -28,14 +28,10 @@ dependencies:
     - openpyxl==2.6.3
     - dask[dataframe]==2.3.0
     - toolz==0.10.0
-    - requests==2.22.0
     - scikit-learn
     - matplotlib
     - ipdb
     - pdbpp
     - dill
-    - sentencepiece
-    - transformers
-    - tokenizers
     # - tdqm
     - locket==0.2.0

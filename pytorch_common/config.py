@@ -11,10 +11,6 @@ from .additional_configs import DatasetConfig, ModelConfig
 from .utils import make_dirs, set_seed
 
 
-# Supported Transformer architectures
-TRANSFORMER_MODELS = ['albert', 'distilbert', 'bert']
-
-
 class Config(common_utils.CommonConfiguration):
     """
     Configuration class that can be used to have fields for the
@@ -73,10 +69,6 @@ class Config(common_utils.CommonConfiguration):
             # TODO: Remove this after extending FocalLoss
             if self.loss_criterion == 'focal-loss':
                 assert self.classification_type == 'binary'
-
-        # AlBERT / DistilBERT / BERT are prohibitively slow on CPU
-        if any([m in self.model for m in TRANSFORMER_MODELS]):
-            assert self.n_gpu >= 1
 
     def _set_additional_dirs(self):
         # Update directory paths to absolute ones and create them

@@ -3,9 +3,6 @@ logs/
 plots/
 checkpoints/
 
-exp_vi_predict_product_text_emb/transformers/examples/output/
-exp_vi_predict_product_text_emb/transformers/examples/output_full/
-
 sftp-config.json
 sftp-config-alt.json
 
