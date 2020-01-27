@@ -1,0 +1,80 @@
+# this file gets loaded first by default
+datadir: ~/vrds/output/pytorch_common
+
+# min, max rows for job reporter
+min_rows: 100
+max_rows: 1000000
+
+target: booked
+
+# Relative location of required sql files
+training_sql: pytorch_common/sql/training_data.sql
+inference_sql: pytorch_common/sql/inference_data.sql
+
+checkpoint_dir: checkpoints
+plot_dir: plots
+
+# Dataset config
+dataset_config:
+  size: 50
+  dim: &dim 10
+  n_classes: &n_classes 2
+
+# Replace with your model name
+model: single_layer_classifier
+
+# Specify model type for model metrics tracker
+model_type: classification
+
+# Type of classification, if any
+# Choices: binary | multiclass | multilabel
+classification_type: binary
+
+# Model config
+model_config:
+  backbone_model: distilbert-base-uncased
+  # output_dir: ~/transformers/examples/output_full/
+  # model_name_or_path: 'pytorch_model.bin' # Can provide custom path to finetuned model here
+  # model_config_path: 'config.json'
+  in_dim: *dim
+  n_classes: *n_classes
+
+# Loss criterion
+loss_criterion: cross-entropy
+# loss_kwargs: # kwargs for loss criterion
+  # multilabel_reduction: 'mean' # Must be provided for multilabel
+  # alpha: 0.7
+  # gamma: 0.2
+
+# Evaluation criteria
+eval_criteria:
+  - 'accuracy'
+  - 'precision'
+  - 'recall'
+  - 'f1'
+  - 'auc'
+early_stopping_criterion: 'f1'
+eval_criteria_kwargs: # kwargs for eval_criteria
+    # multilabel_reduction: 'mean' # Must be provided for multilabel
+    f1:
+      average: 'macro'
+    precision:
+      average: 'macro'
+    recall:
+      average: 'macro'
+    # auc:
+    #   pos_label: 1
+
+# Training config
+batch_size: 16
+device: 'cuda:0' # Default device
+
+# For parallelizing model.
+# If empty, will only use one GPU
+# If -1, will parallelize across all available GPUs
+# otherwise specify a list of GPU IDs
+device_ids: -1
+
+seed: 0
+
+output_table: '{vrdsprefix}_pytorch_common'

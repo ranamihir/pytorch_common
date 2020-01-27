@@ -1,0 +1,41 @@
+name: pytorch_common
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python==3.7
+  - numpy==1.17.2
+  - pandas==0.24.0
+  - scipy
+  - pymysql==0.8.0
+  - nb_conda==2.2.1
+  - pip==19.2.2
+  - flask
+  - cudatoolkit=9.0
+  - pytorch=1.1
+  - pip:
+    - vrdscommon==6.2.12
+    - pysftp==0.2.9
+    - SQLAlchemy==1.2.4
+    - cloudpickle==1.2.1
+    - google-cloud-bigquery==1.19.0
+    - google-cloud-core==1.0.3
+    - google-cloud-storage==1.19.0
+    - google-api-core==1.14.2
+    - google-auth==1.6.3
+    - google-auth-oauthlib==0.4.0
+    - unidecode==1.1.1
+    - openpyxl==2.6.3
+    - dask[dataframe]==2.3.0
+    - toolz==0.10.0
+    - requests==2.22.0
+    - scikit-learn
+    - matplotlib
+    - ipdb
+    - pdbpp
+    - dill
+    - sentencepiece
+    - transformers
+    - tokenizers
+    # - tdqm
+    - locket==0.2.0
