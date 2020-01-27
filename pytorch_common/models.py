@@ -9,12 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .utils import send_model_to_device
-from .models_dl import BasePyTorchModel, SingleLayerClassifier, \
-                       MultiLayerClassifier, create_bert_estimator
-
-
-# Supported Transformer architectures
-TRANSFORMER_MODELS = ['albert', 'distilbert', 'bert']
+from .models_dl import BasePyTorchModel, SingleLayerClassifier, MultiLayerClassifier
 
 def create_model(model_name, config, send_to_device=True):
     if model_name == 'base_pytorch_model':
@@ -23,8 +18,6 @@ def create_model(model_name, config, send_to_device=True):
         model = SingleLayerClassifier(config)
     elif model_name == 'multi_layer_classifier':
         model = MultiLayerClassifier(config)
-    elif any([m in model_name for m in TRANSFORMER_MODELS]):
-        model = create_bert_estimator(estimator_name, config)
     else:
         raise RuntimeError('Unknown model name {}.'.format(model_name))
 

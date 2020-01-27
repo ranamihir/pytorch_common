@@ -4,7 +4,6 @@ import logging
 
 import torch
 from torch.utils.data import Dataset
-from transformers import DistilBertTokenizer, BertTokenizer
 
 
 class DummyMultiClassDataset(Dataset):

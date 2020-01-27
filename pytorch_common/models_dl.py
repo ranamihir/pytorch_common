@@ -5,11 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .utils import get_model_outputs_only
-
-from transformers import AlbertConfig, DistilBertConfig, BertConfig, \
-                         AlbertModel, DistilBertModel, BertModel
-
 
 class BasePyTorchModel(nn.Module):
     '''
@@ -184,29 +179,3 @@ class MultiLayerClassifier(BasePyTorchModel):
 
     def forward(self, x):
         return self.classifier(self.trunk(x))
-
-
-def create_bert_estimator(estimator_name, config):
-    '''
-    Create Albert/DistilBert/Bert Model either using the default
-    pretrained model or using own set of parameters/config.
-    '''
-    if 'albert' in estimator_name:
-        model_class, config_class = AlbertModel, AlbertConfig
-    elif 'distilbert' in estimator_name:
-        model_class, config_class = DistilBertModel, DistilBertConfig
-    else:
-        model_class, config_class = BertModel, BertConfig
-
-    if hasattr(config, 'output_dir'):
-        kwargs = {
-            'pretrained_model_name_or_path': os.path.join(config.output_dir, config.model_name_or_path),
-            'from_tf': False,
-            'config': config_class.from_pretrained(os.path.join(config.output_dir, config.model_config_path))
-        }
-        model = model_class.from_pretrained(**kwargs)
-
-    else:
-        model = model_class.from_pretrained(estimator_name)
-
-    return model

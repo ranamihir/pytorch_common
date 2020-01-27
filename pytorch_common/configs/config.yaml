@@ -32,10 +32,6 @@ classification_type: binary
 
 # Model config
 model_config:
-  backbone_model: distilbert-base-uncased
-  # output_dir: ~/transformers/examples/output_full/
-  # model_name_or_path: 'pytorch_model.bin' # Can provide custom path to finetuned model here
-  # model_config_path: 'config.json'
   in_dim: *dim
   n_classes: *n_classes
 
