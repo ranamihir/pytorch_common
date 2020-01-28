@@ -39,7 +39,7 @@ class BasePyTorchModel(nn.Module):
         num_params = sum(p.numel() for p in self.parameters())
         num_trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
         logging.info('Number of trainable/total parameters in {}: {}/{}'.format(self.__name__, \
-                     num_trainable_params, num_params))
+                      num_trainable_params, num_params))
         return {'trainable': num_trainable_params, 'total': num_params}
 
     def print_model(self):
@@ -96,7 +96,7 @@ class BasePyTorchModel(nn.Module):
         '''
         if self.model_type != 'classification' and threshold is not None:
             raise ValueError(f'Param "threshold" ("{threshold}") can only '
-                              'be provided for classification models.')
+                             f'be provided for classification models.')
 
         probs = F.softmax(outputs, dim=-1) # Get probabilities of each class
 

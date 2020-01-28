@@ -62,7 +62,7 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
             agg_func = torch.mean
         else:
             raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '\
-                              'must be one of ["sum", "mean"].')
+                             f'must be one of ["sum", "mean"].')
 
     # Get per-label loss
     allowed_losses = ['mse', 'cross-entropy', 'focal-loss']
@@ -111,7 +111,7 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
             agg_func = np.mean
         else:
             raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '\
-                              'must be one of ["mean", "none"].')
+                             f'must be one of ["mean", "none"].')
 
     # Get per-label eval criterion
     allowed_criteria = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
