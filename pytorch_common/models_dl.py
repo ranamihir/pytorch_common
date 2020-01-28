@@ -95,8 +95,8 @@ class BasePyTorchModel(nn.Module):
         :return probs: Predicted probabilities of each class
         '''
         if self.model_type != 'classification' and threshold is not None:
-            raise ValueError('Param "threshold" ("{}") can only be provided '\
-                             'for classification models.'.format(threshold))
+            raise ValueError(f'Param "threshold" ("{threshold}") can only '
+                              'be provided for classification models.')
 
         probs = F.softmax(outputs, dim=-1) # Get probabilities of each class
 
@@ -127,7 +127,7 @@ class BasePyTorchModel(nn.Module):
         model_name = model_to_freeze.get('__name__', model_to_freeze.__class__.__name__)
 
         # Perform freezing
-        logging.info('Freezing {}...'.format(model_name))
+        logging.info(f'Freezing {model_name}...')
         for child in model_to_freeze.children():
             for param in child.parameters():
                 param.requires_grad = False

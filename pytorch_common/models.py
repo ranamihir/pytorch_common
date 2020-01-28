@@ -19,7 +19,7 @@ def create_model(model_name, config, send_to_device=True):
     elif model_name == 'multi_layer_classifier':
         model = MultiLayerClassifier(config)
     else:
-        raise RuntimeError('Unknown model name {}.'.format(model_name))
+        raise RuntimeError(f'Unknown model name {model_name}.')
 
     if send_to_device:
         return send_model_to_device(model, config.device, config.device_ids)

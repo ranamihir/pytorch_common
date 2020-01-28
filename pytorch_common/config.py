@@ -90,8 +90,8 @@ def set_pytorch_config(config):
 
     # Check for model type
     if config.model_type not in ['classification', 'regression']:
-        raise ValueError('Param "model_type" ("{}") must be one of ["classification", '\
-                         '"regression"]'.format(config.model_type))
+        raise ValueError(f'Param "model_type" ("{config.model_type}") must be '
+                          'one of ["classification", "regression"]')
 
     # Check for classification type
     if config.model_type == 'classification':

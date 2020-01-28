@@ -55,7 +55,7 @@ def get_unique_config_name(model_name, config_info_dict=None):
     if config_info_dict is not None:
         assert isinstance(config_info_dict, dict)
         config_info = {str(k).replace('-', '_'): str(v).replace('-', '_') for k, v in config_info_dict.items()}
-        config_info = '-' + '-'.join(['{}_{}'.format(k, v).lower() for k, v in config_info.items()])
+        config_info = '-' + '-'.join([f'{k}_{v}'.lower() for k, v in config_info.items()])
     else:
         config_info = ''
     unique_name = model_name + config_info
@@ -76,7 +76,7 @@ def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=Non
     '''
     assert checkpoint_type in ['state', 'model']
     unique_name = get_unique_config_name(model_name, config_info_dict)
-    checkpoint_name = 'checkpoint-{}-{}-epoch_{}.pt'.format(checkpoint_type, unique_name, epoch)
+    checkpoint_name = f'checkpoint-{checkpoint_type}-{unique_name}-epoch_{epoch}.pt'
     return checkpoint_name
 
 def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
@@ -88,14 +88,14 @@ def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
     assert ext in ['png', 'jpeg', 'eps', 'pdf']
     unique_name = get_unique_config_name(model_name, config_info_dict)
     file_name = '-'.join([plot_name, unique_name])
-    fig.savefig(os.path.join(config.plot_dir, '{}.{}'.format(file_name, ext)), dpi=300)
+    fig.savefig(os.path.join(config.plot_dir, f'{file_name}.{ext}'), dpi=300)
 
 def save_object(obj, file_path):
     '''
     This is a defensive way to write pickle.write,
     allowing for very large files on all platforms
     '''
-    logging.info('Saving "{}"...'.format(file_path))
+    logging.info(f'Saving "{file_path}"...')
     max_bytes = 2**31 - 1
     bytes_out = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
     n_bytes = sys.getsizeof(bytes_out)
@@ -109,7 +109,7 @@ def load_object(file_path):
     This is a defensive way to write pickle.load,
     allowing for very large files on all platforms
     '''
-    logging.info('Loading "{}"...'.format(file_path))
+    logging.info(f'Loading "{file_path}"...')
     max_bytes = 2**31 - 1
     if os.path.exists(file_path):
         input_size = os.path.getsize(file_path)
@@ -118,10 +118,18 @@ def load_object(file_path):
             for _ in range(0, input_size, max_bytes):
                 bytes_in += f.read(max_bytes)
         obj = pickle.loads(bytes_in)
-        logging.info('Successfully loaded "{}".'.format(file_path))
+        logging.info(f'Successfully loaded "{file_path}".')
         return obj
     else:
-        raise FileNotFoundError('Could not find "{}".'.format(file_path))
+        raise FileNotFoundError(f'Could not find "{file_path}".')
+
+def save_embeddings(embeddings, folder_path, model_name):
+    '''
+    Save an embeddings object
+    '''
+    file_name = f'embeddings_{model_name}.pkl'
+    file_path = os.path.join(folder_path, file_name)
+    save_object(embeddings, file_path)
 
 def get_model_outputs_only(outputs):
     '''
@@ -142,14 +150,14 @@ def send_model_to_device(model, device, device_ids=[]):
     '''
     # Note 1: `model.to()` is not an inplace operation
     # Note 2: `model.to()` doesn't work if model is parallelized; must do `model.module.to()`
-    logging.info('Setting default device for model to {}...'.format(device))
+    logging.info(f'Setting default device for model to {device}...')
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')
 
     # Parallelize model
     n_gpu = len(device_ids)
     if n_gpu > 1:
-        logging.info('Using {} GPUs: {}...'.format(n_gpu, device_ids))
+        logging.info(f'Using {n_gpu} GPUs: {device_ids}...')
         model = DataParallel(model, device_ids=device_ids)
         logging.info('Done.')
     return model
@@ -185,7 +193,7 @@ def send_batch_to_device(batch, device):
         # Retain same data type as original
         return type(batch)((send_batch_to_device(e, device) for e in batch))
     else: # Structure/type of batch unknown / not understood.
-        logging.info('Type "{}" not understood. Returning variable as-is.'.format(type(batch)))
+        logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
 def send_optimizer_to_device(optimizer, device):
@@ -210,7 +218,7 @@ def convert_tensor_to_numpy(batch):
         # Retain same data type as original
         return type(batch)((convert_tensor_to_numpy(e) for e in batch))
     else: # Structure/type of batch unknown / not understood.
-        logging.info('Type "{}" not understood. Returning variable as-is.'.format(type(batch)))
+        logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
 

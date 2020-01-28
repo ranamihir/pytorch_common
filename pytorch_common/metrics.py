@@ -61,8 +61,8 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
         elif multilabel_reduction == 'mean':
             agg_func = torch.mean
         else:
-            raise ValueError('Param "multilabel_reduction" ("{}") must be one of '
-                             '["sum", "mean"].'.format(multilabel_reduction))
+            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '\
+                              'must be one of ["sum", "mean"].')
 
     # Get per-label loss
     allowed_losses = ['mse', 'cross-entropy', 'focal-loss']
@@ -73,8 +73,7 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
     elif criterion == 'focal-loss':
         loss_criterion = FocalLoss(**kwargs)
     else:
-        raise ValueError('Param "criterion" ("{}") must be one of {}.'\
-                         .format(criterion, allowed_losses))
+        raise ValueError(f'Param "criterion" ("{criterion}") must be one of {allowed_losses}.')
 
     # Regression
     if config.model_type == 'regression':
@@ -111,8 +110,8 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
         elif multilabel_reduction == 'mean':
             agg_func = np.mean
         else:
-            raise ValueError('Param "multilabel_reduction" ("{}") must be one of '\
-                             '["mean", "none"].'.format(multilabel_reduction))
+            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '\
+                              'must be one of ["mean", "none"].')
 
     # Get per-label eval criterion
     allowed_criteria = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
@@ -121,8 +120,7 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
     elif criterion in ['accuracy', 'precision', 'recall', 'f1', 'auc']:
         eval_criterion = partial(get_class_eval_metric, criterion=criterion, **kwargs)
     else:
-        raise ValueError('Param "criterion" ("{}") must be one of {}.'\
-                         .format(criterion, allowed_criteria))
+        raise ValueError(f'Param "criterion" ("{criterion}") must be one of {allowed_criteria}.')
 
     # Regression
     if config.model_type == 'regression':
@@ -222,4 +220,4 @@ class FocalLoss(nn.Module):
         return focal_loss.mean()
 
     def __repr__(self):
-        return 'FocalLoss(alpha={}, gamma={})'.format(self.alpha, self.gamma)
+        return f'FocalLoss(alpha={self.alpha}, gamma={self.gamma})'

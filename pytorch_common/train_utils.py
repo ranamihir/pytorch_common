@@ -150,17 +150,9 @@ def get_all_embeddings(model, dataloader, config):
         all_embeddings.extend(batch_embeddings)
 
         if (batch_idx+1) % 50 == 0:
-            logging.info('Batch {}/{} completed.'.format(batch_idx+1, num_batches))
+            logging.info(f'Batch {batch_idx+1}/{num_batches} completed.')
 
     return np.array(all_embeddings)
-
-def save_embeddings(embeddings, folder_path, model_name):
-    '''
-    Save an embeddings object
-    '''
-    file_name = 'embeddings_{}.pkl'.format(model_name)
-    file_path = os.path.join(folder_path, file_name)
-    save_object(embeddings, file_path)
 
 def save_checkpoint(model, optimizer, train_logger, val_logger, \
                     config, epoch, misc_info=None):
@@ -184,7 +176,7 @@ def save_checkpoint(model, optimizer, train_logger, val_logger, \
 
     checkpoint_name = get_checkpoint_name('state', config.model, epoch, misc_info)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
-    logging.info('Saving state checkpoint "{}"...'.format(checkpoint_path))
+    logging.info(f'Saving state checkpoint "{checkpoint_path}"...')
     torch.save(state_dict, checkpoint_path)
     logging.info('Done.')
     return checkpoint_path
@@ -198,7 +190,7 @@ def remove_checkpoint(config, epoch, misc_info=None):
     checkpoint_name = get_checkpoint_name('state', config.model, epoch, misc_info)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
     if os.path.exists(checkpoint_path):
-        logging.info('Removing state checkpoint "{}"...'.format(checkpoint_path))
+        logging.info(f'Removing state checkpoint "{checkpoint_path}"...')
         os.remove(checkpoint_path)
         logging.info('Done.')
 
@@ -215,7 +207,7 @@ def load_checkpoint(model, optimizer, config, checkpoint_file):
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
 
     if os.path.isfile(checkpoint_path):
-        logging.info('Loading state checkpoint "{}"...'.format(checkpoint_path))
+        logging.info(f'Loading state checkpoint "{checkpoint_path}"...')
         state_dict = torch.load(checkpoint_path)
 
         # Extract last trained epoch from checkpoint file
@@ -238,7 +230,7 @@ def load_checkpoint(model, optimizer, config, checkpoint_file):
         logging.info('Done.')
 
     else:
-        raise FileNotFoundError('No state checkpoint found at "{}"!'.format(checkpoint_path))
+        raise FileNotFoundError(f'No state checkpoint found at "{checkpoint_path}"!')
 
     return model, optimizer, train_logger, val_logger, epoch_trained
 
@@ -250,7 +242,7 @@ def save_model(model, model_name, optimizer, config, epoch, misc_info=None):
     '''
     checkpoint_name = get_checkpoint_name('model', config.model, epoch, misc_info)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
-    logging.info('Saving model checkpoint "{}"...'.format(checkpoint_path))
+    logging.info(f'Saving model checkpoint "{checkpoint_path}"...')
 
     # Save model on CPU
     model = send_model_to_device(model, 'cpu')
@@ -284,7 +276,7 @@ def load_model(config, checkpoint_file, optimizer=None):
     '''
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     if os.path.exists(checkpoint_path):
-        logging.info('Loading model checkpoint "{}"...'.format(checkpoint_path))
+        logging.info(f'Loading model checkpoint "{checkpoint_path}"...')
 
         # See `save_model()` for explanation.
         try:
@@ -304,7 +296,7 @@ def load_model(config, checkpoint_file, optimizer=None):
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split('-epoch_')[-1])
 
     else:
-        raise FileNotFoundError('No model checkpoint found at "{}"!'.format(checkpoint_path))
+        raise FileNotFoundError(f'No model checkpoint found at "{checkpoint_path}"!')
 
     return model, epoch_trained, optimizer
 
@@ -342,7 +334,7 @@ class EarlyStopping(object):
 
     def _check_mode(self):
         if self.mode not in ['maximize', 'minimize']:
-            raise ValueError('mode "{}" is unknown!'.format(self.mode))
+            raise ValueError(f'mode "{self.mode}" is unknown!')
 
     def is_better(self, metric):
         if self.best is None:
