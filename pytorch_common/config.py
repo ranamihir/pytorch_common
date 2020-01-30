@@ -88,73 +88,70 @@ def set_pytorch_config(config):
     # Fix seed
     set_seed(config)
 
-    # Check for model type
-    if config.model_type not in ['classification', 'regression']:
-        raise ValueError(f'Param "model_type" ("{config.model_type}") must be '
-                         f'one of ["classification", "regression"]')
+    # Check for model and classification type
+    assert (config.model_type == 'classification' and \
+        config.classification_type in ['binary', 'multiclass', 'multilabel']) \
+        or (config.model_type == 'regression' and not hasattr(config, 'classification_type'))
 
-    # Check for classification type
+    # TODO: Remove this after extending FocalLoss
     if config.model_type == 'classification':
-        assert config.classification_type in ['binary', 'multiclass', 'multilabel']
-
-        # TODO: Remove this after extending FocalLoss
         if config.loss_criterion == 'focal-loss':
             assert config.classification_type == 'binary'
 
-def set_additional_dirs(obj):
+def set_additional_dirs(config):
     # Update directory paths to absolute ones and create them
     for directory in ['output_dir', 'plot_dir', 'checkpoint_dir']:
-        if hasattr(obj, directory):
-            dir_path = os.path.expanduser(os.path.join(obj.transientdir, getattr(obj, directory)))
-            obj[directory] = dir_path
-            setattr(obj, directory, dir_path)
-            make_dirs(obj[directory])
+        if hasattr(config, directory):
+            dir_path = os.path.expanduser(os.path.join(config.transientdir, getattr(config, directory)))
+            config[directory] = dir_path
+            setattr(config, directory, dir_path)
+            make_dirs(config[directory])
 
-def set_loss_and_eval_criteria(obj):
+def set_loss_and_eval_criteria(config):
     # Set loss and eval criteria kwargs
-    obj.loss_kwargs = obj.loss_kwargs if obj.get('loss_kwargs') else {}
-    obj.eval_criteria_kwargs = obj.eval_criteria_kwargs if obj.get('eval_criteria_kwargs') else {}
+    config.loss_kwargs = config.loss_kwargs if config.get('loss_kwargs') else {}
+    config.eval_criteria_kwargs = config.eval_criteria_kwargs if config.get('eval_criteria_kwargs') else {}
 
     # Check for evaluation criteria
     allowed_eval_metrics = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
-    assert hasattr(obj, 'eval_criteria') and isinstance(obj.eval_criteria, list)
-    for eval_criterion in obj.eval_criteria:
+    assert hasattr(config, 'eval_criteria') and isinstance(config.eval_criteria, list)
+    for eval_criterion in config.eval_criteria:
         assert eval_criterion in allowed_eval_metrics
-    default_stopping_criterion = 'accuracy' if obj.model_type == 'classification' else 'mse'
-    obj.early_stopping_criterion = obj.get('early_stopping_criterion', default_stopping_criterion)
-    assert obj.early_stopping_criterion in obj.eval_criteria
+    default_stopping_criterion = 'accuracy' if config.model_type == 'classification' else 'mse'
+    config.early_stopping_criterion = config.get('early_stopping_criterion', default_stopping_criterion)
+    assert config.early_stopping_criterion in config.eval_criteria
 
-def check_and_set_devices(obj):
+def check_and_set_devices(config):
     # Check device provided
-    if 'cuda' in obj.device:
+    if 'cuda' in config.device:
         assert torch.cuda.is_available() # Check for CUDA
-        torch.cuda.set_device(obj.device) # Set default CUDA device
+        torch.cuda.set_device(config.device) # Set default CUDA device
 
         # Get device IDs
-        obj.device_ids = obj.device_ids if obj.get('device_ids') else []
+        config.device_ids = config.device_ids if config.get('device_ids') else []
 
         # Parallelize across all available GPUs
-        if obj.device_ids == -1:
-            obj.device_ids = list(range(torch.cuda.device_count()))
+        if config.device_ids == -1:
+            config.device_ids = list(range(torch.cuda.device_count()))
 
-        obj.n_gpu = len(obj.device_ids) if len(obj.device_ids) else 1 # Set number of GPUs to be used
-        assert obj.n_gpu <= torch.cuda.device_count()
+        config.n_gpu = len(config.device_ids) if len(config.device_ids) else 1 # Set number of GPUs to be used
+        assert config.n_gpu <= torch.cuda.device_count()
     else:
-        assert obj.device == 'cpu'
-        obj.device_ids = []
-        obj.n_gpu = 0
+        assert config.device == 'cpu'
+        config.device_ids = []
+        config.n_gpu = 0
 
     # Make sure default device is consistent if parallelized
-    if obj.n_gpu > 1:
+    if config.n_gpu > 1:
         # Get default device index
         try:
-            default_device = int(obj.device.split(':')[1])
+            default_device = int(config.device.split(':')[1])
         except:
             default_device = 0
 
         # Swap order if necessary to bring default_device to index 0
-        default_device_ind = obj.device_ids.index(default_device)
-        obj.device_ids[default_device_ind], obj.device_ids[0] = obj.device_ids[0], obj.device_ids[default_device_ind]
+        default_device_ind = config.device_ids.index(default_device)
+        config.device_ids[default_device_ind], config.device_ids[0] = config.device_ids[0], config.device_ids[default_device_ind]
 
     # Use cudnn benchmarks
     torch.backends.cudnn.benchmark = True
