@@ -99,20 +99,22 @@ class BasePyTorchModel(nn.Module):
                              f'be provided for classification models.')
 
         probs = F.softmax(outputs, dim=-1) # Get probabilities of each class
+        n_classes = probs.shape[-1]
 
         if threshold is not None:
             device = probs.device
             pos_tensor, neg_tensor = torch.tensor(1, device=device), torch.tensor(0, device=device)
             labels_for_class_i = lambda i: torch.where(probs[...,i] >= threshold, pos_tensor, neg_tensor)
-            num_classes = probs.shape[-1]
-            if num_classes == 2: # Only get labels for class 1 if binary classification
+            if n_classes == 2: # Only get labels for class 1 if binary classification
                 preds = labels_for_class_i(1)
             else: # Get labels for each class if multiclass classification
-                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)], dim=1).max(dim=-1)[1]
+                preds = torch.stack([labels_for_class_i(i) for i in range(n_classes)], dim=1).max(dim=-1)[1]
         else:
             # Get class with max probability (same as threshold=0.5)
             preds = probs.max(dim=-1)[1]
 
+        if n_classes == 2: # Only get probs for class 1 if binary classification
+            probs = probs[...,1]
         return preds, probs
 
     def freeze_module(self, model_to_freeze=None):
