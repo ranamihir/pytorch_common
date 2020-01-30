@@ -77,26 +77,27 @@ def load_config(config_file='config.yaml'):
     return {}
 
 def set_pytorch_config(config):
-    set_additional_dirs(config) # Set and create additional required directories
+    if config.get('load_pytorch_common_config'):
+        set_additional_dirs(config) # Set and create additional required directories
 
-    # Set and validate loss and eval criteria
-    set_loss_and_eval_criteria(config)
+        # Set and validate loss and eval criteria
+        set_loss_and_eval_criteria(config)
 
-    # Verify config for CUDA / CPU device(s) provided
-    check_and_set_devices(config)
+        # Verify config for CUDA / CPU device(s) provided
+        check_and_set_devices(config)
 
-    # Fix seed
-    set_seed(config)
+        # Fix seed
+        set_seed(config)
 
-    # Check for model and classification type
-    assert (config.model_type == 'classification' and \
-        config.classification_type in ['binary', 'multiclass', 'multilabel']) \
-        or (config.model_type == 'regression' and not hasattr(config, 'classification_type'))
+        # Check for model and classification type
+        assert (config.model_type == 'classification' and \
+            config.classification_type in ['binary', 'multiclass', 'multilabel']) \
+            or (config.model_type == 'regression' and not hasattr(config, 'classification_type'))
 
-    # TODO: Remove this after extending FocalLoss
-    if config.model_type == 'classification':
-        if config.loss_criterion == 'focal-loss':
-            assert config.classification_type == 'binary'
+        # TODO: Remove this after extending FocalLoss
+        if config.model_type == 'classification':
+            if config.loss_criterion == 'focal-loss':
+                assert config.classification_type == 'binary'
 
 def set_additional_dirs(config):
     # Update directory paths to absolute ones and create them
