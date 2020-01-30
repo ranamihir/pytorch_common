@@ -25,7 +25,7 @@ def get_eval_criteria(config, criteria, **kwargs):
     '''
     is_multilabel = config.model_type == 'classification' and config.classification_type == 'multilabel'
     if is_multilabel:
-        if not kwargs.get('multilabel_reduction'):
+        if not hasattr(kwargs, 'multilabel_reduction'):
             raise ValueError('Param "multilabel_reduction" must be provided.')
         multilabel_reduction = kwargs['multilabel_reduction']
 
@@ -52,7 +52,7 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
     '''
     # Check for multilabel classification
     if config.model_type == 'classification' and config.classification_type == 'multilabel':
-        if not kwargs.get('multilabel_reduction'):
+        if not hasattr(kwargs, 'multilabel_reduction'):
             raise ValueError('Param "multilabel_reduction" must be provided.')
 
         multilabel_reduction = kwargs.pop('multilabel_reduction')
