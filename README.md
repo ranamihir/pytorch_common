@@ -17,7 +17,7 @@ In a nutshell, it has code for:
   - Early stopping
   - Properly sending model/optimizer/batch to device(s)
   - Defining custom train/test loss and evaluation criteria directly from config
-    - Supports all common losses/metrics for regression and binary/multi-class/multi-label classification
+    - Supports most common losses/metrics for regression and binary/multi-class/multi-label classification
     - May give as many as you like
   - Cleanly stopping training at any point without losing progress
   - Make predictions
@@ -28,7 +28,7 @@ In a nutshell, it has code for:
 
 
 # Usage
-I'll be adding example scripts soon. For the time being, you may refer to [this repo](https://gitlab.dev.tripadvisor.com/vrds/exp_vi_predict_product_subcats/tree/initial) which leverages `pytorch_common`.
+Some example notebooks can be found in the [pytorch_common_examples](https://gitlab.dev.tripadvisor.com/vrds/pytorch_common_examples) repo. These are somewhat contrived examples designed to illustrate how to leverage this reo; for a full-fledged project, you may refer to [this repo](https://gitlab.dev.tripadvisor.com/vrds/exp_vi_predict_product_subcats/tree/initial).
 
 
 # Disclaimer
