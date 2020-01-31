@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 class DummyMultiClassDataset(Dataset):
     def __init__(self, size=50, dim=10, n_classes=2):
-        super(DummyMultiClassDataset, self).__init__()
+        super().__init__()
         self.size = size
         self.dim = dim
         self.n_classes = n_classes
@@ -25,7 +25,7 @@ class DummyMultiClassDataset(Dataset):
 
 class DummyMultiLabelDataset(Dataset):
     def __init__(self, size=50, dim=10, n_classes=5):
-        super(DummyMultiLabelDataset, self).__init__()
+        super().__init__()
         self.size = size
         self.dim = dim
         self.n_classes = n_classes
