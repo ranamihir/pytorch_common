@@ -126,7 +126,7 @@ class BasePyTorchModel(nn.Module):
             model_to_freeze = self # Base model
 
         # Extract model name from class if not present already (for `transformers` models)
-        model_name = model_to_freeze.get('__name__', model_to_freeze.__class__.__name__)
+        model_name = getattr(model_to_freeze, '__name__', model_to_freeze.__class__.__name__)
 
         # Perform freezing
         logging.info(f'Freezing {model_name}...')
