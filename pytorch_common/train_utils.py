@@ -62,7 +62,7 @@ def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler
 
 @timing
 @torch.no_grad()
-def test(model, dataloader, loss_criterion, eval_criteria, device):
+def test(model, dataloader, loss_criterion, eval_criteria, device, return_outputs=False):
     '''
     Perform evaluation on the entire dataset and return the
     loss per example and all eval criteria on whole dataset.
@@ -95,7 +95,9 @@ def test(model, dataloader, loss_criterion, eval_criteria, device):
     eval_metrics = {eval_criterion: eval_fn(outputs_hist, y_hist) \
                     for eval_criterion, eval_fn in eval_criteria.items()}
 
-    return np.sum(loss_hist), eval_metrics, outputs_hist, y_hist
+    if return_outputs:
+        return np.sum(loss_hist), eval_metrics, outputs_hist, y_hist
+    return np.sum(loss_hist), eval_metrics
 
 @torch.no_grad()
 def get_all_predictions(model, dataloader, device):

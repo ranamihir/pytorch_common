@@ -39,7 +39,7 @@ eval_criteria:
   # - 'recall'
   # - 'f1'
   # - 'auc'
-# early_stopping_criterion: 'f1'
+early_stopping_criterion: 'accuracy'
 # eval_criteria_kwargs: # kwargs for eval_criteria
 #     # multilabel_reduction: 'mean' # Must be provided for multilabel
 #     f1:
