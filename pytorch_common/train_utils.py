@@ -40,21 +40,22 @@ def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler
         outputs = get_model_outputs_only(outputs)
 
         loss = loss_criterion(outputs, y)
+        loss_value = loss.item()
         loss.backward()
         nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1.)
         optimizer.step()
         if scheduler is not None:
-            scheduler.step()
+            scheduler.step(loss_value)
 
         # Accurately compute loss, because of different batch size
-        loss_train = loss.item() * batch_size / num_examples
+        loss_train = loss_value * batch_size / num_examples
         loss_hist.append(loss_train)
 
         # Print 50 times in a batch; if dataset too small print every time (to avoid division by 0)
         if (batch_idx+1) % max(1, (num_examples//(50*batch_size))) == 0:
             logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, (batch_idx+1) * batch_size, num_examples,
-                100. * (batch_idx+1) / num_batches, loss.item()))
+                100. * (batch_idx+1) / num_batches, loss_value))
 
     optimizer.zero_grad()
     return loss_hist
