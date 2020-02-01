@@ -100,7 +100,7 @@ def test(model, dataloader, loss_criterion, eval_criteria, device, return_output
     return np.sum(loss_hist), eval_metrics
 
 @torch.no_grad()
-def get_all_predictions(model, dataloader, device):
+def get_all_predictions(model, dataloader, device, threshold_prob=None):
     '''
     Make predictions on entire dataset using model's own
     `predict()` method and return raw outputs and optionally
@@ -118,7 +118,7 @@ def get_all_predictions(model, dataloader, device):
         outputs = send_batch_to_device(outputs, 'cpu')
         outputs_hist.extend(outputs)
         if model.model_type == 'classification': # Get class predictions and probabilities
-            preds, probs = model.predict_proba(outputs)
+            preds, probs = model.predict_proba(outputs, threshold_prob)
             preds_hist.extend(preds)
             probs_hist.extend(probs)
 
@@ -219,7 +219,7 @@ def load_checkpoint(model, optimizer, config, checkpoint_file):
 
         train_logger = state_dict['train_logger']
         val_logger = state_dict['val_logger']
-        assert epoch_trained == max(train_logger.epochs) == max(val_logger.epochs)
+        assert epoch_trained == max(train_logger.epochs)
 
         if hasattr(model, 'module'):
             model.module.load_state_dict(state_dict['model_state_dict'])
