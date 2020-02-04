@@ -57,7 +57,7 @@ class BasePyTorchModel(nn.Module):
                                - None, will initialize self
                                - list or object of type
                                  nn.Module/BasePyTorchModel,
-                                 will initialize its weights
+                                 will initialize their weights
         '''
         if models_to_init is None:
             models_to_init = self # Base model
@@ -117,24 +117,59 @@ class BasePyTorchModel(nn.Module):
             probs = probs[...,1]
         return preds, probs
 
-    def freeze_module(self, model_to_freeze=None):
+    def freeze_module(self, models_to_freeze=None):
         '''
-        Freeze a given `model_to_freeze`, i.e.,
-        all its children are gradient free.
+        Freeze the given `models_to_freeze`, i.e.,
+        all their children are gradient free.
         '''
-        if model_to_freeze is None:
-            model_to_freeze = self # Base model
+        self._change_frozen_state(models_to_freeze, freeze=True)
 
-        # Extract model name from class if not present already (for `transformers` models)
-        model_name = getattr(model_to_freeze, '__name__', model_to_freeze.__class__.__name__)
+    def unfreeze_module(self, models_to_unfreeze=None):
+        '''
+        Unfreeze the given `models_to_unfreeze`, i.e.,
+        all their children have gradients.
+        '''
+        self._change_frozen_state(models_to_unfreeze, freeze=False)
 
-        # Perform freezing
-        logging.info(f'Freezing {model_name}...')
-        for child in model_to_freeze.children():
-            for param in child.parameters():
-                param.requires_grad = False
-        logging.info('Done.')
+    def _change_frozen_state(self, models=None, freeze=True):
+        '''
+        Freeze or unfreeze the given `models`, i.e.,
+        all their children will / won't have gradients.
+        :param models: Models / modules to freeze / unfreeze
+                       Can take the following values:
+                       - None, will alter self
+                       - list or object of type
+                       - nn.Module/BasePyTorchModel,
+                         will alter their state
+        :freeze: Whether to freeze or unfreeze (bool)
+        '''
+        if models is None:
+            models = self # Base model
+        if not isinstance(models, list):
+            models = [models]
+        for model in models:
+            self._change_frozen_state_for_one_model(model, freeze)
         self.get_trainable_params()
+
+    def _change_frozen_state_for_one_model(self, model=None, freeze=True):
+        '''
+        Freeze or unfreeze a given `model`, i.e.,
+        all their children will / won't have gradients.
+        :param model: Model / module to freeze / unfreeze
+                      Can take the following values:
+                      - None, will alter self
+                      - list or object of type
+                      - nn.Module/BasePyTorchModel,
+                        will alter their state
+        :freeze: Whether to freeze or unfreeze (bool)
+        '''
+        # Extract model name from class if not present already (for `transformers` models)
+        model_name = getattr(model, '__name__', model.__class__.__name__)
+
+        logging.info('{} {}...'.format('Freezing' if freeze else 'Unfreezing', model_name))
+        for param in model.parameters():
+            param.requires_grad = not freeze
+        logging.info('Done.')
 
 
 class SingleLayerClassifier(BasePyTorchModel):
