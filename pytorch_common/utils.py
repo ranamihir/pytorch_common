@@ -41,6 +41,13 @@ def set_seed(config):
     if config.n_gpu > 0:
         torch.cuda.manual_seed_all(config.seed)
 
+def delete_model(model):
+    '''
+    Delete model and free GPU memory
+    '''
+    del model
+    torch.cuda.empty_cache()
+
 def get_unique_config_name(model_name, config_info_dict=None):
     '''
     Returns a unique name for the current training configuration.
