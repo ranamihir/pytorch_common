@@ -45,7 +45,7 @@ def delete_model(model):
     '''
     Delete model and free GPU memory
     '''
-    del model
+    model = None
     torch.cuda.empty_cache()
 
 def get_unique_config_name(model_name, config_info_dict=None):
