@@ -49,9 +49,12 @@ def delete_model(model):
     model = None
     torch.cuda.empty_cache()
 
-def get_unique_config_name(model_name, config_info_dict=None):
+def get_unique_config_name(primary_name, config_info_dict=None):
     '''
-    Returns a unique name for the current training configuration.
+    Returns a unique name for the current configuration.
+    The name will comprise the `primary_name` followed by a
+    hash value uniquely generated from the `config_info_dict`.
+    :param primary_name: Primary name of the object being stored.
     :param config_info_dict: An optional dict provided containing
                              information about current config.
     E.g.:
@@ -71,7 +74,7 @@ def get_unique_config_name(model_name, config_info_dict=None):
 
         # Generate unique ID based on config_info_dict
         unique_id = '-' + hashlib.md5(config_info.encode('utf-8')).hexdigest()
-    unique_name = model_name + unique_id
+    unique_name = primary_name + unique_id
     return unique_name
 
 def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=None):
