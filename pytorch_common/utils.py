@@ -7,6 +7,7 @@ import logging
 import pickle
 from collections import OrderedDict
 from pprint import pformat
+import hashlib
 
 import torch
 import torch.nn as nn
@@ -54,32 +55,34 @@ def get_unique_config_name(model_name, config_info_dict=None):
     :param config_info_dict: An optional dict provided containing
                              information about current config.
     E.g.:
-    `absanet_binary-size_800-cols_name_text-max_seq_len_150-lr_1e_05-hdims_256`
-    Each attribute is in the "{name}_{value}" format (lowercased),
-    separated from one another by a hyphen. If a hyphen exists
-    in the value (e.g. LR), it's converted to an underscore.
+    `binary_mlp_classifier-3d02e8616cbeab37bc1bb972ecf02882`
+    Each attribute in `config_info_dict` is in the "{name}_{value}"
+    format (lowercased), separated from one another by a hyphen.
+    If a hyphen exists in the value (e.g. LR), it's converted to
+    an underscore. Finally, this string is passed into a hash
+    function to generate a unique ID for this configuration.
     '''
-    if config_info_dict is not None:
+    unique_id = ''
+    if config_info_dict is not None and len(config_info_dict):
         assert isinstance(config_info_dict, dict)
-        config_info = {str(k).replace('-', '_'): str(v).replace('-', '_') for k, v in config_info_dict.items()}
-        config_info = '-' + '-'.join([f'{k}_{v}'.lower() for k, v in config_info.items()])
-    else:
-        config_info = ''
-    unique_name = model_name + config_info
+        config_info = {str(k).replace('-', '_'): str(v).replace('-', '_') \
+                       for k, v in config_info_dict.items()}
+        config_info = '-'.join([f'{k}_{v}'.lower() for k, v in config_info.items()])
+
+        # Generate unique ID based on config_info_dict
+        unique_id = '-' + hashlib.md5(config_info.encode('utf-8')).hexdigest()
+    unique_name = model_name + unique_id
     return unique_name
 
 def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=None):
     '''
     Returns the appropriate name of checkpoint file
-    comprising required config information.
+    by generating a unique ID from the config.
     :param checkpoint_type: Type of checkpoint ('state' | 'model')
     :param config_info_dict: An optional dict provided containing
                              information about current config.
     E.g.:
-    `checkpoint-model-absanet_binary-size_800-cols_name_text-max_seq_len_150-lr_1e_05-hdims_256-epoch_1.pt`
-    Each attribute is in the "{name}_{value}" format (lowercased),
-    separated from one another by a hyphen. If a hyphen exists
-    in the value (e.g. LR), it's converted to an underscore.
+    `checkpoint-model-binary_mlp_classifier-3d02e8616cbeab37bc1bb972ecf02882-epoch_1.pt`
     '''
     assert checkpoint_type in ['state', 'model']
     unique_name = get_unique_config_name(model_name, config_info_dict)

@@ -174,7 +174,8 @@ def save_checkpoint(model, optimizer, train_logger, val_logger, \
         'optimizer': optimizer.state_dict(),
         'epoch': epoch,
         'train_logger': train_logger,
-        'val_logger': val_logger
+        'val_logger': val_logger,
+        'config': config # Good practice to store config too
     }
 
     checkpoint_name = get_checkpoint_name('state', config.model, epoch, misc_info)
@@ -235,7 +236,8 @@ def load_checkpoint(model, optimizer, config, checkpoint_file):
     else:
         raise FileNotFoundError(f'No state checkpoint found at "{checkpoint_path}"!')
 
-    return model, optimizer, train_logger, val_logger, epoch_trained
+    return model, optimizer, train_logger, val_logger, \
+           epoch_trained, state_dict['config']
 
 def save_model(model, model_name, optimizer, config, epoch, misc_info=None):
     '''
@@ -251,7 +253,8 @@ def save_model(model, model_name, optimizer, config, epoch, misc_info=None):
     model = send_model_to_device(model, 'cpu')
     checkpoint = {
         'model': model,
-        'optimizer': optimizer.state_dict()
+        'optimizer': optimizer.state_dict(),
+        'config': config # Good practice to store config too
     }
 
     '''
@@ -301,7 +304,7 @@ def load_model(config, checkpoint_file, optimizer=None):
     else:
         raise FileNotFoundError(f'No model checkpoint found at "{checkpoint_path}"!')
 
-    return model, epoch_trained, optimizer
+    return model, epoch_trained, optimizer, checkpoint['config']
 
 
 class EarlyStopping(object):
