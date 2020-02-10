@@ -45,7 +45,7 @@ def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler
         nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1.)
         optimizer.step()
         if scheduler is not None:
-            scheduler.step(loss_value)
+            scheduler_step(scheduler, loss_value)
 
         # Accurately compute loss, because of different batch size
         loss_train = loss_value * batch_size / num_examples
@@ -156,6 +156,22 @@ def get_all_embeddings(model, dataloader, config):
             logging.info(f'Batch {batch_idx+1}/{num_batches} completed.')
 
     return np.array(all_embeddings)
+
+def scheduler_step(scheduler, val_metric=None):
+    '''
+    Take a scheduler step.
+    Some schedulers, e.g. `ReduceLROnPlateau` require
+    the validation metric to take a step, while (most)
+    others don't.
+    '''
+    require_val_metric = ['ReduceLROnPlateau']
+    scheduler_name = scheduler.__class__.__name__
+    if scheduler_name in require_val_metric:
+        assert val_metric is not None, \
+            f'Param "val_metric" must be provided for {scheduler_name} scheduler'
+        scheduler.step(val_metric)
+    else:
+        scheduler.step()
 
 def save_checkpoint(model, optimizer, train_logger, val_logger, \
                     config, epoch, misc_info=None):
