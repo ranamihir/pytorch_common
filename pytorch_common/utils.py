@@ -49,6 +49,21 @@ def delete_model(model):
     model = None
     torch.cuda.empty_cache()
 
+def get_string_from_dict(config_info_dict=None):
+    '''
+    Generate a (unique) string from a given configuration dictionary.
+    E.g.:
+    >>> config_info_dict = {'size': 100, 'lr': 1e-3}
+    >>> get_string_from_dict(config_info_dict)
+    'size_100-lr_0.001'
+    '''
+    config_info = ''
+    if isinstance(config_info_dict, dict) and len(config_info_dict):
+        config_info = {str(k).replace('-', '_'): str(v).replace('-', '_') \
+                       for k, v in config_info_dict.items()}
+        config_info = '-'.join([f'{k}_{v}'.lower() for k, v in config_info.items()])
+    return config_info
+
 def get_unique_config_name(primary_name, config_info_dict=None):
     '''
     Returns a unique name for the current configuration.
@@ -66,14 +81,12 @@ def get_unique_config_name(primary_name, config_info_dict=None):
     function to generate a unique ID for this configuration.
     '''
     unique_id = ''
-    if config_info_dict is not None and len(config_info_dict):
-        assert isinstance(config_info_dict, dict)
-        config_info = {str(k).replace('-', '_'): str(v).replace('-', '_') \
-                       for k, v in config_info_dict.items()}
-        config_info = '-'.join([f'{k}_{v}'.lower() for k, v in config_info.items()])
 
-        # Generate unique ID based on config_info_dict
+    # Generate unique ID based on config_info_dict
+    config_info = get_string_from_dict(config_info_dict)
+    if config_info != '':
         unique_id = '-' + hashlib.md5(config_info.encode('utf-8')).hexdigest()
+
     unique_name = primary_name + unique_id
     return unique_name
 
