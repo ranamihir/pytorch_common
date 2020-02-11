@@ -254,6 +254,8 @@ class SequencePooler(object):
             self.pooler = self._albert_pooler
         if 'distilbert' in self.model_name:
             self.pooler = self._distilbert_pooler
+        elif 'BERT-of-Theseus-MNLI' in self.model_name:
+            self.pooler = self._bert_of_theseus_pooler
         elif 'bert' in self.model_name:
             self.pooler = self._bert_pooler
         else:
@@ -261,12 +263,6 @@ class SequencePooler(object):
 
     def _default_pooler(self, x):
         return x
-
-    def _albert_pooler(self, x):
-        return x[1] # Same as BERT (see below)
-
-    def _distilbert_pooler(self, x):
-        return x[0][:,0] # [CLS] vector
 
     def _bert_pooler(self, x):
         '''
@@ -279,6 +275,15 @@ class SequencePooler(object):
         and https://www.kaggle.com/questions-and-answers/86510
         '''
         return x[1] # Pooled seq vector
+
+    def _distilbert_pooler(self, x):
+        return x[0][:,0] # [CLS] vector
+
+    def _albert_pooler(self, x):
+        return self._bert_pooler(x) # Same as BERT (see above)
+
+    def _bert_of_theseus_pooler(self, x):
+        return self._bert_pooler(x) # Same as BERT (see above)
 
 
 class DataParallel(nn.DataParallel):
