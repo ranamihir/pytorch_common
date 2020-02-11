@@ -13,6 +13,10 @@ from .additional_configs import BaseDatasetConfig, BaseModelConfig
 from .utils import make_dirs, set_seed
 
 
+# Supported Transformer architectures
+TRANSFORMER_MODELS = ['BERT-of-Theseus-MNLI', 'albert', 'distilbert', 'bert']
+
+
 class Config(common_utils.CommonConfiguration):
     """
     Configuration class that can be used to have fields for the
@@ -98,6 +102,11 @@ def set_pytorch_config(config):
         if config.model_type == 'classification':
             if config.loss_criterion == 'focal-loss':
                 assert config.classification_type == 'binary'
+
+        # Transformer models are prohibitively slow on CPU
+        if any([m in config.model for m in TRANSFORMER_MODELS]):
+            assert config.n_gpu >= 1
+
 
 def set_additional_dirs(config):
     # Update directory paths to absolute ones and create them
