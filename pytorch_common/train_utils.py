@@ -174,12 +174,12 @@ def scheduler_step(scheduler, val_metric=None):
         scheduler.step()
 
 def save_checkpoint(model, optimizer, train_logger, val_logger, \
-                    config, epoch, misc_info=None):
+                    config, epoch, misc_info=None, scheduler=None):
     '''
     Save the checkpoint at a given epoch
     It saves the following variables:
         - Model state dict
-        - Optimizer state dict
+        - Optimizer and scheduler state dicts
         - Epoch number
         - History of train and validation
           losses and eval metrics so far
@@ -193,6 +193,8 @@ def save_checkpoint(model, optimizer, train_logger, val_logger, \
         'val_logger': val_logger,
         'config': config # Good practice to store config too
     }
+    if scheduler is not None:
+        state_dict['scheduler'] = scheduler.state_dict()
 
     checkpoint_name = get_checkpoint_name('state', config.model, epoch, misc_info)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
@@ -214,7 +216,7 @@ def remove_checkpoint(config, epoch, misc_info=None):
         os.remove(checkpoint_path)
         logging.info('Done.')
 
-def load_checkpoint(model, optimizer, config, checkpoint_file):
+def load_checkpoint(model, optimizer, scheduler, config, checkpoint_file):
     '''
     Load a checkpoint saved using `save_checkpoint()`
     Note: Input model & optimizer should be pre-defined.
@@ -247,15 +249,19 @@ def load_checkpoint(model, optimizer, config, checkpoint_file):
             optimizer.load_state_dict(state_dict['optimizer'])
             optimizer = send_optimizer_to_device(optimizer, config.device)
 
+        if scheduler is not None:
+            scheduler.load_state_dict(state_dict['scheduler'])
+
         logging.info('Done.')
 
     else:
         raise FileNotFoundError(f'No state checkpoint found at "{checkpoint_path}"!')
 
-    return model, optimizer, train_logger, val_logger, \
-           epoch_trained, state_dict['config']
+    return model, optimizer, scheduler, train_logger, \
+           val_logger, epoch_trained, state_dict['config']
 
-def save_model(model, model_name, optimizer, config, epoch, misc_info=None):
+def save_model(model, model_name, optimizer, config, \
+               epoch, misc_info=None, scheduler=None):
     '''
     Save the entire model (copied to CPU).
     Not recommended since it breaks if the
@@ -272,6 +278,8 @@ def save_model(model, model_name, optimizer, config, epoch, misc_info=None):
         'optimizer': optimizer.state_dict(),
         'config': config # Good practice to store config too
     }
+    if scheduler is not None:
+        checkpoint['scheduler'] = scheduler.state_dict()
 
     '''
     `dill` is used when a model has serialization issues, e.g. that
@@ -290,7 +298,7 @@ def save_model(model, model_name, optimizer, config, epoch, misc_info=None):
     logging.info('Done.')
     return checkpoint_path
 
-def load_model(config, checkpoint_file, optimizer=None):
+def load_model(config, checkpoint_file, optimizer=None, scheduler=None):
     '''
     Load a model saved using `save_model()`.
     If required, optimizer may be passed to update
@@ -312,6 +320,9 @@ def load_model(config, checkpoint_file, optimizer=None):
             optimizer.load_state_dict(checkpoint['optimizer'])
             optimizer = send_optimizer_to_device(optimizer, config.device)
 
+        if scheduler is not None:
+            scheduler.load_state_dict(state_dict['scheduler'])
+
         logging.info('Done.')
 
         # Extract last trained epoch from checkpoint file
@@ -320,7 +331,7 @@ def load_model(config, checkpoint_file, optimizer=None):
     else:
         raise FileNotFoundError(f'No model checkpoint found at "{checkpoint_path}"!')
 
-    return model, epoch_trained, optimizer, checkpoint['config']
+    return model, epoch_trained, optimizer, scheduler, checkpoint['config']
 
 
 class EarlyStopping(object):
