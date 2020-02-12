@@ -173,165 +173,228 @@ def scheduler_step(scheduler, val_metric=None):
     else:
         scheduler.step()
 
-def save_checkpoint(model, optimizer, train_logger, val_logger, \
-                    config, epoch, misc_info=None, scheduler=None):
+def save_checkpoint(model, optimizer, config, train_logger, \
+                    val_logger, epoch, misc_info=None, scheduler=None):
     '''
-    Save the checkpoint at a given epoch
+    Save the checkpoint at a given epoch.
     It saves the following variables:
         - Model state dict
-        - Optimizer and scheduler state dicts
+        - Optimizer and scheduler (if provided) state dicts
         - Epoch number
         - History of train and validation
           losses and eval metrics so far
+        - Current training config
     '''
-    state_dict = {
-        'model_state_dict': model.module.state_dict() if hasattr(model, 'module') \
-                            else model.state_dict(),
-        'optimizer': optimizer.state_dict(),
-        'epoch': epoch,
-        'train_logger': train_logger,
-        'val_logger': val_logger,
-        'config': config # Good practice to store config too
-    }
-    if scheduler is not None:
-        state_dict['scheduler'] = scheduler.state_dict()
+    return save_checkpoint_common('state', model, optimizer, config, train_logger, \
+                                  val_logger, epoch, misc_info, scheduler)
 
-    checkpoint_name = get_checkpoint_name('state', config.model, epoch, misc_info)
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
-    logging.info(f'Saving state checkpoint "{checkpoint_path}"...')
-    torch.save(state_dict, checkpoint_path)
-    logging.info('Done.')
-    return checkpoint_path
-
-def remove_checkpoint(config, epoch, misc_info=None):
+def save_model(model, optimizer, config, train_logger, \
+                val_logger, epoch, misc_info=None, scheduler=None):
     '''
-    Remove a checkpoint at a give epoch.
-    Used in early stopping if better performance
-    is observed at a subsequent epoch.
-    '''
-    checkpoint_name = get_checkpoint_name('state', config.model, epoch, misc_info)
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
-    if os.path.exists(checkpoint_path):
-        logging.info(f'Removing state checkpoint "{checkpoint_path}"...')
-        os.remove(checkpoint_path)
-        logging.info('Done.')
-
-def load_checkpoint(model, optimizer, scheduler, config, checkpoint_file):
-    '''
-    Load a checkpoint saved using `save_checkpoint()`
-    Note: Input model & optimizer should be pre-defined.
-          This routine only updates their states.
-    '''
-    train_logger = ModelTracker(config, is_train=1)
-    val_logger = ModelTracker(config, is_train=0)
-    epoch_trained = 0
-
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
-
-    if os.path.isfile(checkpoint_path):
-        logging.info(f'Loading state checkpoint "{checkpoint_path}"...')
-        state_dict = torch.load(checkpoint_path)
-
-        # Extract last trained epoch from checkpoint file
-        epoch_trained = int(os.path.splitext(checkpoint_file)[0].split('-epoch_')[-1])
-        assert epoch_trained == state_dict['epoch']
-
-        train_logger = state_dict['train_logger']
-        val_logger = state_dict['val_logger']
-        assert epoch_trained == max(train_logger.epochs)
-
-        if hasattr(model, 'module'):
-            model.module.load_state_dict(state_dict['model_state_dict'])
-        else:
-            model.load_state_dict(state_dict['model_state_dict'])
-
-        if optimizer is not None:
-            optimizer.load_state_dict(state_dict['optimizer'])
-            optimizer = send_optimizer_to_device(optimizer, config.device)
-
-        if scheduler is not None:
-            scheduler.load_state_dict(state_dict['scheduler'])
-
-        logging.info('Done.')
-
-    else:
-        raise FileNotFoundError(f'No state checkpoint found at "{checkpoint_path}"!')
-
-    return model, optimizer, scheduler, train_logger, \
-           val_logger, epoch_trained, state_dict['config']
-
-def save_model(model, model_name, optimizer, config, \
-               epoch, misc_info=None, scheduler=None):
-    '''
-    Save the entire model (copied to CPU).
+    Similar to `save_checkpoint()`, except it
+    saves the entire model (copied to CPU).
     Not recommended since it breaks if the
     model code is changed.
+    It saves the following variables:
+        - (Entire) model
+        - Optimizer and scheduler (if provided) state dicts
+        - Epoch number
+        - History of train and validation
+          losses and eval metrics so far
+        - Current training config
     '''
-    checkpoint_name = get_checkpoint_name('model', config.model, epoch, misc_info)
+    return save_checkpoint_common('model', model, optimizer, config, train_logger, \
+                                  val_logger, epoch, misc_info, scheduler)
+
+def save_checkpoint_common(checkpoint_type, model, optimizer, config, train_logger, \
+                           val_logger, epoch, misc_info=None, scheduler=None):
+    '''
+    Common function to save the checkpoint at a given epoch.
+    It can save either the entire model or just its state dict.
+    Additionally, it saves the following variables:
+        - Optimizer and scheduler (if provided) state dicts
+        - Epoch number
+        - History of train and validation
+          losses and eval metrics so far
+        - Current training config
+    '''
+    checkpoint_name = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
-    logging.info(f'Saving model checkpoint "{checkpoint_path}"...')
+    logging.info(f'Saving {checkpoint_type} checkpoint "{checkpoint_path}"...')
 
-    # Save model on CPU
-    model = send_model_to_device(model, 'cpu')
-    checkpoint = {
-        'model': model,
-        'optimizer': optimizer.state_dict(),
-        'config': config # Good practice to store config too
-    }
-    if scheduler is not None:
-        checkpoint['scheduler'] = scheduler.state_dict()
+    # Generate appropriate checkpoint dictionary
+    checkpoint = generate_checkpoint_dict(optimizer, config, train_logger, \
+                                          val_logger, epoch, scheduler)
 
-    '''
+    # Save model in appropriate way
+    if checkpoint_type == 'state':
+        checkpoint['model'] = model.module.state_dict() if hasattr(model, 'module') \
+                              else model.state_dict()
+    else:
+        checkpoint['model'] = send_model_to_device(model, 'cpu') # Save model on CPU
+
+        '''
     `dill` is used when a model has serialization issues, e.g. that
     caused by having a lambda function as an attribute of the model.
     Regular pickling won't work, but it will with dill.
     Note 1: Avoid using it if possible since it's a little slower.
     Note 2: It has more robust serialization though.
+    Note 3: When `checkpoint_type='state'`, it should automatically
+            always work with pickle.
     '''
     try:
         torch.save(checkpoint, checkpoint_path)
     except AttributeError:
         torch.save(checkpoint, checkpoint_path, pickle_module=dill)
 
-    # Move model back to original device(s)
-    model = send_model_to_device(model, config.device, config.device_ids)
     logging.info('Done.')
     return checkpoint_path
+
+def generate_checkpoint_dict(optimizer, config, train_logger, \
+                             val_logger, epoch, scheduler=None):
+    '''
+    Generate a dictionary for storing a checkpoint.
+    Helper function for `save_checkpoint_common()`.
+    It saves the following variables:
+        - Optimizer and scheduler (if provided) state dicts
+        - Epoch number
+        - History of train and validation
+          losses and eval metrics so far
+        - Current training config
+    '''
+    checkpoint = {
+        'optimizer': optimizer.state_dict(),
+        'config': config, # Good practice to store config too
+        'train_logger': train_logger,
+        'val_logger': val_logger,
+        'epoch': epoch,
+    }
+    if scheduler is not None:
+        checkpoint['scheduler'] = scheduler.state_dict()
+    return checkpoint
+
+def remove_checkpoint(config, epoch, misc_info=None, checkpoint_type='state'):
+    '''
+    Remove a checkpoint at a given epoch.
+    Used in early stopping if better performance
+    is observed at a subsequent epoch.
+    '''
+    checkpoint_name = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
+    if os.path.exists(checkpoint_path):
+        logging.info(f'Removing {checkpoint_type} checkpoint "{checkpoint_path}"...')
+        os.remove(checkpoint_path)
+        logging.info('Done.')
+
+def load_checkpoint(model, config, checkpoint_file, optimizer=None, scheduler=None):
+    '''
+    Load a checkpoint saved using `save_checkpoint()`.
+    Additionally, it loads the following variables:
+        - Optimizer and scheduler (if provided) state dicts
+        - Epoch number
+        - History of train and validation
+          losses and eval metrics so far
+        - Current training config
+    Note: Input model, optimizer, and scheduler should
+          be pre-defined. This routine only updates
+          their states.
+    '''
+    return load_checkpoint_common('state', model, config, checkpoint_file, optimizer, scheduler)
 
 def load_model(config, checkpoint_file, optimizer=None, scheduler=None):
     '''
     Load a model saved using `save_model()`.
-    If required, optimizer may be passed to update
-    its state to point to the new model's parameters.
+    Additionally, it loads the following variables:
+        - Optimizer and scheduler (if provided) state dicts
+        - Epoch number
+        - History of train and validation
+          losses and eval metrics so far
+        - Current training config
+    Note: Input model, optimizer, and scheduler should
+          be pre-defined. This routine only updates
+          their states.
     '''
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
-    if os.path.exists(checkpoint_path):
-        logging.info(f'Loading model checkpoint "{checkpoint_path}"...')
+    return load_checkpoint_common('model', None, config, checkpoint_file, optimizer, scheduler)
 
-        # See `save_model()` for explanation.
+def load_checkpoint_common(checkpoint_type, model, config, checkpoint_file, optimizer=None, scheduler=None):
+    '''
+    Common function to load the checkpoint at a given epoch.
+    It can load either the entire model or just its state dict.
+    Additionally, it loads the following variables:
+        - Optimizer and scheduler (if provided) state dicts
+        - Epoch number
+        - History of train and validation
+          losses and eval metrics so far
+        - Current training config
+    Note: Input model, optimizer, and scheduler should
+          be pre-defined. This routine only updates
+          their states.
+    '''
+    # Set default values if no checkpoint found
+    train_logger, val_logger = None, None
+    epoch_trained = 0
+
+    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
+    if os.path.isfile(checkpoint_path):
+        logging.info(f'Loading {checkpoint_type} checkpoint "{checkpoint_path}"...')
+
+        # See `save_checkpoint_common()` for explanation
         try:
             checkpoint = torch.load(checkpoint_path)
         except AttributeError:
             checkpoint = torch.load(checkpoint_path, pickle_module=dill)
 
-        model = checkpoint['model']
-
-        if optimizer is not None:
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            optimizer = send_optimizer_to_device(optimizer, config.device)
-
-        if scheduler is not None:
-            scheduler.load_state_dict(state_dict['scheduler'])
-
-        logging.info('Done.')
+        # Load config
+        config = checkpoint['config']
 
         # Extract last trained epoch from checkpoint file
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split('-epoch_')[-1])
+        assert epoch_trained == checkpoint['epoch']
+
+        # Load optimizer and scheduler state dicts
+        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, \
+                                                            optimizer, scheduler)
+
+        # Load train / val loggers
+        train_logger = checkpoint['train_logger']
+        val_logger = checkpoint['val_logger']
+        assert epoch_trained == max(train_logger.epochs)
+
+        # Load model in appropriate way
+        if checkpoint_type == 'state':
+            assert model is not None
+            if hasattr(model, 'module'):
+                model.module.load_state_dict(checkpoint['model'])
+            else:
+                model.load_state_dict(checkpoint['model'])
+        else: # Load entire model
+            assert model is None
+            model = checkpoint['model']
+
+        logging.info('Done.')
 
     else:
-        raise FileNotFoundError(f'No model checkpoint found at "{checkpoint_path}"!')
+        raise FileNotFoundError(f'No {checkpoint_type} checkpoint found at "{checkpoint_path}"!')
 
-    return model, epoch_trained, optimizer, scheduler, checkpoint['config']
+    return model, optimizer, config, train_logger, \
+           val_logger, epoch_trained, scheduler
+
+def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=None):
+    '''
+    Load the state dict of a given optimizer
+    and scheduler, if they're provided.
+    Helper function for `load_checkpoint_common()`.
+    '''
+    # Load optimizer
+    if optimizer is not None:
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        optimizer = send_optimizer_to_device(optimizer, device)
+
+    # Load scheduler
+    if scheduler is not None:
+        scheduler.load_state_dict(checkpoint['scheduler'])
+
+    return optimizer, scheduler
 
 
 class EarlyStopping(object):
