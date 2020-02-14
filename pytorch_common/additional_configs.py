@@ -2,6 +2,7 @@
 Sample config.py for loading configuration from yaml files
 """
 from vrdscommon import common_utils
+from copy import deepcopy
 
 
 class BaseDatasetConfig(common_utils.CommonConfiguration):
@@ -31,8 +32,8 @@ class BaseDatasetConfig(common_utils.CommonConfiguration):
         required, e.g. for train/val datasets.
         '''
         if deep:
-            return BaseDatasetConfig(self)
-        return BaseDatasetConfig()
+            return deepcopy(self)
+        return BaseDatasetConfig(self)
 
 
 class BaseModelConfig(common_utils.CommonConfiguration):
@@ -63,5 +64,5 @@ class BaseModelConfig(common_utils.CommonConfiguration):
         Useful if different configs are required.
         '''
         if deep:
-            return BaseModelConfig(self)
-        return BaseModelConfig()
+            return deepcopy(self)
+        return BaseModelConfig(self)
