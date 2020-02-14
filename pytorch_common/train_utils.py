@@ -233,7 +233,7 @@ def save_checkpoint_common(checkpoint_type, model, optimizer, config, train_logg
     else:
         checkpoint['model'] = send_model_to_device(model, 'cpu') # Save model on CPU
 
-        '''
+    '''
     `dill` is used when a model has serialization issues, e.g. that
     caused by having a lambda function as an attribute of the model.
     Regular pickling won't work, but it will with dill.
@@ -403,7 +403,6 @@ class EarlyStopping(object):
     Reference: https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d
                with minor improvements.
     '''
-
     def __init__(self, mode='minimize', min_delta=0, patience=10, max_val=None, max_val_tol=None):
         '''
         :param min_delta: Minimum difference in metric required to prevent early stopping
