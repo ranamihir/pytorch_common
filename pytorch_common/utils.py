@@ -319,7 +319,7 @@ class DataParallel(nn.DataParallel):
         `self.module.predict()` instead of `self.predict()`.
         '''
         try:
-            return super(DataParallel, self).__getattr__(name)
+            return super().__getattr__(name)
         except AttributeError:
             return getattr(self.module, name)
 
