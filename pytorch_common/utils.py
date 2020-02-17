@@ -247,6 +247,23 @@ def convert_tensor_to_numpy(batch):
         logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
+def convert_numpy_to_tensor(batch, device='cpu'):
+    '''
+    Convert numpy array(s) to torch tensor(s) and
+    sends them to the desired device.
+    Inverse operation of `convert_tensor_to_numpy()`,
+    and similar to it, can take a np.ndarray or a
+    tuple/list of them as input.
+    '''
+    if isinstance(batch, np.ndarray):
+        return torch.from_numpy(batch).to(device)
+    elif isinstance(batch, tuple) or isinstance(batch, list):
+        # Retain same data type as original
+        return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
+    else: # Structure/type of batch unknown / not understood.
+        logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
+        return batch
+
 
 class SequencePooler(object):
     '''
