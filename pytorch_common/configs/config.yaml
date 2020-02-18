@@ -8,7 +8,7 @@ plot_dir: plots
 # dataset_config:
 #   size: 50
 #   dim: &dim 10
-#   n_classes: &n_classes 2
+#   num_classes: &num_classes 2
 
 # Replace with your model name
 model: single_layer_classifier
@@ -23,7 +23,7 @@ classification_type: binary
 # # Model config
 # model_config:
 #   in_dim: *dim
-#   n_classes: *n_classes
+#   num_classes: *num_classes
 
 # Loss criterion
 loss_criterion: cross-entropy
