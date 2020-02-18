@@ -198,11 +198,11 @@ class MultiLayerClassifier(BasePyTorchModel):
         self.in_dim = config.in_dim
         self.h_dim = config.h_dim
         self.num_classes = config.num_classes
-        self.n_layers = config.n_layers
+        self.num_layers = config.num_layers
 
         trunk = [nn.Sequential(nn.Linear(self.in_dim, self.h_dim), \
                                nn.ReLU(inplace=True))]
-        for _ in range(self.n_layers-1):
+        for _ in range(self.num_layers-1):
             layer = nn.Sequential(
                 nn.Linear(self.h_dim, self.h_dim),
                 nn.ReLU(inplace=True)
