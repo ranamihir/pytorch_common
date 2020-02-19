@@ -361,7 +361,7 @@ def load_checkpoint_common(checkpoint_type, model, config, checkpoint_file, opti
         assert epoch_trained == max(train_logger.epochs)
 
         # Load model in appropriate way
-        if checkpoint_type == 'state':
+        if checkpoint_type == 'state': # Load state dict
             assert model is not None
             if hasattr(model, 'module'):
                 model.module.load_state_dict(checkpoint['model'])
@@ -376,8 +376,18 @@ def load_checkpoint_common(checkpoint_type, model, config, checkpoint_file, opti
     else:
         raise FileNotFoundError(f'No {checkpoint_type} checkpoint found at "{checkpoint_path}"!')
 
-    return model, optimizer, config, train_logger, \
-           val_logger, epoch_trained, scheduler
+    # Prepare dict to be returned
+    return_dict = {
+        'model': model,
+        'optimizer': optimizer,
+        'config': config,
+        'train_logger': train_logger,
+        'val_logger': val_logger,
+        'epoch': epoch_trained,
+        'scheduler': scheduler
+    }
+
+    return return_dict
 
 def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=None):
     '''
