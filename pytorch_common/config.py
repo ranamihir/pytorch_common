@@ -81,6 +81,10 @@ def load_config(config_file='config.yaml'):
     return {}
 
 def set_pytorch_config(config):
+    '''
+    Validate and set config for all things related
+    to PyTorch / GPUs.
+    '''
     if config.get('load_pytorch_common_config'):
         set_additional_dirs(config) # Set and create additional required directories
 
@@ -109,7 +113,10 @@ def set_pytorch_config(config):
 
 
 def set_additional_dirs(config):
-    # Update directory paths to absolute ones and create them
+    '''
+    Update `output_dir`, `plot_dir`, and `checkpoint_dir`
+    directory paths to absolute ones and create them.
+    '''
     for directory in ['output_dir', 'plot_dir', 'checkpoint_dir']:
         if hasattr(config, directory):
             dir_path = os.path.expanduser(os.path.join(config.transientdir, getattr(config, directory)))
@@ -118,6 +125,11 @@ def set_additional_dirs(config):
             make_dirs(config[directory])
 
 def set_loss_and_eval_criteria(config):
+    '''
+    Create loss and evaluation criteria
+    as per their (optionally) provided
+    respective kwargs.
+    '''
     # Set loss and eval criteria kwargs
     config.loss_kwargs = config.loss_kwargs if config.get('loss_kwargs') else {}
     config.eval_criteria_kwargs = config.eval_criteria_kwargs if config.get('eval_criteria_kwargs') else {}
@@ -132,6 +144,13 @@ def set_loss_and_eval_criteria(config):
     assert config.early_stopping_criterion in config.eval_criteria
 
 def check_and_set_devices(config):
+    '''
+    Check the validity of provided device
+    configuration:
+      - Properly set fields like `device`,
+        `device_ids`, and `n_gpu`.
+      - Set torch backend benchmarks
+    '''
     # Check device provided
     if 'cuda' in config.device:
         assert torch.cuda.is_available() # Check for CUDA

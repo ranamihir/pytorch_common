@@ -35,10 +35,13 @@ def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler
         x, y = send_batch_to_device(batch[:2], device)
 
         optimizer.zero_grad()
+        model.zero_grad()
 
+        # Get model outputs
         outputs = model(x)
         outputs = get_model_outputs_only(outputs)
 
+        # Backprop + clip gradients + take scheduler step
         loss = loss_criterion(outputs, y)
         loss_value = loss.item()
         loss.backward()
@@ -58,6 +61,7 @@ def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler
                 100. * (batch_idx+1) / num_batches, loss_value))
 
     optimizer.zero_grad()
+    model.zero_grad()
     return loss_hist
 
 @timing
