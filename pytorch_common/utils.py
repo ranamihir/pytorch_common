@@ -5,6 +5,7 @@ import os
 import sys
 import logging
 import pickle
+import dill
 from collections import OrderedDict
 from pprint import pformat
 import hashlib
@@ -116,38 +117,52 @@ def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
     file_name = '-'.join([plot_name, unique_name])
     fig.savefig(os.path.join(config.plot_dir, f'{file_name}.{ext}'), dpi=300)
 
-def save_object(obj, file_path):
+def save_object(obj, file_path, pickle_module='pickle'):
     '''
-    This is a defensive way to write pickle.write,
-    allowing for very large files on all platforms
+    This is a defensive way to write (pickle/dill).dump,
+    allowing for very large files on all platforms.
     '''
     logging.info(f'Saving "{file_path}"...')
     max_bytes = 2**31 - 1
-    bytes_out = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
+    pickle_module = get_pickle_module(pickle_module)
+    bytes_out = pickle_module.dumps(obj, protocol=pickle_module.HIGHEST_PROTOCOL)
     n_bytes = sys.getsizeof(bytes_out)
     with open(file_path, 'wb') as f_out:
         for idx in range(0, n_bytes, max_bytes):
             f_out.write(bytes_out[idx:idx+max_bytes])
     logging.info('Done.')
 
-def load_object(file_path):
+def load_object(file_path, pickle_module='pickle'):
     '''
-    This is a defensive way to write pickle.load,
-    allowing for very large files on all platforms
+    This is a defensive way to write (pickle/dill).load,
+    allowing for very large files on all platforms.
     '''
     logging.info(f'Loading "{file_path}"...')
     max_bytes = 2**31 - 1
+    pickle_module = get_pickle_module(pickle_module)
     if os.path.exists(file_path):
         input_size = os.path.getsize(file_path)
         bytes_in = bytearray(0)
         with open(file_path, 'rb') as f:
             for _ in range(0, input_size, max_bytes):
                 bytes_in += f.read(max_bytes)
-        obj = pickle.loads(bytes_in)
+        obj = pickle_module.loads(bytes_in)
         logging.info(f'Successfully loaded "{file_path}".')
         return obj
     else:
         raise FileNotFoundError(f'Could not find "{file_path}".')
+
+def get_pickle_module(pickle_module='pickle'):
+    '''
+    Return the correct module for pickling.
+    :param pickle_module: must be one of ["pickle", "dill"]
+    '''
+    if pickle_module == 'pickle':
+        return pickle
+    elif pickle_module == 'dill':
+        return dill
+    raise ValueError(f'Param "pickle_module" ("{pickle_module}") must be '\
+                      'one of ["pickle", "dill"].')
 
 def save_embeddings(embeddings, folder_path, model_name):
     '''
