@@ -6,6 +6,7 @@ import sys
 import logging
 import pickle
 import dill
+from copy import deepcopy
 from collections import OrderedDict
 from pprint import pformat
 import hashlib
@@ -184,14 +185,25 @@ def get_model_outputs_only(outputs):
         outputs = outputs[0]
     return outputs
 
-def send_model_to_device(model, device, device_ids=[]):
+def send_model_to_device(model, device, device_ids=[], copy=False):
     '''
     Send a model to specified device.
     Will also parallelize model if required.
+    :param copy: If True, will return a copy of the original
+                 model on the desired device(s), otherwise
+                 move it inplace.
+
+    Note 1: `model.to()` is an inplace operation, so it will move the
+             original model to the desired device. If the original model
+             is to be retained on the original device, and a copy is
+             to be moved to the desired device(s) and returned, make
+             sure to set `copy=True`.
+    Note 2: `model.to()` doesn't work if model is parallelized;
+             must do `model.module.to()`
     '''
-    # Note 1: `model.to()` is not an inplace operation
-    # Note 2: `model.to()` doesn't work if model is parallelized; must do `model.module.to()`
     logging.info(f'Setting default device for model to {device}...')
+    if copy:
+        model = deepcopy(model)
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')
 
