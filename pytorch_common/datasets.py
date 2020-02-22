@@ -16,7 +16,7 @@ class DummyMultiClassDataset(Dataset):
     def __getitem__(self, index):
         # Fix torch random generator seed and numpy random state for reproducibility
         x = torch.rand(self.dim, generator=torch.Generator().manual_seed(index))
-        y = torch.tensor(np.random.RandomState(index).choice(range(self.num_classes)))
+        y = torch.as_tensor(np.random.RandomState(index).choice(range(self.num_classes)))
         return x, y
 
     def __len__(self):
@@ -33,7 +33,7 @@ class DummyMultiLabelDataset(Dataset):
     def __getitem__(self, index):
         # Fix torch random generator seed and numpy random state for reproducibility
         x = torch.rand(self.dim, generator=torch.Generator().manual_seed(index))
-        y = torch.from_numpy(np.random.RandomState(index).choice([0,1], size=self.num_classes))
+        y = torch.as_tensor(np.random.RandomState(index).choice([0,1], size=self.num_classes))
 
     def __len__(self):
         return self.size

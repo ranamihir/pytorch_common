@@ -271,7 +271,7 @@ def convert_numpy_to_tensor(batch, device='cpu'):
     tuple/list of them as input.
     '''
     if isinstance(batch, np.ndarray):
-        return torch.from_numpy(batch).to(device)
+        return torch.as_tensor(batch).to(device)
     elif isinstance(batch, tuple) or isinstance(batch, list):
         # Retain same data type as original
         return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))

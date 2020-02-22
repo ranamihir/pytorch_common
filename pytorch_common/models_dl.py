@@ -103,7 +103,7 @@ class BasePyTorchModel(nn.Module):
 
         if threshold is not None:
             device = probs.device
-            pos_tensor, neg_tensor = torch.tensor(1, device=device), torch.tensor(0, device=device)
+            pos_tensor, neg_tensor = torch.as_tensor(1, device=device), torch.as_tensor(0, device=device)
             labels_for_class_i = lambda i: torch.where(probs[...,i] >= threshold, pos_tensor, neg_tensor)
             if num_classes == 2: # Only get labels for class 1 if binary classification
                 preds = labels_for_class_i(1)
