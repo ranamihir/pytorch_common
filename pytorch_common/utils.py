@@ -198,8 +198,9 @@ def send_model_to_device(model, device, device_ids=[], copy=False):
              is to be retained on the original device, and a copy is
              to be moved to the desired device(s) and returned, make
              sure to set `copy=True`.
-    Note 2: `model.to()` doesn't work if model is parallelized;
-             must do `model.module.to()`
+    Note 2: `model.to()` doesn't work as desired if model is
+             parallelized (model is stilled wrapped inside `module`);
+             therefore must do `model.module.to()`
     '''
     logging.info(f'Setting default device for model to {device}...')
     if copy:
@@ -274,16 +275,17 @@ def convert_tensor_to_numpy(batch):
         logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
-def convert_numpy_to_tensor(batch, device='cpu'):
+def convert_numpy_to_tensor(batch, device=None):
     '''
     Convert numpy array(s) to torch tensor(s) and
-    sends them to the desired device.
+    optionally sends them to the desired device.
     Inverse operation of `convert_tensor_to_numpy()`,
     and similar to it, can take a np.ndarray or a
     tuple/list of them as input.
     '''
     if isinstance(batch, np.ndarray):
-        return torch.as_tensor(batch).to(device)
+        batch = torch.as_tensor(batch)
+        return batch if device is None else batch.to(device)
     elif isinstance(batch, tuple) or isinstance(batch, list):
         # Retain same data type as original
         return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
