@@ -199,11 +199,11 @@ def send_model_to_device(model, device, device_ids=[], copy=False):
              to be moved to the desired device(s) and returned, make
              sure to set `copy=True`.
     Note 2: `model.to()` doesn't work as desired if model is
-             parallelized (model is stilled wrapped inside `module`);
+             parallelized (model is still wrapped inside `module`);
              therefore must do `model.module.to()`
     '''
     logging.info(f'Setting default device for model to {device}...')
-    if copy:
+    if copy: # Send copy of model to desired device(s)
         model = deepcopy(model)
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')
