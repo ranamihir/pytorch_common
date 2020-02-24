@@ -74,7 +74,7 @@ class BasePyTorchDataset(Dataset):
         '''
         Remove the dataset at the given path.
         '''
-        dataset = remove_object(path)
+        remove_object(path)
 
     def progress_apply(self, data, func, *args, **kwargs):
         '''
