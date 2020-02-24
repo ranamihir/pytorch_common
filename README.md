@@ -32,7 +32,7 @@ In a nutshell, it has code for:
 
 
 # Usage
-Some example notebooks can be found in the [pytorch_common_examples](https://gitlab.dev.tripadvisor.com/vrds/pytorch_common_examples) repo. These are somewhat contrived examples designed to illustrate how to leverage this reo; for a full-fledged project, you may refer to [this repo](https://gitlab.dev.tripadvisor.com/vrds/exp_vi_predict_product_subcats/tree/initial).
+Some example notebooks can be found in the [pytorch_common_examples](https://gitlab.dev.tripadvisor.com/vrds/pytorch_common_examples) repo. These are somewhat contrived examples designed to illustrate how to leverage this repo; for a full-fledged project, you may refer to [this repo](https://gitlab.dev.tripadvisor.com/vrds/exp_vi_predict_product_subcats/tree/initial).
 
 # To-do's
 I have some enhancements in mind which I haven't gotten around to adding to this repo yet:
