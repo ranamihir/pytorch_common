@@ -128,9 +128,9 @@ class BasePyTorchDataset(Dataset):
         '''
         # Get all class counts
         value_counts = self.data[self.target_col].value_counts(sort=True, ascending=False)
-        class_label = class_to_sample
 
         # If class not specified, take majority/minority class by default
+        class_label = class_to_sample
         if class_label is None:
             class_label = value_counts.index.tolist()[-1 if minority else 0]
         class_count = value_counts[class_label]
