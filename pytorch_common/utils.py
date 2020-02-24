@@ -51,9 +51,9 @@ def delete_model(model):
     model = None
     torch.cuda.empty_cache()
 
-def copy_model(model, device=None):
+def copy_model(model):
     '''
-    Return a copy of the model.
+    Return a copy of the model
     '''
     return deepcopy(model)
 
@@ -67,9 +67,9 @@ def get_string_from_dict(config_info_dict=None):
     '''
     config_info = ''
     if isinstance(config_info_dict, dict) and len(config_info_dict):
-        config_info = {str(k).replace('-', '_'): str(v).replace('-', '_') \
-                       for k, v in config_info_dict.items()}
-        config_info = '-'.join([f'{k}_{v}'.lower() for k, v in config_info.items()])
+        clean = lambda k: str(k).replace('-', '_').lower()
+        config_info = {clean(k): clean(v) for k, v in config_info_dict.items()}
+        config_info = '-'.join([f'{k}_{v}' for k, v in config_info.items()])
     return config_info
 
 def get_unique_config_name(primary_name, config_info_dict=None):
