@@ -155,7 +155,8 @@ def get_class_eval_metric(output_hist, y_true, criterion='accuracy', **kwargs):
     and return the metric value for the given class
     '''
     y_predicted = output_hist[:,1] if criterion == 'auc' else output_hist.max(dim=-1)[1]
-    y_true, y_predicted = convert_label_tensors_to_numpy(y_true, y_predicted)
+    y_true, y_predicted = convert_tensor_to_numpy((y_true, y_predicted))
+    assert y_true.shape == y_predicted.shape
     y_true = y_true.astype(int)
 
     if criterion == 'auc':
@@ -171,15 +172,6 @@ def get_class_eval_metric(output_hist, y_true, criterion='accuracy', **kwargs):
     }
     criterion_fn = partial(criterion_fn_dict[criterion], **kwargs)
     return criterion_fn(y_true, y_predicted.astype(int))
-
-def convert_label_tensors_to_numpy(y_true, y_predicted):
-    '''
-    Move both true labels and prediction arrays
-    to numpy for downstream metric computation
-    '''
-    y_true, y_predicted = convert_tensor_to_numpy((y_true, y_predicted))
-    assert y_true.shape == y_predicted.shape
-    return y_true, y_predicted
 
 
 class FocalLoss(nn.Module):
