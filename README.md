@@ -11,7 +11,6 @@ In a nutshell, it has code for:
     - Printing summary + useful statistics
     - Over-/under-sampling rows
     - Properly saving/loading/removing datasets (using appropriate pickle modules)
-    - 
   - `BasePyTorchModel`, which has:
     - `initialize_model()`:
       - Prints number of params + architecture
