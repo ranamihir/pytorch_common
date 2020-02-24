@@ -51,6 +51,12 @@ def delete_model(model):
     model = None
     torch.cuda.empty_cache()
 
+def copy_model(model, device=None):
+    '''
+    Return a copy of the model.
+    '''
+    return deepcopy(model)
+
 def get_string_from_dict(config_info_dict=None):
     '''
     Generate a (unique) string from a given configuration dictionary.
@@ -213,7 +219,7 @@ def send_model_to_device(model, device, device_ids=[], copy=False):
     '''
     logging.info(f'Setting default device for model to {device}...')
     if copy: # Send copy of model to desired device(s)
-        model = deepcopy(model)
+        model = copy_model(model)
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')
 
