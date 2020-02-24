@@ -6,7 +6,6 @@ import sys
 import logging
 import pickle
 import dill
-from copy import deepcopy
 from collections import OrderedDict
 from pprint import pformat
 import hashlib
@@ -50,12 +49,6 @@ def delete_model(model):
     '''
     model = None
     torch.cuda.empty_cache()
-
-def copy_model(model):
-    '''
-    Return a copy of the model
-    '''
-    return deepcopy(model)
 
 def get_string_from_dict(config_info_dict=None):
     '''

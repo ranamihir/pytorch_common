@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+from copy import deepcopy
 
 import torch
 import torch.nn as nn
@@ -116,6 +117,12 @@ class BasePyTorchModel(nn.Module):
         if num_classes == 2: # Only get probs for class 1 if binary classification
             probs = probs[...,1]
         return preds, probs
+
+    def copy(self):
+        '''
+        Return a copy of the model
+        '''
+        return deepcopy(self)
 
     def freeze_module(self, models_to_freeze=None):
         '''
