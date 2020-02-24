@@ -7,11 +7,16 @@ Please refer to [this document](https://docs.google.com/presentation/d/1mAa8Tetc
 In a nutshell, it has code for:
   - Training / testing models
   - Logging all common losses / eval metrics
+  - `BasePyTorchDataset`, which has functions for:
+    - Printing summary + useful statistics
+    - Over-/under-sampling rows
+    - Properly saving/loading/removing datasets (using appropriate pickle modules)
+    - 
   - `BasePyTorchModel`, which has:
     - `initialize_model()`:
       - Prints number of params + architecture
       - Allows initializing (all / given) weights for Conv, BatchNorm, Linear, Embedding layers
-    - Provision to freeze (all / given) weights of model
+    - Provision to freeze/unfreeze (all / given) weights of model
   - Sending model to device(s)
   - Saving/loading/removing state dict / model checkpoints
   - Early stopping
@@ -29,6 +34,11 @@ In a nutshell, it has code for:
 
 # Usage
 Some example notebooks can be found in the [pytorch_common_examples](https://gitlab.dev.tripadvisor.com/vrds/pytorch_common_examples) repo. These are somewhat contrived examples designed to illustrate how to leverage this reo; for a full-fledged project, you may refer to [this repo](https://gitlab.dev.tripadvisor.com/vrds/exp_vi_predict_product_subcats/tree/initial).
+
+# To-do's
+I have some enhancements in mind which I haven't gotten around to adding to this repo yet:
+  - Adding automatic mixed precision training (AMP) to enable it directly from config
+  - Enabling distributed training across servers
 
 
 # Disclaimer
