@@ -11,7 +11,7 @@ import torch.nn as nn
 
 from .utils import get_model_outputs_only, send_batch_to_device, send_model_to_device, \
                    send_optimizer_to_device, convert_tensor_to_numpy, SequencePooler, \
-                   save_object, ModelTracker, get_checkpoint_name
+                   save_object, remove_object, ModelTracker, get_checkpoint_name
 
 
 @timing
@@ -277,19 +277,6 @@ def generate_checkpoint_dict(optimizer, config, train_logger, \
         checkpoint['scheduler'] = scheduler.state_dict()
     return checkpoint
 
-def remove_checkpoint(config, epoch, misc_info=None, checkpoint_type='state'):
-    '''
-    Remove a checkpoint at a given epoch.
-    Used in early stopping if better performance
-    is observed at a subsequent epoch.
-    '''
-    checkpoint_name = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
-    if os.path.exists(checkpoint_path):
-        logging.info(f'Removing {checkpoint_type} checkpoint "{checkpoint_path}"...')
-        os.remove(checkpoint_path)
-        logging.info('Done.')
-
 def load_checkpoint(model, config, checkpoint_file, optimizer=None, scheduler=None):
     '''
     Load a checkpoint saved using `save_checkpoint()`.
@@ -409,6 +396,19 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
         scheduler.load_state_dict(checkpoint['scheduler'])
 
     return optimizer, scheduler
+
+def remove_checkpoint(config, epoch, misc_info=None, checkpoint_type='state'):
+    '''
+    Remove a checkpoint at a given epoch.
+    Used in early stopping if better performance
+    is observed at a subsequent epoch.
+    '''
+    checkpoint_name = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
+    if os.path.exists(checkpoint_path):
+        logging.info(f'Removing {checkpoint_type} checkpoint "{checkpoint_path}"...')
+        remove_object(checkpoint_path)
+        logging.info('Done.')
 
 
 class EarlyStopping(object):

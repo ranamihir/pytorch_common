@@ -153,6 +153,15 @@ def load_object(file_path, pickle_module='pickle'):
     else:
         raise FileNotFoundError(f'Could not find "{file_path}".')
 
+def remove_object(file_path):
+    '''
+    Remove a given object if it exists.
+    '''
+    if os.path.exists(file_path):
+        logging.info(f'Removing "{file_path}"...')
+        os.remove(file_path)
+        logging.info('Done.')
+
 def get_pickle_module(pickle_module='pickle'):
     '''
     Return the correct module for pickling.

@@ -7,7 +7,7 @@ from types import FunctionType
 import torch
 from torch.utils.data import Dataset
 
-from .utils import save_object, load_object
+from .utils import save_object, load_object, remove_object
 
 
 class BasePyTorchDataset(Dataset):
@@ -68,6 +68,13 @@ class BasePyTorchDataset(Dataset):
         '''
         dataset = load_object(path, pickle_module)
         return dataset
+
+    @classmethod
+    def remove(cls, path):
+        '''
+        Remove the dataset at the given path.
+        '''
+        dataset = remove_object(path)
 
     def progress_apply(self, data, func, *args, **kwargs):
         '''
