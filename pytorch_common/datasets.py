@@ -78,7 +78,8 @@ class BasePyTorchDataset(Dataset):
 
     def progress_apply(self, data, func, *args, **kwargs):
         '''
-        Get the text snippets for the given data (chunk).
+        Generic function to `progress_apply` a given row-level
+        function `func` on the given `data` (chunk).
         '''
         return data.progress_apply(func, *args, **kwargs, axis=1)
 
