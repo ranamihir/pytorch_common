@@ -49,32 +49,38 @@ class BasePyTorchDataset(Dataset):
         logging.info(f'Target value counts:\n{value_counts}')
         logging.info('\n'+'-'*40)
 
-    def save(self, path, pickle_module='pickle'):
+    def save(self, *args, **kwargs):
         '''
         Save the dataset.
         This method only saves the object attributes. If the
         underlying methods are modified, you might need to
         re-serialize the object and then save it again.
+
+        Note: See `utils.save_object()` for available arguments.
         '''
-        save_object(self, path, pickle_module)
+        save_object(self, *args, **kwargs)
 
     @classmethod
-    def load(cls, path, pickle_module='pickle'):
+    def load(cls, *args, **kwargs):
         '''
         Load the dataset.
         This method only loads the object attributes. If the
         underlying methods are modified, you might need to save
         the object after re-serialization and then load it again.
+
+        Note: See `utils.load_object()` for available arguments.
         '''
-        dataset = load_object(path, pickle_module)
+        dataset = load_object(*args, **kwargs)
         return dataset
 
     @classmethod
-    def remove(cls, path):
+    def remove(cls, *args, **kwargs):
         '''
         Remove the dataset at the given path.
+
+        Note: See `utils.remove_object()` for available arguments.
         '''
-        remove_object(path)
+        remove_object(*args, **kwargs)
 
     def progress_apply(self, data, func, *args, **kwargs):
         '''

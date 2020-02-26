@@ -74,7 +74,7 @@ def get_unique_config_name(primary_name, config_info_dict=None):
     :param config_info_dict: An optional dict provided containing
                              information about current config.
     E.g.:
-    `binary_mlp_classifier-3d02e8616cbeab37bc1bb972ecf02882`
+    `subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882`
     Each attribute in `config_info_dict` is in the "{name}_{value}"
     format (lowercased), separated from one another by a hyphen.
     If a hyphen exists in the value (e.g. LR), it's converted to
@@ -99,7 +99,7 @@ def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=Non
     :param config_info_dict: An optional dict provided containing
                              information about current config.
     E.g.:
-    `checkpoint-model-binary_mlp_classifier-3d02e8616cbeab37bc1bb972ecf02882-epoch_1.pt`
+    `checkpoint-model-subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882-epoch_1.pt`
     '''
     assert checkpoint_type in ['state', 'model']
     unique_name = get_unique_config_name(model_name, config_info_dict)
@@ -117,11 +117,15 @@ def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
     file_name = '-'.join([plot_name, unique_name])
     fig.savefig(os.path.join(config.plot_dir, f'{file_name}.{ext}'), dpi=300)
 
-def save_object(obj, file_path, pickle_module='pickle'):
+def save_object(obj, primary_path, file_name=None, pickle_module='pickle'):
     '''
     This is a defensive way to write (pickle/dill).dump,
     allowing for very large files on all platforms.
+
+    Note: See `get_file_path()` for details on how
+          how to set `primary_path` and `file_name`.
     '''
+    file_path = get_file_path(primary_path, file_name)
     logging.info(f'Saving "{file_path}"...')
     max_bytes = 2**31 - 1
     pickle_module = get_pickle_module(pickle_module)
@@ -132,11 +136,15 @@ def save_object(obj, file_path, pickle_module='pickle'):
             f_out.write(bytes_out[idx:idx+max_bytes])
     logging.info('Done.')
 
-def load_object(file_path, pickle_module='pickle'):
+def load_object(primary_path, file_name=None, pickle_module='pickle'):
     '''
     This is a defensive way to write (pickle/dill).load,
     allowing for very large files on all platforms.
+
+    Note: See `get_file_path()` for details on how
+          how to set `primary_path` and `file_name`.
     '''
+    file_path = get_file_path(primary_path, file_name)
     logging.info(f'Loading "{file_path}"...')
     max_bytes = 2**31 - 1
     pickle_module = get_pickle_module(pickle_module)
@@ -152,14 +160,29 @@ def load_object(file_path, pickle_module='pickle'):
     else:
         raise FileNotFoundError(f'Could not find "{file_path}".')
 
-def remove_object(file_path):
+def remove_object(primary_path, file_name=None):
     '''
     Remove a given object if it exists.
+
+    Note: See `get_file_path()` for details on how
+          how to set `primary_path` and `file_name`.
     '''
+    file_path = get_file_path(primary_path, file_name)
     if os.path.exists(file_path):
         logging.info(f'Removing "{file_path}"...')
         os.remove(file_path)
         logging.info('Done.')
+
+def get_file_path(primary_path, file_name=None):
+    '''
+    Generate appropriate full file path:
+      - If `file_name` is None, it's assumed that the full
+        path to the file is provided in `primary_path`.
+      - Otherwise, it's assumed that `primary_path` is the
+        path to the folder where a file named `file_name`
+        exists.
+    '''
+    return primary_path if file_name is None else os.path.join(primary_path, file_name)
 
 def get_pickle_module(pickle_module='pickle'):
     '''
