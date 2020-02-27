@@ -24,7 +24,7 @@ def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler
          number) to run quickly on a small dataset.
     '''
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
-    batch_size = np.ceil(num_examples / num_batches).astype(int)
+    batch_size = dataloader.batch_size
     model.train()
 
     loss_hist = [] # Store all losses
@@ -111,7 +111,7 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
     class predictions and probabilities if it's a classification task
     '''
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
-    batch_size = np.ceil(num_examples / num_batches).astype(int)
+    batch_size = dataloader.batch_size
     model.eval()
 
     outputs_hist, preds_hist, probs_hist = [], [], []
