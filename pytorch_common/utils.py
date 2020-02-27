@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import os
 import sys
+import yaml
 import logging
 import pickle
 import dill
@@ -117,7 +118,7 @@ def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
     file_name = '-'.join([plot_name, unique_name])
     fig.savefig(os.path.join(config.plot_dir, f'{file_name}.{ext}'), dpi=300)
 
-def save_object(obj, primary_path, file_name=None, pickle_module='pickle'):
+def save_object(obj, primary_path, file_name=None, module='pickle'):
     '''
     This is a defensive way to write (pickle/dill).dump,
     allowing for very large files on all platforms.
@@ -128,7 +129,7 @@ def save_object(obj, primary_path, file_name=None, pickle_module='pickle'):
     file_path = get_file_path(primary_path, file_name)
     logging.info(f'Saving "{file_path}"...')
     max_bytes = 2**31 - 1
-    pickle_module = get_pickle_module(pickle_module)
+    pickle_module = get_pickle_module(module)
     bytes_out = pickle_module.dumps(obj, protocol=pickle_module.HIGHEST_PROTOCOL)
     n_bytes = sys.getsizeof(bytes_out)
     with open(file_path, 'wb') as f_out:
@@ -136,29 +137,56 @@ def save_object(obj, primary_path, file_name=None, pickle_module='pickle'):
             f_out.write(bytes_out[idx:idx+max_bytes])
     logging.info('Done.')
 
-def load_object(primary_path, file_name=None, pickle_module='pickle'):
+def load_object(primary_path, file_name=None, module='pickle'):
     '''
-    This is a defensive way to write (pickle/dill).load,
-    allowing for very large files on all platforms.
+    This is a generic function to load any given
+    object using different `module`s, e.g. pickle,
+    dill, and yaml.
 
     Note: See `get_file_path()` for details on how
           how to set `primary_path` and `file_name`.
     '''
     file_path = get_file_path(primary_path, file_name)
     logging.info(f'Loading "{file_path}"...')
-    max_bytes = 2**31 - 1
-    pickle_module = get_pickle_module(pickle_module)
     if os.path.exists(file_path):
-        input_size = os.path.getsize(file_path)
-        bytes_in = bytearray(0)
-        with open(file_path, 'rb') as f:
-            for _ in range(0, input_size, max_bytes):
-                bytes_in += f.read(max_bytes)
-        obj = pickle_module.loads(bytes_in)
+        if module == 'yaml':
+            obj = load_yaml(file_path)
+        else:
+            pickle_module = get_pickle_module(module)
+            obj = load_pickle(file_path, pickle_module)
         logging.info(f'Successfully loaded "{file_path}".')
         return obj
     else:
         raise FileNotFoundError(f'Could not find "{file_path}".')
+
+def load_pickle(file_path, pickle_module):
+    '''
+    This is a defensive way to write (pickle/dill).load,
+    allowing for very large files on all platforms.
+    This function is intended to be called inside
+    `load_object()`, and assumes that the file
+    already exists.
+    '''
+    max_bytes = 2**31 - 1
+    input_size = os.path.getsize(file_path)
+    bytes_in = bytearray(0)
+    with open(file_path, 'rb') as f:
+        for _ in range(0, input_size, max_bytes):
+            bytes_in += f.read(max_bytes)
+    obj = pickle_module.loads(bytes_in)
+    return obj
+
+def load_yaml(file_path):
+    '''
+    Load a given yaml file.
+    Return an empty dictionary if file is empty.
+    This function is intended to be called inside
+    `load_object()`, and assumes that the file
+    already exists.
+    '''
+    with open(file_path, 'r') as f:
+        obj = yaml.load(f)
+    return obj if obj is not None else {}
 
 def remove_object(primary_path, file_name=None):
     '''
