@@ -177,8 +177,8 @@ def scheduler_step(scheduler, val_metric=None):
     else:
         scheduler.step()
 
-def save_model(checkpoint_type, model, optimizer, config, train_logger, \
-               val_logger, epoch, misc_info=None, scheduler=None):
+def save_model(model, optimizer, config, train_logger, val_logger, \
+               epoch, misc_info=None, scheduler=None, checkpoint_type='state'):
     '''
     Common function to save the checkpoint at a given epoch.
     It can save either:
@@ -192,6 +192,10 @@ def save_model(checkpoint_type, model, optimizer, config, train_logger, \
         - History of train and validation
           losses and eval metrics so far
         - Current training config
+
+    :param checkpoint_type: Type of checkpoint to load
+                            Choices = 'state' | model'
+                            Default = 'state'
     '''
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
@@ -251,8 +255,8 @@ def generate_checkpoint_dict(optimizer, config, train_logger, \
         checkpoint['scheduler'] = scheduler.state_dict()
     return checkpoint
 
-def load_model(checkpoint_type, model, config, checkpoint_file, \
-               optimizer=None, scheduler=None):
+def load_model(model, config, checkpoint_file, optimizer=None, \
+               scheduler=None, checkpoint_type='state'):
     '''
     Common function to load the checkpoint at a given epoch.
     It can load either:
@@ -268,9 +272,18 @@ def load_model(checkpoint_type, model, config, checkpoint_file, \
         - Current training config
     Note: Input optimizer, and scheduler should be pre-defined
           if their states are to be updated.
+
+    :param model: Must be None if the whole model is to be loaded,
+                  or an already created model must be passed if
+                  only its state dict is to be updated.
+    :param checkpoint_file: Name of the checkpoint present in
+                            `config.checkpoint_dir`
+    :param checkpoint_type: Type of checkpoint to load
+                            Choices = 'state' | model'
+                            Default = 'state'
     '''
     # Validate checkpoint_type
-    validate_checkpoint_type(checkpoint_type)
+    validate_checkpoint_type(checkpoint_type, checkpoint_file)
 
     # Set default values if no checkpoint found
     train_logger, val_logger = None, None
@@ -348,11 +361,15 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
 
     return optimizer, scheduler
 
-def remove_checkpoint(config, epoch, misc_info=None, checkpoint_type='state'):
+def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
     '''
-    Remove a checkpoint at a given epoch.
+    Remove a checkpoint/model at a given epoch.
     Used in early stopping if better performance
     is observed at a subsequent epoch.
+
+    :param checkpoint_type: Type of checkpoint to load
+                            Choices = 'state' | model'
+                            Default = 'state'
     '''
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
@@ -364,10 +381,17 @@ def remove_checkpoint(config, epoch, misc_info=None, checkpoint_type='state'):
         remove_object(checkpoint_path)
         logging.info('Done.')
 
-def validate_checkpoint_type(checkpoint_type):
+def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
     allowed_checkpoint_types = ['state', 'model']
     assert checkpoint_type in allowed_checkpoint_types, f'Param "checkpoint_type" ("{checkpoint_type}")'\
                                                         f' must be one {allowed_checkpoint_types}.'
+
+    # Check that provided checkpoint_type matches that of checkpoint_file
+    if checkpoint_file is not None:
+        true_checkpoint_type = checkpoint_file.split('-', 3)[1]
+        assert true_checkpoint_type == checkpoint_type, 'The type of checkpoint provided in param "checkpoint_type" '\
+                                                        f'("{checkpoint_type}") does not match that obtained from the '\
+                                                        f'model at "{checkpoint_file}" ("{true_checkpoint_type}").'
 
 
 class EarlyStopping(object):
