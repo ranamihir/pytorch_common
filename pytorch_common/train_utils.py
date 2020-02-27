@@ -382,6 +382,10 @@ def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
         logging.info('Done.')
 
 def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
+    '''
+    Check that the passed `checkpoint_type` is valid and matches that
+    obtained from `checkpoint_file`, if provided.
+    '''
     allowed_checkpoint_types = ['state', 'model']
     assert checkpoint_type in allowed_checkpoint_types, f'Param "checkpoint_type" ("{checkpoint_type}")'\
                                                         f' must be one {allowed_checkpoint_types}.'
