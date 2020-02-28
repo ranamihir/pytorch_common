@@ -52,7 +52,6 @@ early_stopping_criterion: 'accuracy'
 #       pos_label: 1
 
 # Training config
-batch_size: 16
 device: 'cuda:0' # Default device
 
 # For parallelizing model.

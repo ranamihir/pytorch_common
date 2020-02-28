@@ -94,6 +94,9 @@ def set_pytorch_config(config):
         # Verify config for CUDA / CPU device(s) provided
         check_and_set_devices(config)
 
+        # Compute correct batch size if per GPU one available
+        set_batch_size(config)
+
         # Fix seed
         set_seed(config)
 
@@ -185,3 +188,16 @@ def check_and_set_devices(config):
     # Use cudnn benchmarks
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
+
+def set_batch_size(config):
+    '''
+    If batch size per GPU is provided and the model
+    is to be parallelized, then compute the corresponding
+    total batch size.
+    '''
+    if config.n_gpu > 1 and hasattr(config, 'batch_size_per_gpu'):
+        batch_size = config.batch_size_per_gpu * config.n_gpu # true batch size
+        if hasattr(config, 'batch_size') and batch_size != config.batch_size:
+            raise ValueError(f"Mismatch in params \"batch_size\" ({config.batch_size}) and \"batch_size_per_gpu\" "\
+                             f"({batch_size}) with {config.n_gpu} GPUs. Please don't provide both at the same time.")
+        config.batch_size = batch_size
