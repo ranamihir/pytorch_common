@@ -144,7 +144,8 @@ def get_all_embeddings(model, dataloader, config):
     '''
     Get embeddings for all examples in the dataset
     '''
-    num_batches = len(dataloader)
+    num_batches, num_examples = len(dataloader), len(dataloader.dataset)
+    batch_size = dataloader.batch_size
     model.eval()
 
     all_embeddings = []
@@ -156,8 +157,11 @@ def get_all_embeddings(model, dataloader, config):
         batch_embeddings = convert_tensor_to_numpy(batch_embeddings).tolist()
         all_embeddings.extend(batch_embeddings)
 
-        if (batch_idx+1) % 50 == 0:
-            logging.info(f'Batch {batch_idx+1}/{num_batches} completed.')
+        # Print 50 times in a batch; if dataset too small print every time (to avoid division by 0)
+        if (batch_idx+1) % max(1, (num_examples//(50*batch_size))) == 0:
+            logging.info('{}/{} ({:.0f}%) complete.'.format(
+                (batch_idx+1) * batch_size, num_examples,
+                100. * (batch_idx+1) / num_batches))
 
     return np.array(all_embeddings)
 
@@ -180,7 +184,7 @@ def scheduler_step(scheduler, val_metric=None):
 def save_model(model, optimizer, config, train_logger, val_logger, \
                epoch, misc_info=None, scheduler=None, checkpoint_type='state'):
     '''
-    Common function to save the checkpoint at a given epoch.
+    Save the checkpoint at a given epoch.
     It can save either:
       - the entire model (copied to CPU).
         This is NOT recommended since it breaks
@@ -258,7 +262,7 @@ def generate_checkpoint_dict(optimizer, config, train_logger, \
 def load_model(model, config, checkpoint_file, optimizer=None, \
                scheduler=None, checkpoint_type='state'):
     '''
-    Common function to load the checkpoint at a given epoch.
+    Load the checkpoint at a given epoch.
     It can load either:
       - the entire model
       - or just its state dict into a pre-defined model
@@ -270,7 +274,7 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
         - History of train and validation
           losses and eval metrics so far
         - Current training config
-    Note: Input optimizer, and scheduler should be pre-defined
+    Note: Input optimizer and scheduler should be pre-defined
           if their states are to be updated.
 
     :param model: Must be None if the whole model is to be loaded,
@@ -284,10 +288,6 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
     '''
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type, checkpoint_file)
-
-    # Set default values if no checkpoint found
-    train_logger, val_logger = None, None
-    epoch_trained = 0
 
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
@@ -315,12 +315,13 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
 
         # Extract last trained epoch from checkpoint file
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split('-epoch_')[-1])
-        assert epoch_trained == checkpoint['epoch']
 
         # Load train / val loggers
         train_logger = checkpoint['train_logger']
         val_logger = checkpoint['val_logger']
-        assert epoch_trained == max(train_logger.epochs)
+
+        # Verify consistency of last epoch trained
+        assert epoch_trained == checkpoint['epoch'] == max(train_logger.epochs)
 
         # Load optimizer and scheduler state dicts
         optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, \
@@ -341,7 +342,6 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
         'epoch': epoch_trained,
         'scheduler': scheduler
     }
-
     return return_dict
 
 def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=None):
@@ -393,9 +393,9 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
         file_checkpoint_type = checkpoint_file.split('-', 3)[1]
-        assert file_checkpoint_type == checkpoint_type, 'The type of checkpoint provided in param "checkpoint_type" '\
-                                                        f'("{checkpoint_type}") does not match that obtained from the '\
-                                                        f'model at "{checkpoint_file}" ("{file_checkpoint_type}").'
+        assert file_checkpoint_type == checkpoint_type, \
+            f'The type of checkpoint provided in param "checkpoint_type" ("{checkpoint_type}") does '\
+            f'not match that obtained from the model at "{checkpoint_file}" ("{file_checkpoint_type}").'
 
 
 class EarlyStopping(object):
@@ -426,13 +426,20 @@ class EarlyStopping(object):
             self.stop = lambda metric: False
 
         if self.max_val is not None:
-            assert self.max_val_tol is not None, 'Max value tolerance must be provided.'
+            assert self.max_val_tol is not None, 'Param "max_val_tol" must be provided '\
+                                                 'if "max_val" is provided.'
 
     def _check_mode(self):
+        '''
+        Check validity of mode of optimization
+        '''
         if self.mode not in ['maximize', 'minimize']:
-            raise ValueError(f'mode "{self.mode}" is unknown!')
+            raise ValueError(f'Mode "{self.mode}" is unknown.')
 
     def is_better(self, metric):
+        '''
+        Check if the provided `metric` is the best one so far
+        '''
         if self.best is None:
             return True
         if self.mode == 'minimize':
@@ -440,6 +447,9 @@ class EarlyStopping(object):
         return metric > self.best + self.min_delta
 
     def stop(self, metric):
+        '''
+        Check if early stopping criterion met
+        '''
         if self.best is None:
             self.best = metric
             return False
