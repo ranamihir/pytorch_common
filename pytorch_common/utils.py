@@ -302,7 +302,7 @@ def send_batch_to_device(batch, device):
     '''
     if torch.is_tensor(batch):
         return batch.to(device)
-    elif isinstance(batch, tuple) or isinstance(batch, list):
+    elif isinstance(batch, (tuple, list)):
         # Retain same data type as original
         return type(batch)((send_batch_to_device(e, device) for e in batch))
     else: # Structure/type of batch unknown / not understood.
@@ -327,7 +327,7 @@ def convert_tensor_to_numpy(batch):
     '''
     if torch.is_tensor(batch):
         return batch.to('cpu').detach().numpy()
-    elif isinstance(batch, tuple) or isinstance(batch, list):
+    elif isinstance(batch, (tuple, list)):
         # Retain same data type as original
         return type(batch)((convert_tensor_to_numpy(e) for e in batch))
     else: # Structure/type of batch unknown / not understood.
@@ -345,7 +345,7 @@ def convert_numpy_to_tensor(batch, device=None):
     if isinstance(batch, np.ndarray):
         batch = torch.as_tensor(batch)
         return batch if device is None else batch.to(device)
-    elif isinstance(batch, tuple) or isinstance(batch, list):
+    elif isinstance(batch, (tuple, list)):
         # Retain same data type as original
         return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
     else: # Structure/type of batch unknown / not understood.
