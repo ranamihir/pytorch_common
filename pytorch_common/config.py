@@ -195,9 +195,12 @@ def set_batch_size(config):
     is to be parallelized, then compute the corresponding
     total batch size.
     '''
-    if config.n_gpu > 1 and hasattr(config, 'batch_size_per_gpu'):
-        batch_size = config.batch_size_per_gpu * config.n_gpu # true batch size
-        if hasattr(config, 'batch_size') and batch_size != config.batch_size:
-            raise ValueError(f"Mismatch in params \"batch_size\" ({config.batch_size}) and \"batch_size_per_gpu\" "\
-                             f"({batch_size}) with {config.n_gpu} GPUs. Please don't provide both at the same time.")
-        config.batch_size = batch_size
+    if hasattr(config, 'batch_size_per_gpu'):
+        if hasattr(config, 'batch_size'):
+            raise ValueError(f"Please don't provide both \"batch_size\" and "\
+                             f"\"batch_size_per_gpu\" at the same time.")
+
+        # Set correct batch size according to number of devices
+        config.batch_size = config.batch_size_per_gpu # if CPU or only 1 GPU
+        if config.n_gpu > 1:
+            config.batch_size *= config.n_gpu

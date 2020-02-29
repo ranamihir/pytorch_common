@@ -172,7 +172,7 @@ def scheduler_step(scheduler, val_metric=None):
     scheduler_name = scheduler.__class__.__name__
     if scheduler_name in require_val_metric:
         assert val_metric is not None, \
-            f'Param "val_metric" must be provided for {scheduler_name} scheduler'
+            f'Param "val_metric" must be provided for {scheduler_name} scheduler.'
         scheduler.step(val_metric)
     else:
         scheduler.step()
@@ -329,7 +329,7 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
         logging.info('Done.')
 
     else:
-        raise FileNotFoundError(f'No {checkpoint_type} checkpoint found at "{checkpoint_path}"!')
+        raise FileNotFoundError(f'No {checkpoint_type} checkpoint found at "{checkpoint_path}".')
 
     # Prepare dict to be returned
     return_dict = {
@@ -388,14 +388,14 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
     '''
     allowed_checkpoint_types = ['state', 'model']
     assert checkpoint_type in allowed_checkpoint_types, f'Param "checkpoint_type" ("{checkpoint_type}")'\
-                                                        f' must be one {allowed_checkpoint_types}.'
+                                                        f' must be one of {allowed_checkpoint_types}.'
 
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
-        true_checkpoint_type = checkpoint_file.split('-', 3)[1]
-        assert true_checkpoint_type == checkpoint_type, 'The type of checkpoint provided in param "checkpoint_type" '\
+        file_checkpoint_type = checkpoint_file.split('-', 3)[1]
+        assert file_checkpoint_type == checkpoint_type, 'The type of checkpoint provided in param "checkpoint_type" '\
                                                         f'("{checkpoint_type}") does not match that obtained from the '\
-                                                        f'model at "{checkpoint_file}" ("{true_checkpoint_type}").'
+                                                        f'model at "{checkpoint_file}" ("{file_checkpoint_type}").'
 
 
 class EarlyStopping(object):
