@@ -1,17 +1,9 @@
 from vrdscommon.dsp_pipeline import DspPipeline
-
-import numpy as np
 import logging
-import os
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from .utils import send_model_to_device
 from .models_dl import BasePyTorchModel, SingleLayerClassifier, MultiLayerClassifier
 
-def create_model(model_name, config, send_to_device=True):
+
+def create_model(model_name, config):
     if model_name == 'base_pytorch_model':
         model = BasePyTorchModel(config.model_type)
     elif model_name == 'single_layer_classifier':
@@ -20,7 +12,7 @@ def create_model(model_name, config, send_to_device=True):
         model = MultiLayerClassifier(config)
     else:
         raise RuntimeError(f'Unknown model name {model_name}.')
-
-    if send_to_device:
-        return send_model_to_device(model, config.device, config.device_ids)
     return model
+
+def create_estimator(estimator_name, config):
+    return create_model(estimator_name, config)
