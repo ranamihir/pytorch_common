@@ -244,25 +244,25 @@ def get_model_outputs_only(outputs):
         outputs = outputs[0]
     return outputs
 
-def send_model_to_device(model, device, device_ids=[], copy=False):
+def send_model_to_device(model, device, device_ids=[], inplace=True):
     '''
     Send a model to specified device.
     Will also parallelize model if required.
-    :param copy: If True, will return a copy of the original
-                 model on the desired device(s), otherwise
-                 move it inplace.
+    :param inplace: If False, will return a copy of the original
+                    model on the desired device(s), otherwise
+                    move it inplace.
 
     Note 1: `model.to()` is an inplace operation, so it will move the
              original model to the desired device. If the original model
              is to be retained on the original device, and a copy is
              to be moved to the desired device(s) and returned, make
-             sure to set `copy=True`.
+             sure to set `inplace=False`.
     Note 2: `model.to()` doesn't work as desired if model is
              parallelized (model is still wrapped inside `module`);
              therefore must do `model.module.to()`
     '''
     logging.info(f'Setting default device for model to {device}...')
-    if copy: # Send copy of model to desired device(s)
+    if not inplace: # Send copy of model to desired device(s)
         model = copy_model(model)
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')

@@ -14,6 +14,117 @@ from .utils import get_model_outputs_only, send_batch_to_device, send_model_to_d
                    save_object, remove_object, ModelTracker, get_checkpoint_name
 
 
+def train_model(model, config, train_loader, val_loader, optimizer, loss_criterion_train, \
+                loss_criterion_test, eval_criteria, train_logger, val_logger, device, \
+                epochs, scheduler=None, early_stopping=None, config_info_dict=None, start_epoch=0):
+    '''
+    Perform the entire training routine.
+      - Params `epochs` and `device` are deliberately not derived directly from config
+        so as to be able to change it on the fly without modifying config.
+      - `start_epoch` may be provided if a trained checkpoint is loaded into the model
+        and training is to be resumed from that point.
+    '''
+    best_epoch, stop_epoch = 0, start_epoch
+    best_checkpoint_path, best_model = '', None
+    for epoch in range(1+start_epoch, epochs+1+start_epoch):
+        try:
+            # Train epoch
+            train_losses = train(
+                model=model,
+                loss_criterion=loss_criterion_train,
+                dataloader=train_loader,
+                optimizer=optimizer,
+                device=device,
+                epoch=epoch,
+                scheduler=scheduler if config.use_scheduler_after_step else None
+            )
+
+            # Test on training set
+            _, eval_metrics_train = test(
+                model=model,
+                dataloader=train_loader,
+                loss_criterion=loss_criterion_test,
+                eval_criteria=eval_criteria,
+                device=device,
+                return_outputs=False
+            )
+            # Add train losses+eval metrics, and log them
+            train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
+
+            # Test on val set
+            val_loss, eval_metrics_val = test(
+                model=model,
+                dataloader=val_loader,
+                loss_criterion=loss_criterion_test,
+                eval_criteria=eval_criteria,
+                device=device,
+                return_outputs=False
+            )
+            # Add val loss+eval metrics, and log them
+            val_logger.add_and_log_metrics(val_loss, eval_metrics_val)
+
+            # Take scheduler step
+            if config.use_scheduler_after_epoch:
+                scheduler_step(scheduler, val_loss)
+
+            # Perform early stopping and replace checkpoint if required
+            if config.use_early_stopping:
+                if early_stopping.is_better(val_logger.get_early_stopping_metric()):
+                    logging.info('Saving current best model checkpoint and removing previous one...')
+                    best_checkpoint_path = save_model(model, optimizer, config, \
+                                                      train_logger, val_logger, epoch, \
+                                                      config_info_dict, scheduler)
+                    remove_model(config, best_epoch, config_info_dict)
+                    logging.info('Done.')
+                    best_epoch = epoch
+
+                if early_stopping.stop(val_logger.get_early_stopping_metric()):
+                    stop_epoch = epoch
+                    logging.info(f'Stopping early after {stop_epoch} epochs.')
+                    break
+
+            else: # Save all checkpoints if early stopping not used
+                save_model(model, optimizer, config, \
+                           val_logger, train_logger, \
+                           epoch, config_info_dict, scheduler)
+
+            stop_epoch = epoch
+        except KeyboardInterrupt:
+            logging.info('Keyboard Interrupted!')
+            stop_epoch = epoch - 1
+            break
+
+    # Save the model checkpoints
+    logging.info('Dumping model and results...')
+    save_model(model, optimizer, config, train_logger, \
+               val_logger, stop_epoch, config_info_dict, scheduler)
+
+    # Save current and best models
+    save_model(model.copy(), optimizer, config, train_logger, val_logger, \
+               stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
+    if best_checkpoint_path != '':
+        checkpoint = load_model(model.copy(), config, best_checkpoint_path, optimizer, scheduler)
+        best_model = checkpoint['model']
+        optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
+        checkpoint = None # Free up memory
+        best_config_info_dict = {**config_info_dict, 'best': True}
+        save_model(best_model, optimizer, config, train_logger, val_logger, \
+                   stop_epoch, best_config_info_dict, scheduler, checkpoint_type='model')
+    logging.info('Done.')
+
+    return_dict = {
+        'model': model,
+        'best_model': best_model if best_model is not None else model,
+        'train_logger': train_logger,
+        'val_logger': val_logger,
+        'optimizer': optimizer,
+        'scheduler': scheduler,
+        'stop_epoch': stop_epoch,
+        'best_epoch': best_epoch,
+        'best_checkpoint_path': best_checkpoint_path
+    }
+    return return_dict
+
 @timing
 def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler=None):
     '''
@@ -404,19 +515,19 @@ class EarlyStopping(object):
     Reference: https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d
                with minor improvements.
     '''
-    def __init__(self, mode='minimize', min_delta=0, patience=10, max_val=None, max_val_tol=None):
+    def __init__(self, mode='minimize', min_delta=0, patience=10, best_val=None, best_val_tol=None):
         '''
         :param min_delta: Minimum difference in metric required to prevent early stopping
         :param patience: No. of epochs (or steps) over which to monitor early stopping
-        :param max_val: Maximum possible value of metric (if any)
-        :param max_val_tol: Tolerance when comparing metric to max_val
+        :param best_val: Best possible value of metric (if any)
+        :param best_val_tol: Tolerance when comparing metric to best_val
         '''
         self.mode = mode
         self._check_mode()
         self.min_delta = min_delta
         self.patience = patience
-        self.max_val = max_val
-        self.max_val_tol = max_val_tol
+        self.best_val = best_val
+        self.best_val_tol = best_val_tol
 
         self.best = None
         self.num_bad_epochs = 0
@@ -425,9 +536,9 @@ class EarlyStopping(object):
             self.is_better = lambda metric: True
             self.stop = lambda metric: False
 
-        if self.max_val is not None:
-            assert self.max_val_tol is not None, 'Param "max_val_tol" must be provided '\
-                                                 'if "max_val" is provided.'
+        if self.best_val is not None:
+            assert self.best_val_tol is not None, 'Param "best_val_tol" must be provided '\
+                                                 'if "best_val" is provided.'
 
     def _check_mode(self):
         '''
@@ -464,7 +575,7 @@ class EarlyStopping(object):
             self.num_bad_epochs += 1
 
         # Check if already reached max value
-        if self.max_val and np.abs(self.max_val - metric) < self.max_val_tol:
+        if self.best_val and np.abs(self.best_val - metric) < self.best_val_tol:
             return True
 
         if self.num_bad_epochs >= self.patience:

@@ -51,6 +51,11 @@ early_stopping_criterion: 'accuracy'
 #     auc:
 #       pos_label: 1
 
+# Whether to use scheduler (and where) and early stopping
+use_scheduler_after_step: False
+use_scheduler_after_epoch: False
+use_early_stopping: False
+
 # Training config
 device: 'cuda:0' # Default device
 

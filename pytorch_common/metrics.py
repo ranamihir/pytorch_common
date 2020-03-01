@@ -12,6 +12,27 @@ from .utils import convert_tensor_to_numpy
 from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
 
 
+def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
+    '''
+    Define train and val loss and evaluation criteria
+    :param reduction_test: If None, a common `reduction` will be used
+                           for both train and test, otherwise the
+                           specified one for test.
+    '''
+    train_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction} # Add/update loss reduction
+    loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, \
+                                              **train_loss_kwargs)
+
+    if reduction_test is not None:
+        reduction = reduction_test
+    test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction} # Add/update loss reduction
+    loss_criterion_test = get_loss_criterion(config, criterion=config.loss_criterion, \
+                                             **test_loss_kwargs)
+
+    eval_criteria = get_eval_criteria(config, config.eval_criteria, \
+                                      **config.eval_criteria_kwargs)
+    return loss_criterion_train, loss_criterion_test, eval_criteria
+
 def get_loss_criterion(config, criterion='cross-entropy', **kwargs):
     '''
     Get loss criterion function
