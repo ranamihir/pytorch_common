@@ -134,9 +134,12 @@ def train_epoch(model, dataloader, loss_criterion, optimizer, device, epoch, sch
     Tip: During development, you can just override num_batches with 1 (or a small
          number) to run quickly on a small dataset.
     '''
+    model.train()
+
+    # Print 50 times in a batch
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
-    model.train()
+    batches_to_print = np.linspace(0, num_batches, num=50, endpoint=True, dtype=int)
 
     loss_hist = [] # Store all losses
     for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
@@ -165,8 +168,8 @@ def train_epoch(model, dataloader, loss_criterion, optimizer, device, epoch, sch
         loss_train = loss_value * batch_size / num_examples
         loss_hist.append(loss_train)
 
-        # Print 50 times in a batch; if dataset too small print every time (to avoid division by 0)
-        if (batch_idx+1) % max(1, (num_examples//(50*batch_size))) == 0:
+        # Print progess
+        if batch_idx in batches_to_print:
             logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, (batch_idx+1) * batch_size, num_examples,
                 100. * (batch_idx+1) / num_batches, loss_value))
@@ -221,9 +224,12 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
     `predict()` method and return raw outputs and optionally
     class predictions and probabilities if it's a classification task
     '''
+    model.eval()
+
+    # Print 50 times in a batch
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
-    model.eval()
+    batches_to_print = np.linspace(0, num_batches, num=50, endpoint=True, dtype=int)
 
     outputs_hist, preds_hist, probs_hist = [], [], []
     for batch_idx, batch in enumerate(islice(dataloader, len(dataloader))):
@@ -237,8 +243,8 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
             preds_hist.extend(preds)
             probs_hist.extend(probs)
 
-        # Print 50 times in a batch; if dataset too small print every time (to avoid division by 0)
-        if (batch_idx+1) % max(1, (num_examples//(50*batch_size))) == 0:
+        # Print progess
+        if batch_idx in batches_to_print:
             logging.info('{}/{} ({:.0f}%) complete.'.format(
                 (batch_idx+1) * batch_size, num_examples,
                 100. * (batch_idx+1) / num_batches))
@@ -255,9 +261,12 @@ def get_all_embeddings(model, dataloader, config):
     '''
     Get embeddings for all examples in the dataset
     '''
+    model.eval()
+
+    # Print 50 times in a batch
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
-    model.eval()
+    batches_to_print = np.linspace(0, num_batches, num=50, endpoint=True, dtype=int)
 
     all_embeddings = []
     seq_pooler = SequencePooler(config.model)
@@ -268,8 +277,8 @@ def get_all_embeddings(model, dataloader, config):
         batch_embeddings = convert_tensor_to_numpy(batch_embeddings).tolist()
         all_embeddings.extend(batch_embeddings)
 
-        # Print 50 times in a batch; if dataset too small print every time (to avoid division by 0)
-        if (batch_idx+1) % max(1, (num_examples//(50*batch_size))) == 0:
+        # Print progess
+        if batch_idx in batches_to_print:
             logging.info('{}/{} ({:.0f}%) complete.'.format(
                 (batch_idx+1) * batch_size, num_examples,
                 100. * (batch_idx+1) / num_batches))
