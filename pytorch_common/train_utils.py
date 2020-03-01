@@ -25,7 +25,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         and training is to be resumed from that point.
     '''
     best_epoch, stop_epoch = 0, start_epoch
-    best_checkpoint_path, best_model = '', None
+    best_checkpoint_file, best_model = '', None
     for epoch in range(1+start_epoch, epochs+1+start_epoch):
         try:
             # Train epoch
@@ -71,7 +71,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             if config.use_early_stopping:
                 if early_stopping.is_better(val_logger.get_early_stopping_metric()):
                     logging.info('Saving current best model checkpoint and removing previous one...')
-                    best_checkpoint_path = save_model(model, optimizer, config, \
+                    best_checkpoint_file = save_model(model, optimizer, config, \
                                                       train_logger, val_logger, epoch, \
                                                       config_info_dict, scheduler)
                     remove_model(config, best_epoch, config_info_dict)
@@ -102,8 +102,8 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
     # Save current and best models
     save_model(model.copy(), optimizer, config, train_logger, val_logger, \
                stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
-    if best_checkpoint_path != '':
-        checkpoint = load_model(model.copy(), config, best_checkpoint_path, optimizer, scheduler)
+    if best_checkpoint_file != '':
+        checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
         best_model = checkpoint['model']
         optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
         checkpoint = None # Free up memory
@@ -121,7 +121,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         'scheduler': scheduler,
         'stop_epoch': stop_epoch,
         'best_epoch': best_epoch,
-        'best_checkpoint_path': best_checkpoint_path
+        'best_checkpoint_file': best_checkpoint_file
     }
     return return_dict
 
@@ -320,12 +320,13 @@ def save_model(model, optimizer, config, train_logger, val_logger, \
     :param checkpoint_type: Type of checkpoint to load
                             Choices = 'state' | model'
                             Default = 'state'
+    :returns name of checkpoint file
     '''
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_name = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     logging.info(f'Saving {checkpoint_type} checkpoint "{checkpoint_path}"...')
 
     # Generate appropriate checkpoint dictionary
@@ -354,7 +355,7 @@ def save_model(model, optimizer, config, train_logger, val_logger, \
         torch.save(checkpoint, checkpoint_path, pickle_module=dill)
 
     logging.info('Done.')
-    return checkpoint_path
+    return checkpoint_file
 
 def generate_checkpoint_dict(optimizer, config, train_logger, \
                              val_logger, epoch, scheduler=None):
@@ -494,8 +495,8 @@ def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_name = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_name)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     if os.path.exists(checkpoint_path):
         logging.info(f'Removing {checkpoint_type} checkpoint "{checkpoint_path}"...')
         remove_object(checkpoint_path)
