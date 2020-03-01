@@ -352,81 +352,13 @@ def convert_numpy_to_tensor(batch, device=None):
         logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
-
-class SequencePooler(object):
+def get_model_performance_trackers(config):
     '''
-    Pool the sequence output for AlBERT /
-    DistilBERT / BERT models. Class used instead
-    of lambda functions to remain compatible
-    with `torch.save()` and `torch.load()`.
+    Initialize loss and eval criteria loggers for train and val datasets
     '''
-    def __init__(self, model_name='distilbert-base-uncased'):
-        self.model_name = model_name
-        self._set_pooler()
-
-    def __call__(self, x):
-        return self.pooler(x)
-
-    def _set_pooler(self):
-        if 'albert' in self.model_name:
-            self.pooler = self._albert_pooler
-        if 'distilbert' in self.model_name:
-            self.pooler = self._distilbert_pooler
-        elif 'BERT-of-Theseus-MNLI' in self.model_name:
-            self.pooler = self._bert_of_theseus_pooler
-        elif 'bert' in self.model_name:
-            self.pooler = self._bert_pooler
-        else:
-            self.pooler = self._default_pooler
-
-    def _default_pooler(self, x):
-        return x
-
-    def _bert_pooler(self, x):
-        '''
-        **NOTE**: The sentence/sequence vector obtained
-        from BERT does NOT correspond to the [CLS] vector.
-        It takes as input this vector and then runs a small
-        NN on top of it to give the "pooled" sequence output.
-        See https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L368-L380
-        and https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L631
-        and https://www.kaggle.com/questions-and-answers/86510
-        '''
-        return x[1] # Pooled seq vector
-
-    def _distilbert_pooler(self, x):
-        return x[0][:,0] # [CLS] vector
-
-    def _albert_pooler(self, x):
-        return self._bert_pooler(x) # Same as BERT (see above)
-
-    def _bert_of_theseus_pooler(self, x):
-        return self._bert_pooler(x) # Same as BERT (see above)
-
-
-class DataParallel(nn.DataParallel):
-    '''
-    Custom DataParallel class inherited from nn.DataParallel.
-    Purpose is to allow direct access to model attributes and
-    methods when it is wrapped in a `module` attribute because
-    of nn.DataParallel.
-    '''
-    def __init__(self, model, **kwargs):
-        super(DataParallel, self).__init__(model, **kwargs)
-
-    def __getattr__(self, name):
-        '''
-        Return model's own attribute if available, otherwise
-        fallback to attribute of parent class.
-        Solves the issue that when nn.DataParallel is applied,
-        methods and attributes defined in BasePyTorchModel
-        like `predict()` can only be accessed with
-        `self.module.predict()` instead of `self.predict()`.
-        '''
-        try:
-            return super().__getattr__(name)
-        except AttributeError:
-            return getattr(self.module, name)
+    train_logger = ModelTracker(config, is_train=1)
+    val_logger = ModelTracker(config, is_train=0)
+    return train_logger, val_logger
 
 
 class ModelTracker(object):
@@ -644,6 +576,82 @@ class ModelTracker(object):
                            else self._epochs_eval_metrics
             epoch = max(total_epochs) if len(total_epochs) else 0
         return epoch+1
+
+
+class SequencePooler(object):
+    '''
+    Pool the sequence output for AlBERT /
+    DistilBERT / BERT models. Class used instead
+    of lambda functions to remain compatible
+    with `torch.save()` and `torch.load()`.
+    '''
+    def __init__(self, model_name='distilbert-base-uncased'):
+        self.model_name = model_name
+        self._set_pooler()
+
+    def __call__(self, x):
+        return self.pooler(x)
+
+    def _set_pooler(self):
+        if 'albert' in self.model_name:
+            self.pooler = self._albert_pooler
+        if 'distilbert' in self.model_name:
+            self.pooler = self._distilbert_pooler
+        elif 'BERT-of-Theseus-MNLI' in self.model_name:
+            self.pooler = self._bert_of_theseus_pooler
+        elif 'bert' in self.model_name:
+            self.pooler = self._bert_pooler
+        else:
+            self.pooler = self._default_pooler
+
+    def _default_pooler(self, x):
+        return x
+
+    def _bert_pooler(self, x):
+        '''
+        **NOTE**: The sentence/sequence vector obtained
+        from BERT does NOT correspond to the [CLS] vector.
+        It takes as input this vector and then runs a small
+        NN on top of it to give the "pooled" sequence output.
+        See https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L368-L380
+        and https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L631
+        and https://www.kaggle.com/questions-and-answers/86510
+        '''
+        return x[1] # Pooled seq vector
+
+    def _distilbert_pooler(self, x):
+        return x[0][:,0] # [CLS] vector
+
+    def _albert_pooler(self, x):
+        return self._bert_pooler(x) # Same as BERT (see above)
+
+    def _bert_of_theseus_pooler(self, x):
+        return self._bert_pooler(x) # Same as BERT (see above)
+
+
+class DataParallel(nn.DataParallel):
+    '''
+    Custom DataParallel class inherited from nn.DataParallel.
+    Purpose is to allow direct access to model attributes and
+    methods when it is wrapped in a `module` attribute because
+    of nn.DataParallel.
+    '''
+    def __init__(self, model, **kwargs):
+        super(DataParallel, self).__init__(model, **kwargs)
+
+    def __getattr__(self, name):
+        '''
+        Return model's own attribute if available, otherwise
+        fallback to attribute of parent class.
+        Solves the issue that when nn.DataParallel is applied,
+        methods and attributes defined in BasePyTorchModel
+        like `predict()` can only be accessed with
+        `self.module.predict()` instead of `self.predict()`.
+        '''
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
 
 
 class DaskProgressBar(Callback):
