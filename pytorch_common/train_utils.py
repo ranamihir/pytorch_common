@@ -29,7 +29,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
     for epoch in range(1+start_epoch, epochs+1+start_epoch):
         try:
             # Train epoch
-            train_losses = train(
+            train_losses = train_epoch(
                 model=model,
                 loss_criterion=loss_criterion_train,
                 dataloader=train_loader,
@@ -40,7 +40,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             )
 
             # Test on training set
-            _, eval_metrics_train = test(
+            _, eval_metrics_train = test_epoch(
                 model=model,
                 dataloader=train_loader,
                 loss_criterion=loss_criterion_test,
@@ -52,7 +52,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
 
             # Test on val set
-            val_loss, eval_metrics_val = test(
+            val_loss, eval_metrics_val = test_epoch(
                 model=model,
                 dataloader=val_loader,
                 loss_criterion=loss_criterion_test,
@@ -126,7 +126,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
     return return_dict
 
 @timing
-def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler=None):
+def train_epoch(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler=None):
     '''
     Perform one training epoch and return the loss per example for each iteration
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
@@ -177,7 +177,7 @@ def train(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler
 
 @timing
 @torch.no_grad()
-def test(model, dataloader, loss_criterion, eval_criteria, device, return_outputs=False):
+def test_epoch(model, dataloader, loss_criterion, eval_criteria, device, return_outputs=False):
     '''
     Perform evaluation on the entire dataset and return the
     loss per example and all eval criteria on whole dataset.
