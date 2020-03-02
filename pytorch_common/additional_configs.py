@@ -1,11 +1,11 @@
 """
 Sample config.py for loading configuration from yaml files
 """
-from vrdscommon import common_utils
+from munch import Munch
 from copy import deepcopy
 
 
-class BaseDatasetConfig(common_utils.CommonConfiguration):
+class BaseDatasetConfig(Munch):
     '''
     Base Dataset Configuration class that can be used to have fields
     for the configuration instead of just going off the dictionary.
@@ -13,10 +13,9 @@ class BaseDatasetConfig(common_utils.CommonConfiguration):
     This class extends dict so values can be accessed in the same manner
     as a dictionary, like configobj['key'].
     '''
-
     def __init__(self, dictionary=None):
         if dictionary:
-            common_utils.CommonConfiguration.__init__(self, dictionary)
+            super().__init__(dictionary)
 
             # Set Config values that are not in config yaml
             self._initialize_additional_config()
@@ -36,7 +35,7 @@ class BaseDatasetConfig(common_utils.CommonConfiguration):
         return BaseDatasetConfig(self)
 
 
-class BaseModelConfig(common_utils.CommonConfiguration):
+class BaseModelConfig(Munch):
     '''
     Base Model Configuration class that can be used to have fields
     for the configuration instead of just going off the dictionary.
@@ -47,7 +46,7 @@ class BaseModelConfig(common_utils.CommonConfiguration):
 
     def __init__(self, dictionary=None, model_type='classification'):
         if dictionary:
-            common_utils.CommonConfiguration.__init__(self, dictionary)
+            super().__init__(dictionary)
 
             # Set Config values that are not in config yaml
             self._initialize_additional_config()
