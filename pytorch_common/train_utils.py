@@ -523,39 +523,68 @@ class EarlyStopping(object):
     '''
     Implements early stopping in PyTorch.
     Reference: https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d
-               with minor improvements.
+               with a few improvements.
     '''
-    def __init__(self, mode='minimize', min_delta=0, patience=10, best_val=None, best_val_tol=None):
+    SUPPORTED_CRITERIA = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
+    SUPPORTED_MODES = {'minimize': 0., 'maximize': 1.}
+    CRITERIA_MODE_DICT = {
+        'mse': 'minimize',
+        'accuracy': 'maximize',
+        'precision': 'maximize',
+        'recall': 'maximize',
+        'f1': 'maximize',
+        'auc': 'maximize'
+    }
+    DEFAULT_PARAMS = {'min_delta': 0.2*1e-3, 'patience': 5, 'best_val_tol': 5e-3}
+
+    def __init__(self, criterion='f1', mode=None, min_delta=None, \
+                 patience=None, best_val=None, best_val_tol=None):
         '''
+        :param criterion: name of early stopping criterion
+                          If criterion is supported ineherently, you may choose to
+                          not provide any of the other params and use the default ones.
+        :param mode: whether to 'maximize' or 'minimize' the `criterion`
         :param min_delta: Minimum difference in metric required to prevent early stopping
         :param patience: No. of epochs (or steps) over which to monitor early stopping
         :param best_val: Best possible value of metric (if any)
         :param best_val_tol: Tolerance when comparing metric to best_val
         '''
-        self.mode = mode
-        self._check_mode()
-        self.min_delta = min_delta
-        self.patience = patience
-        self.best_val = best_val
-        self.best_val_tol = best_val_tol
-
+        self.criterion = criterion
+        self._init_params(mode=mode, min_delta=min_delta, patience=patience, \
+                          best_val=best_val, best_val_tol=best_val_tol)
+        self._validate_params()
         self.best = None
         self.num_bad_epochs = 0
 
-        if patience == 0:
+        if self.patience == 0:
             self.is_better = lambda metric: True
             self.stop = lambda metric: False
 
-        if self.best_val is not None:
-            assert self.best_val_tol is not None, 'Param "best_val_tol" must be provided '\
-                                                 'if "best_val" is provided.'
+    def _init_params(self, **kwargs):
+        if self.criterion in self.SUPPORTED_CRITERIA:
+            mode = self.CRITERIA_MODE_DICT[self.criterion]
+            best_val = self.SUPPORTED_MODES[mode]
+            params = {**self.DEFAULT_PARAMS, 'mode': mode, 'best_val': best_val}
+            kwargs = {k: v if v is not None else params[k] for k, v in kwargs.items()}
+        else:
+            for k, v in kwargs.items():
+                if k not in self.DEFAULT_PARAMS.keys():
+                    assert v is not None, f'The only criteria currently supported by '\
+                                          f'default are {self.SUPPORTED_CRITERIA}, '\
+                                          f'and hence param "{k}" is required.'
 
-    def _check_mode(self):
+        # Finally set values and validate them
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def _validate_params(self):
         '''
         Check validity of mode of optimization
         '''
-        if self.mode not in ['maximize', 'minimize']:
+        if self.mode not in self.SUPPORTED_MODES.keys():
             raise ValueError(f'Mode "{self.mode}" is unknown.')
+        if self.best_val is not None and self.best_val_tol is None:
+            raise ValueError('Param "best_val_tol" must be provided if "best_val" is provided.')
 
     def is_better(self, metric):
         '''
@@ -585,7 +614,7 @@ class EarlyStopping(object):
             self.num_bad_epochs += 1
 
         # Check if already reached max value
-        if self.best_val and np.abs(self.best_val - metric) < self.best_val_tol:
+        if self.best_val is not None and np.abs(self.best_val-metric) < self.best_val_tol:
             return True
 
         if self.num_bad_epochs >= self.patience:

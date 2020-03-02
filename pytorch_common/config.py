@@ -9,6 +9,7 @@ import torch
 import pkg_resources
 import yaml
 
+from pytorch_common import metrics
 from .additional_configs import BaseDatasetConfig, BaseModelConfig
 from .utils import make_dirs, set_seed
 
@@ -138,10 +139,9 @@ def set_loss_and_eval_criteria(config):
     config.eval_criteria_kwargs = config.eval_criteria_kwargs if config.get('eval_criteria_kwargs') else {}
 
     # Check for evaluation criteria
-    allowed_eval_metrics = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
     assert hasattr(config, 'eval_criteria') and isinstance(config.eval_criteria, list)
     for eval_criterion in config.eval_criteria:
-        assert eval_criterion in allowed_eval_metrics
+        assert eval_criterion in metrics.EVAL_CRITERIA
     default_stopping_criterion = 'accuracy' if config.model_type == 'classification' else 'mse'
     config.early_stopping_criterion = config.get('early_stopping_criterion', default_stopping_criterion)
     assert config.early_stopping_criterion in config.eval_criteria

@@ -12,6 +12,10 @@ from .utils import convert_tensor_to_numpy
 from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
 
 
+LOSS_CRITERIA = ['mse', 'cross-entropy', 'focal-loss']
+EVAL_CRITERIA = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
+
+
 def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
     '''
     Define train and val loss and evaluation criteria
@@ -86,7 +90,6 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
                              f'must be one of ["sum", "mean"].')
 
     # Get per-label loss
-    allowed_losses = ['mse', 'cross-entropy', 'focal-loss']
     if criterion == 'mse':
         loss_criterion = nn.MSELoss(**kwargs)
     elif criterion == 'cross-entropy':
@@ -94,7 +97,7 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
     elif criterion == 'focal-loss':
         loss_criterion = FocalLoss(**kwargs)
     else:
-        raise ValueError(f'Param "criterion" ("{criterion}") must be one of {allowed_losses}.')
+        raise ValueError(f'Param "criterion" ("{criterion}") must be one of {LOSS_CRITERIA}.')
 
     # Regression
     if config.model_type == 'regression':
@@ -135,13 +138,12 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
                              f'must be one of ["mean", "none"].')
 
     # Get per-label eval criterion
-    allowed_criteria = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
     if criterion == 'mse':
         eval_criterion = get_mse_loss
     elif criterion in ['accuracy', 'precision', 'recall', 'f1', 'auc']:
         eval_criterion = partial(get_class_eval_metric, criterion=criterion, **kwargs)
     else:
-        raise ValueError(f'Param "criterion" ("{criterion}") must be one of {allowed_criteria}.')
+        raise ValueError(f'Param "criterion" ("{criterion}") must be one of {EVAL_CRITERIA}.')
 
     # Regression
     if config.model_type == 'regression':
