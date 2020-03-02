@@ -1,24 +1,19 @@
-"""
-Sample config.py for loading configuration from yaml files
-"""
 from vrdscommon.dsprunner import DspRunner
-from vrdscommon import common_utils
-from datetime import datetime, timedelta
+from munch import Munch
 import os
 import torch
 import pkg_resources
-import yaml
 
 from pytorch_common import metrics
 from .additional_configs import BaseDatasetConfig, BaseModelConfig
-from .utils import make_dirs, set_seed
+from .utils import load_object, make_dirs, set_seed
 
 
 # Supported Transformer architectures
 TRANSFORMER_MODELS = ['BERT-of-Theseus-MNLI', 'albert', 'distilbert', 'bert']
 
 
-class Config(common_utils.CommonConfiguration):
+class Config(Munch):
     """
     Configuration class that can be used to have fields for the
     configuration instead of just going off the dictionary.
@@ -35,7 +30,7 @@ class Config(common_utils.CommonConfiguration):
 
     def __init__(self, dictionary=None):
         if dictionary:
-            common_utils.CommonConfiguration.__init__(self, dictionary)
+            super().__init__(dictionary)
 
             # Set Config values that are not in config yaml
             self._initialize_additional_config()
@@ -74,12 +69,9 @@ def load_config(config_file='config.yaml'):
     configdir = os.path.join(packagedir, 'configs')
 
     # Load pytorch_common config
-    config_file_path = os.path.join(configdir, config_file)
-    if os.path.exists(config_file_path):
-        with open(config_file_path, 'r') as f:
-            config_dict = yaml.load(f)
-        return config_dict
-    return {}
+    dictionary = load_object(configdir, config_file, module='yaml')
+    config = Config(dictionary)
+    return config
 
 def set_pytorch_config(config):
     '''
@@ -121,12 +113,26 @@ def set_additional_dirs(config):
     Update `output_dir`, `plot_dir`, and `checkpoint_dir`
     directory paths to absolute ones and create them.
     '''
+    if config.get('misc_data_dir'):
+        set_and_create_dir(config, config.packagedir, 'misc_data_dir')
+    else: # Point misc_data_dir to transientdir by default
+        config['misc_data_dir'] = config.transientdir
+        setattr(config, 'misc_data_dir', config.transientdir)
+
     for directory in ['output_dir', 'plot_dir', 'checkpoint_dir']:
-        if hasattr(config, directory):
-            dir_path = os.path.expanduser(os.path.join(config.transientdir, getattr(config, directory)))
-            config[directory] = dir_path
-            setattr(config, directory, dir_path)
-            make_dirs(config[directory])
+        if config.get(directory):
+            set_and_create_dir(config, config.misc_data_dir, directory)
+
+def set_and_create_dir(config, parent_dir, directory):
+    '''
+    Properly sets the `directory` attribute of `config`,
+    assuming `config[directory]` is inside `parent_dir`.
+    And creates the directory if it doesn't already exist.
+    '''
+    dir_path = os.path.expanduser(os.path.join(parent_dir, config[directory]))
+    config[directory] = dir_path
+    setattr(config, directory, dir_path)
+    make_dirs(config[directory])
 
 def set_loss_and_eval_criteria(config):
     '''
@@ -139,7 +145,7 @@ def set_loss_and_eval_criteria(config):
     config.eval_criteria_kwargs = config.eval_criteria_kwargs if config.get('eval_criteria_kwargs') else {}
 
     # Check for evaluation criteria
-    assert hasattr(config, 'eval_criteria') and isinstance(config.eval_criteria, list)
+    assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
     for eval_criterion in config.eval_criteria:
         assert eval_criterion in metrics.EVAL_CRITERIA
     default_stopping_criterion = 'accuracy' if config.model_type == 'classification' else 'mse'
@@ -195,8 +201,8 @@ def set_batch_size(config):
     is to be parallelized, then compute the corresponding
     total batch size.
     '''
-    if hasattr(config, 'batch_size_per_gpu'):
-        if hasattr(config, 'batch_size'):
+    if config.get('batch_size_per_gpu'):
+        if config.get('batch_size'):
             raise ValueError(f"Please don't provide both \"batch_size\" and "\
                              f"\"batch_size_per_gpu\" at the same time.")
 

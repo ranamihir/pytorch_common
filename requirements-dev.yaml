@@ -33,5 +33,6 @@ dependencies:
     - ipdb
     - pdbpp
     - dill
+    - munch
     # - tdqm
     - locket==0.2.0
