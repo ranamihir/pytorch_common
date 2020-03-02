@@ -27,9 +27,9 @@ def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
     loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, \
                                               **train_loss_kwargs)
 
-    if reduction_test is not None:
-        reduction = reduction_test
-    test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction} # Add/update loss reduction
+    if reduction_test is None:
+        reduction_test = reduction
+    test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_test} # Add/update loss reduction
     loss_criterion_test = get_loss_criterion(config, criterion=config.loss_criterion, \
                                              **test_loss_kwargs)
 
