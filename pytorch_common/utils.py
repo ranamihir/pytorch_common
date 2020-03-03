@@ -185,7 +185,7 @@ def load_yaml(file_path):
     already exists.
     '''
     with open(file_path, 'r') as f:
-        obj = yaml.load(f)
+        obj = yaml.safe_load(f)
     return obj if obj is not None else {}
 
 def remove_object(primary_path, file_name=None):
