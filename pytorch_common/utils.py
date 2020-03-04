@@ -352,6 +352,15 @@ def convert_numpy_to_tensor(batch, device=None):
         logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
+def print_dataframe(data):
+    '''
+    Print useful summary statistics of a dataframe.
+    '''
+    logging.info(f'Sample of data:\n{data.head(10)}')
+    logging.info(f'Shape of data: {data.shape}')
+    logging.info(f'Columns:\n{data.columns}')
+    logging.info(f'\n{data.describe()}')
+
 def get_model_performance_trackers(config):
     '''
     Initialize loss and eval criteria loggers for train and val datasets

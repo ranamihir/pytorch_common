@@ -7,7 +7,7 @@ from types import FunctionType
 import torch
 from torch.utils.data import Dataset
 
-from .utils import save_object, load_object, remove_object
+from .utils import save_object, load_object, remove_object, print_dataframe
 
 
 class BasePyTorchDataset(Dataset):
@@ -41,10 +41,7 @@ class BasePyTorchDataset(Dataset):
         Print useful summary statistics of the dataset.
         '''
         logging.info('\n'+'-'*40)
-        logging.info(f'Sample of data:\n{self.data.head(10)}')
-        logging.info(f'Shape of data: {self.data.shape}')
-        logging.info(f'Columns:\n{self.data.columns}')
-        logging.info(f'\n{self.data.describe()}')
+        print_dataframe(self.data)
         value_counts = self.data[self.target_col].value_counts()
         logging.info(f'Target value counts:\n{value_counts}')
         logging.info('\n'+'-'*40)
