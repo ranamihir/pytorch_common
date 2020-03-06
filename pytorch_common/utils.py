@@ -267,7 +267,7 @@ def send_model_to_device(model, device, device_ids=None, inplace=True):
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')
 
-    # Sey default value here instead of in signature
+    # Set default value here instead of in signature
     # See: http://www.omahapython.org/IdiomaticPython.html#default-parameter-values
     if device_ids is None:
         device_ids = []
