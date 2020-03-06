@@ -244,7 +244,7 @@ def get_model_outputs_only(outputs):
         outputs = outputs[0]
     return outputs
 
-def send_model_to_device(model, device, device_ids=[], inplace=True):
+def send_model_to_device(model, device, device_ids=None, inplace=True):
     '''
     Send a model to specified device.
     Will also parallelize model if required.
@@ -266,6 +266,11 @@ def send_model_to_device(model, device, device_ids=[], inplace=True):
         model = copy_model(model)
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')
+
+    # Sey default value here instead of in signature
+    # See: http://www.omahapython.org/IdiomaticPython.html#default-parameter-values
+    if device_ids is None:
+        device_ids = []
 
     # Parallelize model
     n_gpu = len(device_ids)
