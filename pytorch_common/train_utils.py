@@ -497,7 +497,7 @@ def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
 
     checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
-    if os.path.exists(checkpoint_path):
+    if os.path.isfile(checkpoint_path):
         logging.info(f'Removing {checkpoint_type} checkpoint "{checkpoint_path}"...')
         remove_object(checkpoint_path)
         logging.info('Done.')

@@ -24,15 +24,15 @@ def make_dirs(parent_dir, child_dirs=None):
     Create the parent and (optionally) all child
     directories within parent directory
     '''
-    if not os.path.exists(parent_dir):
+    if not os.path.isdir(parent_dir):
         os.makedirs(parent_dir)
     if child_dirs:
         if not isinstance(child_dirs, list):
             child_dirs = [child_dirs]
         for directory in child_dirs:
-            directory_path = os.path.join(parent_dir, directory)
-            if not os.path.exists(directory_path):
-                os.makedirs(directory_path)
+            dir_path = os.path.join(parent_dir, directory)
+            if not os.path.isdir(dir_path):
+                os.makedirs(dir_path)
 
 def set_seed(config):
     '''
@@ -148,7 +148,7 @@ def load_object(primary_path, file_name=None, module='pickle'):
     '''
     file_path = get_file_path(primary_path, file_name)
     logging.info(f'Loading "{file_path}"...')
-    if os.path.exists(file_path):
+    if os.path.isfile(file_path):
         if module == 'yaml':
             obj = load_yaml(file_path)
         else:
@@ -196,7 +196,7 @@ def remove_object(primary_path, file_name=None):
           how to set `primary_path` and `file_name`.
     '''
     file_path = get_file_path(primary_path, file_name)
-    if os.path.exists(file_path):
+    if os.path.isfile(file_path):
         logging.info(f'Removing "{file_path}"...')
         os.remove(file_path)
         logging.info('Done.')
