@@ -136,10 +136,11 @@ def train_epoch(model, dataloader, loss_criterion, optimizer, device, epoch, sch
     '''
     model.train()
 
-    # Print 50 times in a batch
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
-    batches_to_print = np.linspace(0, num_batches, num=50, endpoint=True, dtype=int)
+
+    # Print 50 times in an epoch (or every time, if num_batches < 50)
+    batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
     loss_hist = [] # Store all losses
     for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
@@ -226,10 +227,11 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
     '''
     model.eval()
 
-    # Print 50 times in a batch
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
-    batches_to_print = np.linspace(0, num_batches, num=50, endpoint=True, dtype=int)
+
+    # Print 50 times in an epoch (or every time, if num_batches < 50)
+    batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
     outputs_hist, preds_hist, probs_hist = [], [], []
     for batch_idx, batch in enumerate(islice(dataloader, len(dataloader))):
@@ -263,10 +265,11 @@ def get_all_embeddings(model, dataloader, config):
     '''
     model.eval()
 
-    # Print 50 times in a batch
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
-    batches_to_print = np.linspace(0, num_batches, num=50, endpoint=True, dtype=int)
+
+    # Print 50 times in an epoch (or every time, if num_batches < 50)
+    batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
     all_embeddings = []
     seq_pooler = SequencePooler(config.model)
