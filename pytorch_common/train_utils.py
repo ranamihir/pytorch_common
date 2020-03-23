@@ -221,9 +221,8 @@ def test_epoch(model, dataloader, loss_criterion, eval_criteria, device, return_
 @torch.no_grad()
 def get_all_predictions(model, dataloader, device, threshold_prob=None):
     '''
-    Make predictions on entire dataset using model's own
-    `predict()` method and return raw outputs and optionally
-    class predictions and probabilities if it's a classification task
+    Make predictions on entire dataset and return raw outputs and optionally
+    class predictions and probabilities if it's a classification model
     '''
     model.eval()
 
@@ -295,9 +294,9 @@ def scheduler_step(scheduler, val_metric=None):
     the validation metric to take a step, while (most)
     others don't.
     '''
-    require_val_metric = ['ReduceLROnPlateau']
     scheduler_name = scheduler.__class__.__name__
-    if scheduler_name in require_val_metric:
+    REQUIRE_VAL_METRIC = ['ReduceLROnPlateau']
+    if scheduler_name in REQUIRE_VAL_METRIC:
         assert val_metric is not None, \
             f'Param "val_metric" must be provided for {scheduler_name} scheduler.'
         scheduler.step(val_metric)
@@ -343,15 +342,13 @@ def save_model(model, optimizer, config, train_logger, val_logger, \
     else:
         checkpoint['model'] = send_model_to_device(model, 'cpu') # Save model on CPU
 
-    '''
-    `dill` is used when a model has serialization issues, e.g. that
-    caused by having a lambda function as an attribute of the model.
-    Regular pickling won't work, but it will with dill.
-    Note 1: Avoid using it if possible since it's a little slower.
-    Note 2: It has more robust serialization though.
-    Note 3: When `checkpoint_type='state'`, it should automatically
-            always work with pickle.
-    '''
+    # `dill` is used when a model has serialization issues, e.g. that
+    # caused by having a lambda function as an attribute of the model.
+    # Regular pickling won't work, but it will with dill.
+    # Note 1: Avoid using it if possible since it's a little slower.
+    # Note 2: It has more robust serialization though.
+    # Note 3: When `checkpoint_type='state'`, it should automatically
+    #         always work with pickle.
     try:
         torch.save(checkpoint, checkpoint_path)
     except AttributeError:
