@@ -128,13 +128,13 @@ def save_object(obj, primary_path, file_name=None, module='pickle'):
     '''
     file_path = get_file_path(primary_path, file_name)
     logging.info(f'Saving "{file_path}"...')
-    max_bytes = 2**31 - 1
     pickle_module = get_pickle_module(module)
     bytes_out = pickle_module.dumps(obj, protocol=pickle_module.HIGHEST_PROTOCOL)
     n_bytes = sys.getsizeof(bytes_out)
+    MAX_BYTES = 2**31 - 1
     with open(file_path, 'wb') as f_out:
-        for idx in range(0, n_bytes, max_bytes):
-            f_out.write(bytes_out[idx:idx+max_bytes])
+        for idx in range(0, n_bytes, MAX_BYTES):
+            f_out.write(bytes_out[idx:idx+MAX_BYTES])
     logging.info('Done.')
 
 def load_object(primary_path, file_name=None, module='pickle'):
@@ -152,14 +152,13 @@ def load_object(primary_path, file_name=None, module='pickle'):
         if module == 'yaml':
             obj = load_yaml(file_path)
         else:
-            pickle_module = get_pickle_module(module)
-            obj = load_pickle(file_path, pickle_module)
+            obj = load_pickle(file_path, module)
         logging.info(f'Successfully loaded "{file_path}".')
         return obj
     else:
         raise FileNotFoundError(f'Could not find "{file_path}".')
 
-def load_pickle(file_path, pickle_module):
+def load_pickle(file_path, module):
     '''
     This is a defensive way to write (pickle/dill).load,
     allowing for very large files on all platforms.
@@ -167,12 +166,13 @@ def load_pickle(file_path, pickle_module):
     `load_object()`, and assumes that the file
     already exists.
     '''
-    max_bytes = 2**31 - 1
     input_size = os.path.getsize(file_path)
     bytes_in = bytearray(0)
+    pickle_module = get_pickle_module(module)
+    MAX_BYTES = 2**31 - 1
     with open(file_path, 'rb') as f:
-        for _ in range(0, input_size, max_bytes):
-            bytes_in += f.read(max_bytes)
+        for _ in range(0, input_size, MAX_BYTES):
+            bytes_in += f.read(MAX_BYTES)
     obj = pickle_module.loads(bytes_in)
     return obj
 
