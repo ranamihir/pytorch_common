@@ -224,14 +224,6 @@ def get_pickle_module(pickle_module='pickle'):
     raise ValueError(f'Param "pickle_module" ("{pickle_module}") must be '\
                       'one of ["pickle", "dill"].')
 
-def save_embeddings(embeddings, folder_path, model_name):
-    '''
-    Save an embeddings object
-    '''
-    file_name = f'embeddings_{model_name}.pkl'
-    file_path = os.path.join(folder_path, file_name)
-    save_object(embeddings, file_path)
-
 def get_model_outputs_only(outputs):
     '''
     Use this function to get just the
@@ -307,7 +299,7 @@ def send_batch_to_device(batch, device):
     '''
     if torch.is_tensor(batch):
         return batch.to(device)
-    elif isinstance(batch, (tuple, list)):
+    elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)((send_batch_to_device(e, device) for e in batch))
     else: # Structure/type of batch unknown / not understood.
@@ -332,7 +324,7 @@ def convert_tensor_to_numpy(batch):
     '''
     if torch.is_tensor(batch):
         return batch.to('cpu').detach().numpy()
-    elif isinstance(batch, (tuple, list)):
+    elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)((convert_tensor_to_numpy(e) for e in batch))
     else: # Structure/type of batch unknown / not understood.
@@ -350,7 +342,7 @@ def convert_numpy_to_tensor(batch, device=None):
     if isinstance(batch, np.ndarray):
         batch = torch.as_tensor(batch)
         return batch if device is None else batch.to(device)
-    elif isinstance(batch, (tuple, list)):
+    elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
     else: # Structure/type of batch unknown / not understood.
@@ -361,7 +353,7 @@ def print_dataframe(data):
     '''
     Print useful summary statistics of a dataframe.
     '''
-    logging.info(f'Sample of data:\n{data.head(10)}')
+    logging.info(f'Head of data:\n{data.head(10)}')
     logging.info(f'Shape of data: {data.shape}')
     logging.info(f'Columns:\n{data.columns}')
     logging.info(f'\n{data.describe()}')
@@ -594,10 +586,10 @@ class ModelTracker(object):
 
 class SequencePooler(object):
     '''
-    Pool the sequence output for AlBERT /
-    DistilBERT / BERT models. Class used instead
-    of lambda functions to remain compatible
-    with `torch.save()` and `torch.load()`.
+    Pool the sequence output for BERT-based models.
+    Class used instead of lambda functions
+    to remain compatible with `torch.save()`
+    and `torch.load()`.
     '''
     def __init__(self, model_name='distilbert-base-uncased'):
         self.model_name = model_name
