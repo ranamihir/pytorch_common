@@ -218,6 +218,7 @@ def test_epoch(model, dataloader, loss_criterion, eval_criteria, device, return_
         return np.sum(loss_hist), eval_metrics, outputs_hist, y_hist
     return np.sum(loss_hist), eval_metrics
 
+@timing
 @torch.no_grad()
 def get_all_predictions(model, dataloader, device, threshold_prob=None):
     '''
@@ -233,7 +234,7 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
     batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
     outputs_hist, preds_hist, probs_hist = [], [], []
-    for batch_idx, batch in enumerate(islice(dataloader, len(dataloader))):
+    for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
         x = send_batch_to_device(batch[0], device) # Only need inputs for making predictions
 
         outputs = get_model_outputs_only(model(x))
@@ -255,37 +256,6 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
         preds_hist = torch.stack(preds_hist, dim=0)
         probs_hist = torch.stack(probs_hist, dim=0)
     return outputs_hist, preds_hist, probs_hist
-
-@timing
-@torch.no_grad()
-def get_all_embeddings(model, dataloader, config):
-    '''
-    Get embeddings for all examples in the dataset
-    '''
-    model.eval()
-
-    num_batches, num_examples = len(dataloader), len(dataloader.dataset)
-    batch_size = dataloader.batch_size
-
-    # Print 50 times in an epoch (or every time, if num_batches < 50)
-    batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
-
-    all_embeddings = []
-    seq_pooler = SequencePooler(config.model)
-
-    for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
-        x = send_batch_to_device(batch[0], config.device) # Only need inputs for getting embeddings
-        batch_embeddings = seq_pooler(model(x))
-        batch_embeddings = convert_tensor_to_numpy(batch_embeddings).tolist()
-        all_embeddings.extend(batch_embeddings)
-
-        # Print progess
-        if batch_idx in batches_to_print:
-            logging.info('{}/{} ({:.0f}%) complete.'.format(
-                (batch_idx+1) * batch_size, num_examples,
-                100. * (batch_idx+1) / num_batches))
-
-    return np.array(all_embeddings)
 
 def scheduler_step(scheduler, val_metric=None):
     '''
