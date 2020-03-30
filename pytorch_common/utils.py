@@ -236,13 +236,10 @@ def get_model_outputs_only(outputs):
         outputs = outputs[0]
     return outputs
 
-def send_model_to_device(model, device, device_ids=None, inplace=True):
+def send_model_to_device(model, device, device_ids=None):
     '''
     Send a model to specified device.
     Will also parallelize model if required.
-    :param inplace: If False, will return a copy of the original
-                    model on the desired device(s), otherwise
-                    move it inplace.
 
     Note 1: `model.to()` is an inplace operation, so it will move the
              original model to the desired device. If the original model
@@ -254,8 +251,6 @@ def send_model_to_device(model, device, device_ids=None, inplace=True):
              therefore must do `model.module.to()`
     '''
     logging.info(f'Setting default device for model to {device}...')
-    if not inplace: # Send copy of model to desired device(s)
-        model = copy_model(model)
     model = model.module.to(device) if hasattr(model, 'module') else model.to(device)
     logging.info('Done.')
 
