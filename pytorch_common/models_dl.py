@@ -28,7 +28,7 @@ class BasePyTorchModel(nn.Module):
                   calling this function, otherwise the pretrained
                   model will also be reinitialized.
         '''
-        self.print_model() # Print model architecture
+        self.print() # Print model architecture
         self.get_trainable_params() # Print number of trainable parameters
         if init_weights: # Initialize weights
             self.initialize_weights(models_to_init)
@@ -43,7 +43,7 @@ class BasePyTorchModel(nn.Module):
                       num_trainable_params, num_params))
         return {'trainable': num_trainable_params, 'total': num_params}
 
-    def print_model(self):
+    def print(self):
         '''
         Print model architecture
         '''

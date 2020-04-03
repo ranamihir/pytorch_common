@@ -36,7 +36,7 @@ class BasePyTorchDataset(Dataset):
     def __len__(self):
         raise NotImplementedError
 
-    def print_dataset(self):
+    def print(self):
         '''
         Print useful summary statistics of the dataset.
         '''
@@ -94,7 +94,7 @@ class BasePyTorchDataset(Dataset):
         The final count of the class will be
         (original count) * `oversampling_factor`.
         :param class_to_oversample: Class (label) to oversample.
-                                    Oversamples majority class
+                                    Oversamples minority class
                                     by default.
         '''
         # Get appropriate class label and count
@@ -117,7 +117,7 @@ class BasePyTorchDataset(Dataset):
         The final count of the class will be
         (original count) / `undersampling_factor`.
         :param class_to_undersample: Class (label) to undersample.
-                                     Undersamples minority class
+                                     Undersamples majority class
                                      by default.
         '''
         # Get appropriate class label and count
