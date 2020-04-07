@@ -1,13 +1,12 @@
 name: pytorch_common
 channels:
   - pytorch
-  - conda-forge
 dependencies:
   - python==3.7
   - numpy==1.17.2
   - pandas==0.24.0
-  - scipy
-  - pymysql==0.8.0
+  - scipy==1.1.0
+  - pymysql==0.9.3
   - nb_conda==2.2.1
   - pip==19.2.2
   - flask
