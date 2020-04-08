@@ -14,6 +14,7 @@ from .utils import get_model_outputs_only, send_batch_to_device, send_model_to_d
                    save_object, remove_object, ModelTracker, get_checkpoint_name
 
 
+@timing
 def train_model(model, config, train_loader, val_loader, optimizer, loss_criterion_train, \
                 loss_criterion_test, eval_criteria, train_logger, val_logger, device, \
                 epochs, scheduler=None, early_stopping=None, config_info_dict=None, start_epoch=0):
