@@ -14,20 +14,13 @@ TRANSFORMER_MODELS = ['BERT-of-Theseus-MNLI', 'albert', 'distilbert', 'bert']
 
 
 class Config(Munch):
-    """
+    '''
     Configuration class that can be used to have fields for the
     configuration instead of just going off the dictionary.
 
-    This class extends dict so values can be accessed in the same manner as a dictionary, like configobj['key'].
-
-    Common variables on the superclass to be accessed:
-
-    >>> configobj.datadir
-    >>> configobj.exportdir
-    >>> configobj.artifactdir
-    >>> configobj.transformdir
-    """
-
+    This class extends dict so values can be accessed in the same
+    manner as a dictionary, like configobj['key'].
+    '''
     def __init__(self, dictionary=None):
         if dictionary:
             super().__init__(dictionary)
@@ -187,7 +180,8 @@ def check_and_set_devices(config):
 
         # Swap order if necessary to bring default_device to index 0
         default_device_ind = config.device_ids.index(default_device)
-        config.device_ids[default_device_ind], config.device_ids[0] = config.device_ids[0], config.device_ids[default_device_ind]
+        config.device_ids[default_device_ind], config.device_ids[0] = \
+            config.device_ids[0], config.device_ids[default_device_ind]
 
     # Use cudnn benchmarks
     torch.backends.cudnn.benchmark = True
