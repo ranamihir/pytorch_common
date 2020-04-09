@@ -2,36 +2,22 @@ name: pytorch_common
 channels:
   - pytorch
 dependencies:
-  - python==3.7
-  - numpy==1.17.2
-  - pandas==0.24.0
-  - scipy==1.1.0
-  - pymysql==0.9.3
-  - nb_conda==2.2.1
-  - pip==19.2.2
-  - flask
+  - python=3.7.0
+  - numpy=1.17.2
+  - pandas=0.24.0
+  - scipy=1.1.0
+  - pymssql=2.1.4
+  - nb_conda=2.2.1
+  - pip=19.2.2
+  - flask=1.1.1
   - cudatoolkit=9.0
   - pytorch=1.1
   - pip:
-    - vrdscommon==6.2.12
-    - pysftp==0.2.9
-    - SQLAlchemy==1.2.4
-    - cloudpickle==1.2.1
-    - google-cloud-bigquery==1.19.0
-    - google-cloud-core==1.0.3
-    - google-cloud-storage==1.19.0
-    - google-api-core==1.14.2
-    - google-auth==1.6.3
-    - google-auth-oauthlib==0.4.0
-    - unidecode==1.1.1
-    - openpyxl==2.6.3
     - dask[dataframe]==2.3.0
     - toolz==0.10.0
-    - scikit-learn
-    - matplotlib
-    - ipdb
-    - pdbpp
-    - dill
-    - munch
-    # - tdqm
+    - scikit-learn==0.22.1
+    - ipdb==0.13.2
+    - pdbpp==0.10.2
+    - dill==0.3.1.1
+    - munch==2.5.0
     - locket==0.2.0
