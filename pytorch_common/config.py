@@ -75,8 +75,8 @@ def load_config(config_file='config.yaml'):
 
 def set_pytorch_config(config):
     '''
-    Validate and set config for all things related
-    to PyTorch / GPUs.
+    Validate and set config for all
+    things related to PyTorch / GPUs.
     '''
     if config.get('load_pytorch_common_config'):
         set_additional_dirs(config) # Set and create additional required directories
@@ -99,14 +99,12 @@ def set_pytorch_config(config):
             or (config.model_type == 'regression' and not hasattr(config, 'classification_type'))
 
         # TODO: Remove this after extending FocalLoss
-        if config.model_type == 'classification':
-            if config.loss_criterion == 'focal-loss':
-                assert config.classification_type == 'binary'
+        if config.model_type == 'classification' and config.loss_criterion == 'focal-loss':
+            assert config.classification_type == 'binary'
 
         # Transformer models are prohibitively slow on CPU
         if any([m in config.model for m in TRANSFORMER_MODELS]):
             assert config.n_gpu >= 1
-
 
 def set_additional_dirs(config):
     '''
@@ -168,7 +166,7 @@ def check_and_set_devices(config):
         # Get device IDs
         config.device_ids = config.device_ids if config.get('device_ids') else []
 
-        # Parallelize across all available GPUs
+        # Parallelize across all available GPUs if required
         if config.device_ids == -1:
             config.device_ids = list(range(torch.cuda.device_count()))
 
