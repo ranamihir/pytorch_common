@@ -66,19 +66,20 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
 
             # Take scheduler step
             if config.use_scheduler_after_epoch:
-                scheduler_step(scheduler, val_loss)
+                take_scheduler_step(scheduler, val_loss)
 
-            # Perform early stopping and replace checkpoint if required
             if config.use_early_stopping:
+                # Replace checkpoint if current epoch better than previous best
                 if early_stopping.is_better(val_logger.get_early_stopping_metric()):
                     logging.info('Saving current best model checkpoint and removing previous one...')
                     best_checkpoint_file = save_model(model, optimizer, config, \
                                                       train_logger, val_logger, epoch, \
                                                       config_info_dict, scheduler)
                     remove_model(config, best_epoch, config_info_dict)
-                    logging.info('Done.')
                     best_epoch = epoch
+                    logging.info('Done.')
 
+                # Quit training if stopping criterion met
                 if early_stopping.stop(val_logger.get_early_stopping_metric()):
                     stop_epoch = epoch
                     logging.info(f'Stopping early after {stop_epoch} epochs.')
@@ -108,10 +109,13 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         best_model = checkpoint['model']
         optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
         checkpoint = None # Free up memory
-        best_config_info_dict = {**config_info_dict, 'best': True}
         save_model(best_model, optimizer, config, train_logger, val_logger, \
-                   stop_epoch, best_config_info_dict, scheduler, checkpoint_type='model')
+                   stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
     logging.info('Done.')
+
+    # Get best epoch if early stopping is not used
+    if not config.use_early_stopping:
+        best_epoch = get_overall_best_epoch(config, early_stopping, val_logger)
 
     return_dict = {
         'model': model,
@@ -164,7 +168,7 @@ def train_epoch(model, dataloader, loss_criterion, optimizer, device, epoch, sch
         nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1.)
         optimizer.step()
         if scheduler is not None:
-            scheduler_step(scheduler, loss_value)
+            take_scheduler_step(scheduler, loss_value)
 
         # Accurately compute loss, because of different batch size
         loss_train = loss_value * batch_size / num_examples
@@ -258,7 +262,7 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
         probs_hist = torch.stack(probs_hist, dim=0)
     return outputs_hist, preds_hist, probs_hist
 
-def scheduler_step(scheduler, val_metric=None):
+def take_scheduler_step(scheduler, val_metric=None):
     '''
     Take a scheduler step.
     Some schedulers, e.g. `ReduceLROnPlateau` require
@@ -488,6 +492,17 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
         assert file_checkpoint_type == checkpoint_type, \
             f'The type of checkpoint provided in param "checkpoint_type" ("{checkpoint_type}") does '\
             f'not match that obtained from the model at "{checkpoint_file}" ("{file_checkpoint_type}").'
+
+def get_overall_best_epoch(val_logger):
+    '''
+    Get the overall best epoch if early stopping is not used.
+    Returns the maximum value across all epochs based
+    on the (early) stopping criterion, which defaults
+    to accuracy / mse if it isn't defined.
+    '''
+    eval_metrics_dict = val_logger.get_eval_metrics(val_logger.early_stopping_criterion)
+    best_epoch = max(eval_metrics_dict, key=eval_metrics_dict.get)
+    return best_epoch
 
 
 class EarlyStopping(object):

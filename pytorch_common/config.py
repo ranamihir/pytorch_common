@@ -139,8 +139,14 @@ def set_loss_and_eval_criteria(config):
     assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
     for eval_criterion in config.eval_criteria:
         assert eval_criterion in metrics.EVAL_CRITERIA
-    default_stopping_criterion = 'accuracy' if config.model_type == 'classification' else 'mse'
-    config.early_stopping_criterion = config.get('early_stopping_criterion', default_stopping_criterion)
+
+    # If early stopping not used, the criterion is still
+    # defined just for getting the "best" epoch
+    if config.use_early_stopping:
+        assert config.early_stopping_criterion is not None
+    else:
+        default_stopping_criterion = 'accuracy' if config.model_type == 'classification' else 'mse'
+        config.early_stopping_criterion = default_stopping_criterion
     assert config.early_stopping_criterion in config.eval_criteria
 
 def check_and_set_devices(config):
