@@ -110,7 +110,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
         checkpoint = None # Free up memory
         save_model(best_model, optimizer, config, train_logger, val_logger, \
-                   stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
+                   best_epoch, config_info_dict, scheduler, checkpoint_type='model')
     logging.info('Done.')
 
     # Get best epoch if early stopping is not used
