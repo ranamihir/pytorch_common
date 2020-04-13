@@ -1,9 +1,9 @@
-from vrdscommon.dsprunner import DspRunner
 from munch import Munch
 import os
 import torch
 import pkg_resources
 
+import pytorch_common
 from pytorch_common import metrics
 from .additional_configs import BaseDatasetConfig, BaseModelConfig
 from .utils import load_object, make_dirs, set_seed
@@ -56,9 +56,7 @@ def load_config(config_file='config.yaml'):
     to avoid repeating attributes.
     '''
     # Create and initialize the runner
-    runner = DspRunner('pytorch_common')
-    runner.set_config_class(Config)
-    packagedir = os.path.normpath(pkg_resources.resource_filename('pytorch_common', '.'))
+    packagedir = pytorch_common.__path__[0]
     configdir = os.path.join(packagedir, 'configs')
 
     # Load pytorch_common config
