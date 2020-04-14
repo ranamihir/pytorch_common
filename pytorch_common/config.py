@@ -1,3 +1,4 @@
+import logging
 from munch import Munch
 import os
 import torch
@@ -40,12 +41,16 @@ def load_pytorch_common_config(dictionary):
     '''
     # Load pytorch_common config if required
     if dictionary.get('load_pytorch_common_config'):
+        logging.info('Loading default pytorch_common config...')
         pytorch_common_config = load_config()
+
+        logging.info('Done. Overriding default config with provided dictionary...')
 
         # Override pytorch_common config with project specific one
         # And then set it back to original dictionary
         pytorch_common_config.update(dictionary)
         dictionary = pytorch_common_config
+        logging.info('Done.')
     return dictionary
 
 def load_config(config_file='config.yaml'):
