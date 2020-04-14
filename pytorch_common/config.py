@@ -1,12 +1,10 @@
 import logging
-from munch import Munch
 import os
 import torch
-import pkg_resources
+from munch import Munch
 
 import pytorch_common
 from pytorch_common import metrics
-from .additional_configs import BaseDatasetConfig, BaseModelConfig
 from .utils import load_object, make_dirs, set_seed
 
 
