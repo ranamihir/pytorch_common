@@ -97,7 +97,7 @@ def set_pytorch_config(config):
             assert config.classification_type == 'binary'
 
         # Transformer models are prohibitively slow on CPU
-        if any([m in config.model for m in TRANSFORMER_MODELS]):
+        if config.check_gpu and any([m in config.model for m in TRANSFORMER_MODELS]):
             assert config.n_gpu >= 1
 
 def set_additional_dirs(config):
