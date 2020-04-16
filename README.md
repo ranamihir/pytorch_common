@@ -17,7 +17,7 @@ In a nutshell, it has code for:
       - Allows initializing (all / given) weights for Conv, BatchNorm, Linear, Embedding layers
     - Provision to freeze/unfreeze (all / given) weights of model
   - Sending model to device(s)
-  - Saving/loading/removing state dict / model checkpoints
+  - Saving/loading/removing/copying state dict / model checkpoints
   - Early stopping
   - Properly sending model/optimizer/batch to device(s)
   - Defining custom train/test loss and evaluation criteria directly from config
