@@ -298,7 +298,7 @@ def send_batch_to_device(batch, device):
         # Retain same data type as original
         return type(batch)((send_batch_to_device(e, device) for e in batch))
     else: # Structure/type of batch unknown / not understood.
-        logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
+        logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
 def send_optimizer_to_device(optimizer, device):
@@ -323,7 +323,7 @@ def convert_tensor_to_numpy(batch):
         # Retain same data type as original
         return type(batch)((convert_tensor_to_numpy(e) for e in batch))
     else: # Structure/type of batch unknown / not understood.
-        logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
+        logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
 def convert_numpy_to_tensor(batch, device=None):
@@ -341,7 +341,7 @@ def convert_numpy_to_tensor(batch, device=None):
         # Retain same data type as original
         return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
     else: # Structure/type of batch unknown / not understood.
-        logging.info(f'Type "{type(batch)}" not understood. Returning variable as-is.')
+        logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
 def print_dataframe(data):
