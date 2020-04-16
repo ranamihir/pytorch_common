@@ -47,9 +47,13 @@ def load_pytorch_common_config(dictionary):
         # Override pytorch_common config with project specific one
         # And then set it back to original dictionary
         pytorch_common_config.update(dictionary)
-        dictionary = pytorch_common_config
+        merged_config = pytorch_common_config
         logging.info('Done.')
-    return dictionary
+
+        # Throw warning if both scheduler configs enabled (not common)
+        if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
+            logging.warning('Scheduler is configurated to take a step after both every step and epoch.')
+    return merged_config
 
 def load_config(config_file='config.yaml'):
     '''
