@@ -52,7 +52,7 @@ def load_pytorch_common_config(dictionary):
 
         # Throw warning if both scheduler configs enabled (not common)
         if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
-            logging.warning('Scheduler is configurated to take a step after both every step and epoch.')
+            logging.warning('Scheduler is configured to take a step both after every step and epoch.')
     return merged_config
 
 def load_config(config_file='config.yaml'):
