@@ -8,7 +8,7 @@ setup(
 
     # Application author details:
     author="Mihir Rana",
-    author_email="mrana@tripadvisor.com",
+    author_email="ranamihir@gmail.com",
 
     # Version number:
     version="1.0",
