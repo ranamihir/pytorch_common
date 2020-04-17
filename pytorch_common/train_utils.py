@@ -391,9 +391,9 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
 
         # See `save_model()` for explanation
         try:
-            checkpoint = torch.load(checkpoint_path)
+            checkpoint = torch.load(checkpoint_path, map_location=config.device)
         except AttributeError:
-            checkpoint = torch.load(checkpoint_path, pickle_module=dill)
+            checkpoint = torch.load(checkpoint_path, map_location=config.device, pickle_module=dill)
 
         # Load model in appropriate way
         if checkpoint_type == 'state': # Load state dict
