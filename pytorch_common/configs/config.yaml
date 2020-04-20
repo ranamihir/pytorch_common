@@ -56,8 +56,8 @@ use_scheduler_after_step: False
 use_scheduler_after_epoch: False
 use_early_stopping: False
 
-# Ensure GPU is avaiable for transformer models
-assert_gpu: True
+# Ensure GPU is available for transformer models
+assert_gpu: False
 
 # Training config
 device: 'cuda:0' # Default device
