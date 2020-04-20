@@ -8,10 +8,6 @@ from pytorch_common import metrics
 from .utils import load_object, make_dirs, set_seed
 
 
-# Supported Transformer architectures
-TRANSFORMER_MODELS = ['BERT-of-Theseus-MNLI', 'albert', 'distilbert', 'bert']
-
-
 class Config(Munch):
     '''
     Configuration class that can be used to have fields for the
@@ -100,9 +96,10 @@ def set_pytorch_config(config):
         if config.model_type == 'classification' and config.loss_criterion == 'focal-loss':
             assert config.classification_type == 'binary'
 
-        # Transformer models are prohibitively slow on CPU
-        if config.check_gpu and any([m in config.model for m in TRANSFORMER_MODELS]):
-            assert config.n_gpu >= 1
+        # Ensure GPU availability as some models are prohibitively slow on CPU
+        if config.assert_gpu:
+            assert config.n_gpu >= 1, "Usage of GPU is required as per config but either "\
+                                      "one isn't available or the device is set to CPU."
 
 def set_additional_dirs(config):
     '''

@@ -422,7 +422,7 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
         val_logger = checkpoint['val_logger']
 
         # Throw warning if model trained for more epochs
-        if max(train_logger.epochs) >= epoch_trained:
+        if max(train_logger.epochs) > epoch_trained:
             logging.warning(f"The specified epoch was {epoch_trained} but the model was "\
                             f"trained for {max(train_logger.epochs)} epochs. Ignore this "\
                             f"warning if this was intentional.")
