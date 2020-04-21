@@ -44,68 +44,14 @@ def set_seed(config):
     if config.n_gpu > 0:
         torch.cuda.manual_seed_all(config.seed)
 
-def delete_model(model):
+def print_dataframe(data):
     '''
-    Delete model and free GPU memory
+    Print useful summary statistics of a dataframe.
     '''
-    model = None
-    torch.cuda.empty_cache()
-
-def get_string_from_dict(config_info_dict=None):
-    '''
-    Generate a (unique) string from a given configuration dictionary.
-    E.g.:
-    >>> config_info_dict = {'size': 100, 'lr': 1e-3}
-    >>> get_string_from_dict(config_info_dict)
-    'size_100-lr_0.001'
-    '''
-    config_info = ''
-    if isinstance(config_info_dict, dict) and len(config_info_dict):
-        clean = lambda k: str(k).replace('-', '_').lower()
-        config_info = {clean(k): clean(v) for k, v in config_info_dict.items()}
-        config_info = '-'.join([f'{k}_{v}' for k, v in config_info.items()])
-    return config_info
-
-def get_unique_config_name(primary_name, config_info_dict=None):
-    '''
-    Returns a unique name for the current configuration.
-    The name will comprise the `primary_name` followed by a
-    hash value uniquely generated from the `config_info_dict`.
-    :param primary_name: Primary name of the object being stored.
-    :param config_info_dict: An optional dict provided containing
-                             information about current config.
-    E.g.:
-    `subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882`
-    Each attribute in `config_info_dict` is in the "{name}_{value}"
-    format (lowercased), separated from one another by a hyphen.
-    If a hyphen exists in the value (e.g. LR), it's converted to
-    an underscore. Finally, this string is passed into a hash
-    function to generate a unique ID for this configuration.
-    '''
-    unique_id = ''
-
-    # Generate unique ID based on config_info_dict
-    config_info = get_string_from_dict(config_info_dict)
-    if config_info != '':
-        unique_id = '-' + hashlib.md5(config_info.encode('utf-8')).hexdigest()
-
-    unique_name = primary_name + unique_id
-    return unique_name
-
-def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=None):
-    '''
-    Returns the appropriate name of checkpoint file
-    by generating a unique ID from the config.
-    :param checkpoint_type: Type of checkpoint ('state' | 'model')
-    :param config_info_dict: An optional dict provided containing
-                             information about current config.
-    E.g.:
-    `checkpoint-model-subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882-epoch_1.pt`
-    '''
-    assert checkpoint_type in ['state', 'model']
-    unique_name = get_unique_config_name(model_name, config_info_dict)
-    checkpoint_name = f'checkpoint-{checkpoint_type}-{unique_name}-epoch_{epoch}.pt'
-    return checkpoint_name
+    logging.info(f'Head of data:\n{data.head(10)}')
+    logging.info(f'Shape of data: {data.shape}')
+    logging.info(f'Columns:\n{data.columns}')
+    logging.info(f'\n{data.describe()}')
 
 def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
     '''
@@ -223,6 +169,69 @@ def get_pickle_module(pickle_module='pickle'):
         return dill
     raise ValueError(f'Param "pickle_module" ("{pickle_module}") must be '\
                       'one of ["pickle", "dill"].')
+
+def delete_model(model):
+    '''
+    Delete model and free GPU memory
+    '''
+    model = None
+    torch.cuda.empty_cache()
+
+def get_string_from_dict(config_info_dict=None):
+    '''
+    Generate a (unique) string from a given configuration dictionary.
+    E.g.:
+    >>> config_info_dict = {'size': 100, 'lr': 1e-3}
+    >>> get_string_from_dict(config_info_dict)
+    'size_100-lr_0.001'
+    '''
+    config_info = ''
+    if isinstance(config_info_dict, dict) and len(config_info_dict):
+        clean = lambda k: str(k).replace('-', '_').lower()
+        config_info = {clean(k): clean(v) for k, v in config_info_dict.items()}
+        config_info = '-'.join([f'{k}_{v}' for k, v in config_info.items()])
+    return config_info
+
+def get_unique_config_name(primary_name, config_info_dict=None):
+    '''
+    Returns a unique name for the current configuration.
+    The name will comprise the `primary_name` followed by a
+    hash value uniquely generated from the `config_info_dict`.
+    :param primary_name: Primary name of the object being stored.
+    :param config_info_dict: An optional dict provided containing
+                             information about current config.
+    E.g.:
+    `subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882`
+    Each attribute in `config_info_dict` is in the "{name}_{value}"
+    format (lowercased), separated from one another by a hyphen.
+    If a hyphen exists in the value (e.g. LR), it's converted to
+    an underscore. Finally, this string is passed into a hash
+    function to generate a unique ID for this configuration.
+    '''
+    unique_id = ''
+
+    # Generate unique ID based on config_info_dict
+    config_info = get_string_from_dict(config_info_dict)
+    if config_info != '':
+        unique_id = '-' + hashlib.md5(config_info.encode('utf-8')).hexdigest()
+
+    unique_name = primary_name + unique_id
+    return unique_name
+
+def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=None):
+    '''
+    Returns the appropriate name of checkpoint file
+    by generating a unique ID from the config.
+    :param checkpoint_type: Type of checkpoint ('state' | 'model')
+    :param config_info_dict: An optional dict provided containing
+                             information about current config.
+    E.g.:
+    `checkpoint-model-subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882-epoch_1.pt`
+    '''
+    assert checkpoint_type in ['state', 'model']
+    unique_name = get_unique_config_name(model_name, config_info_dict)
+    checkpoint_name = f'checkpoint-{checkpoint_type}-{unique_name}-epoch_{epoch}.pt'
+    return checkpoint_name
 
 def get_model_outputs_only(outputs):
     '''
@@ -343,15 +352,6 @@ def convert_numpy_to_tensor(batch, device=None):
     else: # Structure/type of batch unknown / not understood.
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
-
-def print_dataframe(data):
-    '''
-    Print useful summary statistics of a dataframe.
-    '''
-    logging.info(f'Head of data:\n{data.head(10)}')
-    logging.info(f'Shape of data: {data.shape}')
-    logging.info(f'Columns:\n{data.columns}')
-    logging.info(f'\n{data.describe()}')
 
 def get_model_performance_trackers(config):
     '''
@@ -528,6 +528,17 @@ class ModelTracker(object):
             epoch = self._get_correct_epoch(epoch)
             return metrics_df.query('epoch == @epoch')
         return metrics_df
+
+    def set_best_epoch(self, best_epoch):
+        '''
+        Add the `best_epoch` attribute to validation
+        logger for future evaluation purposes.
+        '''
+        if self.is_train:
+            raise ValueError('Best epoch can only be stored into validation logger.')
+        if best_epoch not in self.epochs:
+            raise ValueError(f'Best epoch provided ({best_epoch}) must be one of {self.epochs}.')
+        self.best_epoch = best_epoch
 
     @property
     def _epochs_loss(self):

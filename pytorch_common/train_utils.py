@@ -24,6 +24,12 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         so as to be able to change it on the fly without modifying config.
       - `start_epoch` may be provided if a trained checkpoint is loaded into the model
         and training is to be resumed from that point.
+
+    Training may be paused at any time with a keyboard interrupt.
+    NOTE: However, please avoid interrupting after an epoch is finished and
+          before the next one begins, e.g. during saving a checkpoint (as it
+          may cause issues while loading the model), and instead pause it
+          during training/prediction within an epoch.
     '''
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file, best_model = '', None
@@ -68,27 +74,30 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             if config.use_scheduler_after_epoch:
                 take_scheduler_step(scheduler, val_loss)
 
-            if config.use_early_stopping:
-                # Replace checkpoint if current epoch better than previous best
-                if early_stopping.is_better(val_logger.get_early_stopping_metric()):
-                    logging.info('Saving current best model checkpoint and removing previous one...')
-                    best_checkpoint_file = save_model(model, optimizer, config, \
-                                                      train_logger, val_logger, epoch, \
-                                                      config_info_dict, scheduler)
-                    remove_model(config, best_epoch, config_info_dict)
-                    best_epoch = epoch
-                    logging.info('Done.')
+            # Set best epoch
+            replace_checkpoint = False
+            if (config.use_early_stopping and early_stopping.is_better(val_logger.get_early_stopping_metric()))\
+                or (not config.use_early_stopping and epoch == get_overall_best_epoch(val_logger)):
+                logging.info('Computing best epoch and adding to validation logger...')
+                val_logger.set_best_epoch(epoch)
+                replace_checkpoint = True
+                logging.info('Done.')
 
-                # Quit training if stopping criterion met
-                if early_stopping.stop(val_logger.get_early_stopping_metric()):
-                    stop_epoch = epoch
-                    logging.info(f'Stopping early after {stop_epoch} epochs.')
-                    break
+            # Replace model checkpoint if required
+            if replace_checkpoint:
+                logging.info('Saving current best model checkpoint and removing previous one...')
+                best_checkpoint_file = save_model(model, optimizer, config, \
+                                                  train_logger, val_logger, epoch, \
+                                                  config_info_dict, scheduler)
+                remove_model(config, best_epoch, config_info_dict)
+                best_epoch = epoch
+                logging.info('Done.')
 
-            else: # Save all checkpoints if early stopping not used
-                save_model(model, optimizer, config, \
-                           val_logger, train_logger, \
-                           epoch, config_info_dict, scheduler)
+            # Quit training if stopping criterion met
+            if config.use_early_stopping and early_stopping.stop(val_logger.get_early_stopping_metric()):
+                stop_epoch = epoch
+                logging.info(f'Stopping early after {stop_epoch} epochs.')
+                break
 
             stop_epoch = epoch
         except KeyboardInterrupt:
@@ -112,10 +121,6 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         save_model(best_model, optimizer, config, train_logger, val_logger, \
                    best_epoch, config_info_dict, scheduler, checkpoint_type='model')
     logging.info('Done.')
-
-    # Get best epoch if early stopping is not used
-    if not config.use_early_stopping:
-        best_epoch = get_overall_best_epoch(config, early_stopping, val_logger)
 
     return_dict = {
         'model': model,
@@ -423,9 +428,15 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
 
         # Throw warning if model trained for more epochs
         if max(train_logger.epochs) > epoch_trained:
-            logging.warning(f"The specified epoch was {epoch_trained} but the model was "\
-                            f"trained for {max(train_logger.epochs)} epochs. Ignore this "\
-                            f"warning if this was intentional.")
+            logging.warning(f"The specified epoch was {epoch_trained} but the "\
+                            f"model was trained for {max(train_logger.epochs)} "\
+                            f"epochs. Ignore this warning if it was intentional.")
+
+        # Throw warning if best epoch is different
+        if val_logger.best_epoch != epoch_trained:
+            logging.warning(f"The specified epoch was {epoch_trained} but the best "\
+                            f"epoch based on validation set was {val_logger.best_epoch}."\
+                            f" Ignore this warning if it was intentional.")
 
         # Load optimizer and scheduler state dicts
         optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, \
