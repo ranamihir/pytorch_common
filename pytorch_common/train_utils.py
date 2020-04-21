@@ -16,14 +16,14 @@ from .utils import get_model_outputs_only, send_batch_to_device, send_model_to_d
 
 @timing
 def train_model(model, config, train_loader, val_loader, optimizer, loss_criterion_train, \
-                loss_criterion_test, eval_criteria, train_logger, val_logger, device, \
-                epochs, scheduler=None, early_stopping=None, config_info_dict=None, start_epoch=0):
+                loss_criterion_test, eval_criteria, train_logger, val_logger, epochs, \
+                scheduler=None, early_stopping=None, config_info_dict=None, start_epoch=0):
     '''
-    Perform the entire training routine.
-      - Params `epochs` and `device` are deliberately not derived directly from config
+    Perform the entire model training routine.
+      - Param `epochs` is deliberately not derived directly from config
         so as to be able to change it on the fly without modifying config.
-      - `start_epoch` may be provided if a trained checkpoint is loaded into the model
-        and training is to be resumed from that point.
+      - `start_epoch` may be provided if a trained checkpoint is loaded
+        into the model and training is to be resumed from that point.
 
     Training may be paused at any time with a keyboard interrupt.
     NOTE: However, please avoid interrupting after an epoch is finished and
@@ -41,7 +41,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
                 loss_criterion=loss_criterion_train,
                 dataloader=train_loader,
                 optimizer=optimizer,
-                device=device,
+                device=config.device,
                 epoch=epoch,
                 scheduler=scheduler if config.use_scheduler_after_step else None
             )
@@ -52,7 +52,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
                 dataloader=train_loader,
                 loss_criterion=loss_criterion_test,
                 eval_criteria=eval_criteria,
-                device=device,
+                device=config.device,
                 return_outputs=False
             )
             # Add train losses+eval metrics, and log them
@@ -64,7 +64,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
                 dataloader=val_loader,
                 loss_criterion=loss_criterion_test,
                 eval_criteria=eval_criteria,
-                device=device,
+                device=config.device,
                 return_outputs=False
             )
             # Add val loss+eval metrics, and log them
