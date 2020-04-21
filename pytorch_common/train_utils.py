@@ -75,16 +75,15 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
                 take_scheduler_step(scheduler, val_loss)
 
             # Set best epoch
-            replace_checkpoint = False
+            # Check if current epoch better than previous best based
+            # on early stopping (if used) or all epoch history
             if (config.use_early_stopping and early_stopping.is_better(val_logger.get_early_stopping_metric()))\
                 or (not config.use_early_stopping and epoch == get_overall_best_epoch(val_logger)):
                 logging.info('Computing best epoch and adding to validation logger...')
                 val_logger.set_best_epoch(epoch)
-                replace_checkpoint = True
                 logging.info('Done.')
 
-            # Replace model checkpoint if required
-            if replace_checkpoint:
+                # Replace model checkpoint if required
                 logging.info('Saving current best model checkpoint and removing previous one...')
                 best_checkpoint_file = save_model(model, optimizer, config, \
                                                   train_logger, val_logger, epoch, \
