@@ -48,10 +48,10 @@ def print_dataframe(data):
     '''
     Print useful summary statistics of a dataframe.
     '''
-    logging.info(f'Head of data:\n{data.head(10)}')
-    logging.info(f'Shape of data: {data.shape}')
-    logging.info(f'Columns:\n{data.columns}')
-    logging.info(f'\n{data.describe()}')
+    logging.info(f'\nHead of data:\n{data.head(10)}\n')
+    logging.info(f'\nShape of data: {data.shape}\n')
+    logging.info(f'\nColumns:\n{data.columns}\n')
+    logging.info(f'\nSummary statistics:\n{data.describe()}\n')
 
 def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
     '''
