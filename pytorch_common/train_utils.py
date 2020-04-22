@@ -349,14 +349,17 @@ def generate_checkpoint_dict(optimizer, config, train_logger, \
         - Current training config
     '''
     checkpoint = {
-        'optimizer': optimizer.state_dict(),
-        'config': config, # Good practice to store config too
         'train_logger': train_logger,
         'val_logger': val_logger,
-        'epoch': epoch,
+        'config': config, # Good practice to store config too
+        'optimizer': optimizer.state_dict(),
+        'epoch': epoch
     }
+
+    # Save scheduler if provided
     if scheduler is not None:
         checkpoint['scheduler'] = scheduler.state_dict()
+
     return checkpoint
 
 def load_model(model, config, checkpoint_file, optimizer=None, \
@@ -410,8 +413,16 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
             assert model is None
             model = checkpoint['model']
 
+        # Load train / val loggers
+        train_logger = checkpoint['train_logger']
+        val_logger = checkpoint['val_logger']
+
         # Load config
         config = checkpoint['config']
+
+        # Load optimizer and scheduler state dicts
+        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, \
+                                                            optimizer, scheduler)
 
         # Extract last trained epoch from checkpoint file
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split('-epoch_')[-1])
@@ -420,10 +431,6 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
         assert epoch_trained == checkpoint['epoch'], \
             f"Mismatch between epoch specified in checkpoint path (\"{epoch_trained}\"), "\
             f"epoch specified at saving time (\"{checkpoint['epoch']}\")."
-
-        # Load train / val loggers
-        train_logger = checkpoint['train_logger']
-        val_logger = checkpoint['val_logger']
 
         # Throw warning if model trained for more epochs
         if max(train_logger.epochs) > epoch_trained:
@@ -437,10 +444,6 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
                             f"epoch based on validation set was {val_logger.best_epoch}."\
                             f" Ignore this warning if it was intentional.")
 
-        # Load optimizer and scheduler state dicts
-        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, \
-                                                            optimizer, scheduler)
-
         logging.info('Done.')
 
     else:
@@ -449,13 +452,20 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
     # Prepare dict to be returned
     return_dict = {
         'model': model,
-        'optimizer': optimizer,
-        'config': config,
         'train_logger': train_logger,
         'val_logger': val_logger,
-        'epoch': epoch_trained,
-        'scheduler': scheduler
+        'config': config,
+        'epoch': epoch_trained
     }
+
+    # Return optimizer if provided
+    if optimizer is not None:
+        return_dict['optimizer'] = optimizer
+
+    # Return scheduler if provided
+    if scheduler is not None:
+        return_dict['scheduler'] = scheduler
+
     return return_dict
 
 def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=None):
@@ -464,14 +474,27 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
     and scheduler, if they're provided.
     Helper function for `load_model()`.
     '''
+    def load_state_dict(obj, name='optimizer'):
+        '''
+        Properly load state dict of optimizer/scheduler
+        '''
+        if obj is not None:
+            obj_state_dict = checkpoint.get(name)
+            if obj_state_dict is not None:
+                obj.load_state_dict(obj_state_dict)
+            else:
+                raise  ValueError(f'{name} argument expected a state dict in '\
+                                   'the saved checkpoint but none was found.')
+            return obj
+
     # Load optimizer
     if optimizer is not None:
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        optimizer = load_state_dict(optimizer, 'optimizer')
         optimizer = send_optimizer_to_device(optimizer, device)
 
     # Load scheduler
     if scheduler is not None:
-        scheduler.load_state_dict(checkpoint['scheduler'])
+        scheduler = load_state_dict(scheduler, 'scheduler')
 
     return optimizer, scheduler
 
