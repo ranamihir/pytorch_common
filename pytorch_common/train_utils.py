@@ -478,13 +478,12 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
         '''
         Properly load state dict of optimizer/scheduler
         '''
-        if obj is not None:
-            obj_state_dict = checkpoint.get(name)
-            if obj_state_dict is not None:
-                obj.load_state_dict(obj_state_dict)
-            else:
-                raise ValueError(f'{name} argument expected a state dict in '\
-                                  'the saved checkpoint but none was found.')
+        obj_state_dict = checkpoint.get(name)
+        if obj_state_dict is not None:
+            obj.load_state_dict(obj_state_dict)
+        else:
+            raise ValueError(f'{name} argument expected a state dict in '\
+                              'the saved checkpoint but none was found.')
         return obj
 
     # Load optimizer
