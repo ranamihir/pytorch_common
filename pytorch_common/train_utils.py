@@ -9,9 +9,9 @@ from vrdscommon import timing
 import torch
 import torch.nn as nn
 
-from .utils import get_model_outputs_only, send_batch_to_device, send_model_to_device, \
-                   send_optimizer_to_device, convert_tensor_to_numpy, SequencePooler, \
-                   save_object, remove_object, ModelTracker, get_checkpoint_name
+from .utils import get_model_outputs_only, send_batch_to_device, \
+                   send_model_to_device, send_optimizer_to_device, \
+                   remove_object, get_checkpoint_name
 
 
 @timing
@@ -474,16 +474,16 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
     and scheduler, if they're provided.
     Helper function for `load_model()`.
     '''
-    def load_state_dict(obj, name='optimizer'):
+    def load_state_dict(obj, key='optimizer'):
         '''
         Properly load state dict of optimizer/scheduler
         '''
-        obj_state_dict = checkpoint.get(name)
-        if obj_state_dict is not None:
-            obj.load_state_dict(obj_state_dict)
+        state_dict = checkpoint.get(key)
+        if state_dict is not None:
+            obj.load_state_dict(state_dict)
         else:
-            raise KeyError(f'{name} argument expected a state dict in '\
-                            'the saved checkpoint but none was found.')
+            raise KeyError(f'{key} argument expected its state dict in '\
+                            'the loaded checkpoint but none was found.')
         return obj
 
     # Load optimizer
