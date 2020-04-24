@@ -8,31 +8,39 @@ import logging
 import pickle
 import dill
 from collections import OrderedDict
-from pprint import pformat
 import hashlib
 
 import torch
 import torch.nn as nn
 
 from tqdm import tqdm
-from dask.diagnostics import ProgressBar
 from dask.callbacks import Callback
 
 
-def make_dirs(parent_dir, child_dirs=None):
+def make_dirs(parent_dir_path, child_dirs=None):
     '''
     Create the parent and (optionally) all child
     directories within parent directory
     '''
-    if not os.path.isdir(parent_dir):
-        os.makedirs(parent_dir)
-    if child_dirs:
-        if not isinstance(child_dirs, list):
+    def create_dir_if_not_exists(dir_path):
+        '''
+        Create a directory at `dir_path`
+        if it doesn't exist already
+        '''
+        if not os.path.isdir(dir_path):
+            os.makedirs(dir_path)
+
+    # Create parent dir
+    create_dir_if_not_exists(parent_dir_path)
+
+    # Create child dir(s) if provided
+    if child_dirs is not None:
+        if isinstance(child_dirs, str):
             child_dirs = [child_dirs]
-        for directory in child_dirs:
-            dir_path = os.path.join(parent_dir, directory)
-            if not os.path.isdir(dir_path):
-                os.makedirs(dir_path)
+        assert isinstance(child_dirs, list)
+        for dir_name in child_dirs:
+            dir_path = os.path.join(parent_dir_path, dir_name)
+            create_dir_if_not_exists(dir_path)
 
 def set_seed(config):
     '''
