@@ -82,13 +82,14 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
                 logging.info('Done.')
 
                 # Replace model checkpoint if required
-                logging.info('Saving current best model checkpoint and removing previous one...')
-                best_checkpoint_file = save_model(model, optimizer, config, \
-                                                  train_logger, val_logger, epoch, \
-                                                  config_info_dict, scheduler)
-                remove_model(config, best_epoch, config_info_dict)
-                best_epoch = epoch
-                logging.info('Done.')
+                if not config.disable_checkpointing:
+                    logging.info('Saving current best model checkpoint and removing previous one...')
+                    best_checkpoint_file = save_model(model, optimizer, config, \
+                                                      train_logger, val_logger, epoch, \
+                                                      config_info_dict, scheduler)
+                    remove_model(config, best_epoch, config_info_dict)
+                    best_epoch = epoch
+                    logging.info('Done.')
 
             # Quit training if stopping criterion met
             if config.use_early_stopping and early_stopping.stop(val_logger.get_early_stopping_metric()):
@@ -103,21 +104,22 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             break
 
     # Save the model checkpoints
-    logging.info('Dumping model and results...')
-    save_model(model, optimizer, config, train_logger, \
-               val_logger, stop_epoch, config_info_dict, scheduler)
+    if not config.disable_checkpointing:
+        logging.info('Dumping model and results...')
+        save_model(model, optimizer, config, train_logger, \
+                   val_logger, stop_epoch, config_info_dict, scheduler)
 
-    # Save current and best models
-    save_model(model.copy(), optimizer, config, train_logger, val_logger, \
-               stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
-    if best_checkpoint_file != '':
-        checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
-        best_model = checkpoint['model']
-        optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
-        checkpoint = None # Free up memory
-        save_model(best_model, optimizer, config, train_logger, val_logger, \
-                   best_epoch, config_info_dict, scheduler, checkpoint_type='model')
-    logging.info('Done.')
+        # Save current and best models
+        save_model(model.copy(), optimizer, config, train_logger, val_logger, \
+                   stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
+        if best_checkpoint_file != '':
+            checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
+            best_model = checkpoint['model']
+            optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
+            checkpoint = None # Free up memory
+            save_model(best_model, optimizer, config, train_logger, val_logger, \
+                       best_epoch, config_info_dict, scheduler, checkpoint_type='model')
+        logging.info('Done.')
 
     return_dict = {
         'model': model,

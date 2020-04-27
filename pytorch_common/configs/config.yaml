@@ -56,6 +56,9 @@ use_scheduler_after_step: False
 use_scheduler_after_epoch: False
 use_early_stopping: False
 
+# Disable saving/loading checkpoints (for faster dev)
+disable_checkpointing: False
+
 # Flag to ensure GPU is available for very big models
 assert_gpu: False
 
