@@ -167,8 +167,6 @@ def perform_one_epoch(do_training, model, dataloader, loss_criterion, device, ep
     If `do_training` is True, params `optimizer` and `epoch` must be provided.
     Otherwise for evaluation, param `eval_criteria` must be provided.
     At a time, either only training or only evaluation will be performed.
-    Tip: During development, you can just override num_batches with 1 (or a small
-         number) to run quickly on a small dataset.
     '''
     do_eval = not do_training # Whether to perform evaluation
     if do_training:
