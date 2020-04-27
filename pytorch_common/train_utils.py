@@ -36,8 +36,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
     for epoch in range(1+start_epoch, epochs+1+start_epoch):
         try:
             # Train epoch
-            train_losses = perform_one_epoch(
-                do_training=True,
+            train_losses = train_epoch(
                 model=model,
                 dataloader=train_loader,
                 loss_criterion=loss_criterion_train,
@@ -48,8 +47,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             )
 
             # Test on training set
-            _, eval_metrics_train = perform_one_epoch(
-                do_training=False,
+            _, eval_metrics_train = test_epoch(
                 model=model,
                 dataloader=train_loader,
                 loss_criterion=loss_criterion_test,
@@ -60,8 +58,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
 
             # Test on val set
-            val_losses, eval_metrics_val = perform_one_epoch(
-                do_training=False,
+            val_losses, eval_metrics_val = test_epoch(
                 model=model,
                 dataloader=val_loader,
                 loss_criterion=loss_criterion_test,
@@ -134,6 +131,25 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         'best_checkpoint_file': best_checkpoint_file
     }
     return return_dict
+
+@timing
+def train_epoch(model, dataloader, loss_criterion, device, epoch, optimizer, scheduler=None):
+    '''
+    Perform one training epoch.
+    See `perform_one_epoch()` for more details.
+    '''
+    return perform_one_epoch(True, model, dataloader, loss_criterion, device, \
+                             epoch=epoch, optimizer=optimizer, scheduler=scheduler)
+
+@timing
+@torch.no_grad()
+def test_epoch(model, dataloader, loss_criterion, device, eval_criteria, return_outputs=False):
+    '''
+    Perform one evaluation epoch.
+    See `perform_one_epoch()` for more details.
+    '''
+    return perform_one_epoch(False, model, dataloader, loss_criterion, device, \
+                             eval_criteria=eval_criteria, return_outputs=return_outputs)
 
 @timing
 def perform_one_epoch(do_training, model, dataloader, loss_criterion, device, epoch=None, \
