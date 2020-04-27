@@ -132,7 +132,6 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
     }
     return return_dict
 
-@timing
 def train_epoch(model, dataloader, loss_criterion, device, epoch, optimizer, scheduler=None):
     '''
     Perform one training epoch.
@@ -141,7 +140,6 @@ def train_epoch(model, dataloader, loss_criterion, device, epoch, optimizer, sch
     return perform_one_epoch(True, model, dataloader, loss_criterion, device, \
                              epoch=epoch, optimizer=optimizer, scheduler=scheduler)
 
-@timing
 @torch.no_grad()
 def test_epoch(model, dataloader, loss_criterion, device, eval_criteria, return_outputs=False):
     '''
@@ -226,7 +224,8 @@ def perform_one_epoch(do_training, model, dataloader, loss_criterion, device, ep
                         epoch, (batch_idx+1) * batch_size, num_examples,
                         100. * (batch_idx+1) / num_batches, loss_value))
 
-            else: # Store targets and model outputs for evaluation
+            else: # Store targets and model outputs on CPU for evaluation
+                outputs, y = send_batch_to_device((outputs, y), 'cpu')
                 outputs_hist.append(outputs)
                 y_hist.append(y)
 
@@ -236,8 +235,8 @@ def perform_one_epoch(do_training, model, dataloader, loss_criterion, device, ep
         model.zero_grad()
 
     else: # Perform evaluation on whole dataset
-        outputs_hist = send_batch_to_device(torch.cat(outputs_hist, dim=0), 'cpu')
-        y_hist = send_batch_to_device(torch.cat(y_hist, dim=0), 'cpu')
+        outputs_hist = torch.cat(outputs_hist, dim=0)
+        y_hist = torch.cat(y_hist, dim=0)
 
         # Compute all evaluation criteria
         eval_metrics = {eval_criterion: eval_fn(outputs_hist, y_hist) \
@@ -270,9 +269,11 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
     for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
         x = send_batch_to_device(batch[0], device) # Only need inputs for making predictions
 
+        # Get model outputs
         outputs = get_model_outputs_only(model(x))
         outputs = send_batch_to_device(outputs, 'cpu')
         outputs_hist.extend(outputs)
+
         if model.model_type == 'classification': # Get class predictions and probabilities
             preds, probs = model.predict_proba(outputs, threshold_prob)
             preds_hist.extend(preds)
