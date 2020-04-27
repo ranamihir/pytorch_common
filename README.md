@@ -18,6 +18,7 @@ In a nutshell, it has code for:
     - Provision to freeze/unfreeze (all / given) weights of model
   - Sending model to device(s)
   - Saving/loading/removing/copying state dict / model checkpoints
+  - Disable above mentioned checkpointing from config for faster development
   - Early stopping
   - Properly sending model/optimizer/batch to device(s)
   - Defining custom train/test loss and evaluation criteria directly from config
@@ -32,7 +33,7 @@ In a nutshell, it has code for:
 
 
 # Usage
-Some example notebooks can be found in the [pytorch_common_examples](https://gitlab.dev.tripadvisor.com/vrds/pytorch_common_examples) repo. These are somewhat contrived examples designed to illustrate how to leverage this repo; for a full-fledged project, you may refer to [this repo](https://gitlab.dev.tripadvisor.com/vrds/exp_vi_predict_product_subcats/tree/initial).
+Some example notebooks can be found in the [pytorch_common_examples](https://gitlab.dev.tripadvisor.com/vrds/pytorch_common_examples) repo. These are somewhat contrived examples designed to illustrate how to leverage this repo; for a full-fledged project, you may refer to [this repo](https://gitlab.dev.tripadvisor.com/vrds/exp_predict_base_ticket/tree/initial/exp_predict_base_ticket).
 
 # To-do's
 I have some enhancements in mind which I haven't gotten around to adding to this repo yet:
