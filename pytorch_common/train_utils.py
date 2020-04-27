@@ -27,52 +27,53 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
 
     Training may be paused at any time with a keyboard interrupt.
     NOTE: However, please avoid interrupting after an epoch is finished and
-          before the next one begins, e.g. during saving a checkpoint (as it
-          may cause issues while loading the model), and instead pause it
-          during training/prediction within an epoch.
+          before the next one begins, e.g. during saving a checkpoint, as it
+          may cause issues while loading the model. Instead pause it
+          during training/evaluation within an epoch.
     '''
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file, best_model = '', None
     for epoch in range(1+start_epoch, epochs+1+start_epoch):
         try:
             # Train epoch
-            train_losses = train_epoch(
+            train_losses = perform_one_epoch(
+                do_training=True,
                 model=model,
-                loss_criterion=loss_criterion_train,
                 dataloader=train_loader,
-                optimizer=optimizer,
+                loss_criterion=loss_criterion_train,
                 device=config.device,
                 epoch=epoch,
+                optimizer=optimizer,
                 scheduler=scheduler if config.use_scheduler_after_step else None
             )
 
             # Test on training set
-            _, eval_metrics_train = test_epoch(
+            _, eval_metrics_train = perform_one_epoch(
+                do_training=False,
                 model=model,
                 dataloader=train_loader,
                 loss_criterion=loss_criterion_test,
-                eval_criteria=eval_criteria,
                 device=config.device,
-                return_outputs=False
+                eval_criteria=eval_criteria
             )
             # Add train losses+eval metrics, and log them
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
 
             # Test on val set
-            val_loss, eval_metrics_val = test_epoch(
+            val_losses, eval_metrics_val = perform_one_epoch(
+                do_training=False,
                 model=model,
                 dataloader=val_loader,
                 loss_criterion=loss_criterion_test,
-                eval_criteria=eval_criteria,
                 device=config.device,
-                return_outputs=False
+                eval_criteria=eval_criteria
             )
-            # Add val loss+eval metrics, and log them
-            val_logger.add_and_log_metrics(val_loss, eval_metrics_val)
+            # Add val losses+eval metrics, and log them
+            val_logger.add_and_log_metrics(val_losses, eval_metrics_val)
 
             # Take scheduler step
             if config.use_scheduler_after_epoch:
-                take_scheduler_step(scheduler, val_loss)
+                take_scheduler_step(scheduler, np.mean(val_losses))
 
             # Set best epoch
             # Check if current epoch better than previous best based
@@ -135,15 +136,33 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
     return return_dict
 
 @timing
-def train_epoch(model, dataloader, loss_criterion, optimizer, device, epoch, scheduler=None):
+def perform_one_epoch(do_training, model, dataloader, loss_criterion, device, epoch=None, \
+                      optimizer=None, scheduler=None, eval_criteria=None, return_outputs=False):
     '''
-    Perform one training epoch and return the loss per example for each iteration
+    Common loop for one training or evaluation epoch on the entire dataset.
+    Return the loss per example for each iteration, and all eval criteria
+    if evaluation to be performed.
+    :param do_training: If training is to be performed
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
                       after each batch iteration (e.g. CyclicLR), otherwise None
+    :return_outputs: For evaluation (`do_training=False`), whether to return
+                     the targets and model outputs
+
+    If `do_training` is True, params `optimizer` and `epoch` must be provided.
+    Otherwise for evaluation, param `eval_criteria` must be provided.
+    At a time, either only training or only evaluation will be performed.
     Tip: During development, you can just override num_batches with 1 (or a small
          number) to run quickly on a small dataset.
     '''
-    model.train()
+    do_eval = not do_training # Whether to perform evaluation
+    if do_training:
+        for param_name, param in zip(['epoch', 'optimizer'], [epoch, optimizer]):
+            assert param is not None, f'Param "{param_name}" must not be None for training.'
+    else:
+        assert eval_criteria is not None, 'Param "eval_criteria" must not be None for evaluation.'
+
+    # Set model in training/eval mode as required
+    model.train(mode=do_training)
 
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
@@ -151,81 +170,70 @@ def train_epoch(model, dataloader, loss_criterion, optimizer, device, epoch, sch
     # Print 50 times in an epoch (or every time, if num_batches < 50)
     batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
-    loss_hist = [] # Store all losses
-    for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
-        # Assume first two elements of batch are (inputs, target).
-        # Just to be sure in case other things are
-        # being passed in the batch for debugging.
-        x, y = send_batch_to_device(batch[:2], device)
+    # Store all losses, target, and outputs
+    loss_hist, y_hist, outputs_hist = [], [], []
 
+    # Enable gradient computation if training to be performed else disable it
+    with torch.set_grad_enabled(do_training):
+        for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
+            # Assume first two elements of batch are (inputs, target).
+            # Just to be sure in case other things are
+            # being passed in the batch for debugging.
+            x, y = send_batch_to_device(batch[:2], device)
+
+            # Reset gradients to zero
+            if do_training:
+                optimizer.zero_grad()
+                model.zero_grad()
+
+            # Get model outputs
+            outputs = model(x)
+            outputs = get_model_outputs_only(outputs)
+
+            # Compute and store loss
+            loss = loss_criterion(outputs, y)
+            loss_value = loss.item()
+            loss_hist.append(loss_value)
+
+            # Perform training only steps
+            if do_training:
+                # Backprop + clip gradients + take scheduler step
+                loss.backward()
+                nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1.)
+                optimizer.step()
+                if scheduler is not None:
+                    take_scheduler_step(scheduler, loss_value)
+
+                # Print progess
+                if batch_idx in batches_to_print:
+                    logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        epoch, (batch_idx+1) * batch_size, num_examples,
+                        100. * (batch_idx+1) / num_batches, loss_value))
+
+            else: # Store targets and model outputs for evaluation
+                outputs_hist.append(outputs)
+                y_hist.append(y)
+
+    # Reset gradients back to zero
+    if do_training:
         optimizer.zero_grad()
         model.zero_grad()
 
-        # Get model outputs
-        outputs = model(x)
-        outputs = get_model_outputs_only(outputs)
+    else: # Perform evaluation on whole dataset
+        outputs_hist = send_batch_to_device(torch.cat(outputs_hist, dim=0), 'cpu')
+        y_hist = send_batch_to_device(torch.cat(y_hist, dim=0), 'cpu')
 
-        # Backprop + clip gradients + take scheduler step
-        loss = loss_criterion(outputs, y)
-        loss_value = loss.item()
-        loss.backward()
-        nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1.)
-        optimizer.step()
-        if scheduler is not None:
-            take_scheduler_step(scheduler, loss_value)
+        # Compute all evaluation criteria
+        eval_metrics = {eval_criterion: eval_fn(outputs_hist, y_hist) \
+                        for eval_criterion, eval_fn in eval_criteria.items()}
 
-        # Accurately compute loss, because of different batch size
-        loss_train = loss_value * batch_size / num_examples
-        loss_hist.append(loss_train)
-
-        # Print progess
-        if batch_idx in batches_to_print:
-            logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, (batch_idx+1) * batch_size, num_examples,
-                100. * (batch_idx+1) / num_batches, loss_value))
-
-    optimizer.zero_grad()
-    model.zero_grad()
-    return loss_hist
-
-@timing
-@torch.no_grad()
-def test_epoch(model, dataloader, loss_criterion, eval_criteria, device, return_outputs=False):
-    '''
-    Perform evaluation on the entire dataset and return the
-    loss per example and all eval criteria on whole dataset.
-    Tip: During development, you can just override num_batches with 1 (or a small
-         number) to run quickly on a small dataset.
-    '''
-    num_batches, num_examples = len(dataloader), len(dataloader.dataset)
-    model.eval()
-
-    loss_hist, y_hist, outputs_hist = [], [], [] # Store all losses, target, and outputs
-    for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
-        # Assume first two elements of batch are (inputs, target).
-        # Just to be sure in case other things are
-        # being passed in the batch for debugging.
-        x, y = send_batch_to_device(batch[:2], device)
-        outputs = model(x)
-        outputs = get_model_outputs_only(outputs)
-
-        loss = loss_criterion(outputs, y)
-        loss_test = loss.item() / num_examples
-        loss_hist.append(loss_test)
-
-        outputs_hist.append(outputs)
-        y_hist.append(y)
-
-    outputs_hist = send_batch_to_device(torch.cat(outputs_hist, dim=0), 'cpu')
-    y_hist = send_batch_to_device(torch.cat(y_hist, dim=0), 'cpu')
-
-    # Compute all evaluation criteria
-    eval_metrics = {eval_criterion: eval_fn(outputs_hist, y_hist) \
-                    for eval_criterion, eval_fn in eval_criteria.items()}
-
-    if return_outputs:
-        return np.sum(loss_hist), eval_metrics, outputs_hist, y_hist
-    return np.sum(loss_hist), eval_metrics
+    # Return necessary variables
+    return_list = [loss_hist]
+    if do_eval:
+        return_list.append(eval_metrics)
+        if return_outputs:
+            return_list.extend([outputs_hist, y_hist])
+    return return_list
 
 @timing
 @torch.no_grad()
