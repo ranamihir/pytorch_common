@@ -625,6 +625,8 @@ class SequencePooler(object):
         '''
         if 'electra' in self.model_name:
             self.pooler = self._electra_pooler
+        elif 'roberta' in self.model_name:
+            self.pooler = self._roberta_pooler
         elif 'albert' in self.model_name:
             self.pooler = self._albert_pooler
         elif 'distilbert' in self.model_name:
@@ -662,6 +664,9 @@ class SequencePooler(object):
 
     def _electra_pooler(self, x):
         return x[0][:,0] # [CLS] vector
+
+    def _roberta_pooler(self, x):
+        return x[0][:,0] # <s> vector (equiv. to [CLS])
 
 
 class DataParallel(nn.DataParallel):
