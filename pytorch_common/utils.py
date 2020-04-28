@@ -613,9 +613,21 @@ class SequencePooler(object):
         return self.pooler(x)
 
     def _set_pooler(self):
-        if 'albert' in self.model_name:
+        '''
+        **NOTE**: The order of `if`s is important here.
+        E.g. if the check for 'bert' is before the
+        check for 'distilbert', it will return
+        the wrong pooler.
+        Relatedly, when adding support for a new
+        model, make sure to set its check as an `elif`,
+        or change the succeeding `if` statement to
+        `elif` as may be appropriate.
+        '''
+        if 'electra' in self.model_name:
+            self.pooler = self._electra_pooler
+        elif 'albert' in self.model_name:
             self.pooler = self._albert_pooler
-        if 'distilbert' in self.model_name:
+        elif 'distilbert' in self.model_name:
             self.pooler = self._distilbert_pooler
         elif 'BERT-of-Theseus-MNLI' in self.model_name:
             self.pooler = self._bert_of_theseus_pooler
@@ -647,6 +659,9 @@ class SequencePooler(object):
 
     def _bert_of_theseus_pooler(self, x):
         return self._bert_pooler(x) # Same as BERT (see above)
+
+    def _electra_pooler(self, x):
+        return x[0][:,0] # [CLS] vector
 
 
 class DataParallel(nn.DataParallel):
