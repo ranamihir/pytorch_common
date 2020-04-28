@@ -115,7 +115,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         if best_checkpoint_file != '':
             checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
             best_model = checkpoint['model']
-            optimizer, scheduler = checkpoint['optimizer'], checkpoint.get('scheduler')
+            optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
             checkpoint = None # Free up memory
             save_model(best_model, optimizer, config, train_logger, val_logger, \
                        best_epoch, config_info_dict, scheduler, checkpoint_type='model')
@@ -377,8 +377,8 @@ def generate_checkpoint_dict(optimizer, config, train_logger, \
         'train_logger': train_logger,
         'val_logger': val_logger,
         'config': config, # Good practice to store config too
-        'optimizer': optimizer.state_dict(),
-        'epoch': epoch
+        'epoch': epoch,
+        'optimizer': optimizer.state_dict()
     }
 
     # Save scheduler if provided
@@ -480,17 +480,10 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
         'train_logger': train_logger,
         'val_logger': val_logger,
         'config': config,
-        'epoch': epoch_trained
+        'epoch': epoch_trained,
+        'optimizer': optimizer,
+        'scheduler': scheduler
     }
-
-    # Return optimizer if provided
-    if optimizer is not None:
-        return_dict['optimizer'] = optimizer
-
-    # Return scheduler if provided
-    if scheduler is not None:
-        return_dict['scheduler'] = scheduler
-
     return return_dict
 
 def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=None):
