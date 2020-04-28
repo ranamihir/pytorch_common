@@ -115,7 +115,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         if best_checkpoint_file != '':
             checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
             best_model = checkpoint['model']
-            optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
+            optimizer, scheduler = checkpoint['optimizer'], checkpoint.get('scheduler')
             checkpoint = None # Free up memory
             save_model(best_model, optimizer, config, train_logger, val_logger, \
                        best_epoch, config_info_dict, scheduler, checkpoint_type='model')
