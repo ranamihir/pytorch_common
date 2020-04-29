@@ -641,11 +641,11 @@ class SequencePooler(nn.Module):
 
         # Set the appropriate pooler as per `model_name`
         self.POOLER_MAPPING = {
-            'electra': self._electra_pooler,
-            'roberta': self._roberta_pooler,
-            'albert': self._albert_pooler,
-            'distilbert': self._distilbert_pooler,
             'bert': self._bert_pooler,
+            'distilbert': self._distilbert_pooler,
+            'albert': self._albert_pooler,
+            'roberta': self._roberta_pooler,
+            'electra': self._electra_pooler,
             'default': self._default_pooler
         }
         self.pooler = self.POOLER_MAPPING[model_name]
@@ -671,14 +671,11 @@ class SequencePooler(nn.Module):
     def _albert_pooler(self, x):
         return self._bert_pooler(x) # Same as BERT (see above)
 
-    def _bert_of_theseus_pooler(self, x):
-        return self._bert_pooler(x) # Same as BERT (see above)
+    def _roberta_pooler(self, x):
+        return x[0][:,0] # <s> vector (equiv. to [CLS])
 
     def _electra_pooler(self, x):
         return x[0][:,0] # [CLS] vector
-
-    def _roberta_pooler(self, x):
-        return x[0][:,0] # <s> vector (equiv. to [CLS])
 
 
 class DataParallel(nn.DataParallel):
