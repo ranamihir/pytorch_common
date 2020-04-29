@@ -13,8 +13,6 @@ import hashlib
 import torch
 import torch.nn as nn
 
-from .models import is_transformer_model
-
 from tqdm import tqdm
 from dask.callbacks import Callback
 
@@ -620,11 +618,11 @@ class SequencePooler(nn.Module):
         self.model_type = model_type
         self._set_pooler()
 
-    def forward(self, x):
-        return self.pooler(x)
-
     def __repr__(self):
         return f'{self.__class__.__name__}(model_type={self.model_type})'
+
+    def forward(self, x):
+        return self.pooler(x)
 
     def _set_pooler(self):
         '''
