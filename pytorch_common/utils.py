@@ -604,15 +604,17 @@ class SequencePooler(nn.Module):
     Class used instead of lambda functions to remain
     compatible with `torch.save()` and `torch.load()`.
     '''
+    DEFAULT_POOLER_TYPE = 'default'
+
     def __init__(self, model_type='bert'):
         '''
         :param model_type: Type of `transformers` model.
                            Can be manually specified or extracted
                            from the model class like this:
                                >>> from transformers import AutoModel
-                               >>> model = AutoModel.from_pretrained('bert-base-uncased')
+                               >>> model = AutoModel.from_pretrained('roberta-base')
                                >>> model.config.model_type
-                               'bert'
+                               'roberta'
         '''
         super().__init__()
         self.model_type = model_type
@@ -631,24 +633,25 @@ class SequencePooler(nn.Module):
         # Import here because it's an optional dependency
         from transformers.configuration_auto import CONFIG_MAPPING
 
-        # Get a mapping from all `transformers` model types
-        # (e.g. 'bert') to their exact model names 'bert-base-uncased'
-        INVERSE_CONFIG_MAPPING = {config_class.model_type: model_name for \
-                                  model_name, config_class in CONFIG_MAPPING.items()}
+        # Get a list of all supported model types ('bert', 'distilbert', etc.)
+        self.supported_model_types = CONFIG_MAPPING.keys()
 
-        # Get the provided model name (defaulting to `default`)
-        model_name = INVERSE_CONFIG_MAPPING.get(self.model_type, 'default')
+        # Use default pooler if not supported
+        if self.model_type not in self.supported_model_types:
+            logging.warning(f'No supported sequence pooler was found for model of '\
+                            f'type "{self.model_type}". Using the default one.')
+            self.model_type = self.DEFAULT_POOLER_TYPE
 
-        # Set the appropriate pooler as per `model_name`
+        # Set the appropriate pooler as per `model_type`
         self.POOLER_MAPPING = {
             'bert': self._bert_pooler,
             'distilbert': self._distilbert_pooler,
             'albert': self._albert_pooler,
             'roberta': self._roberta_pooler,
             'electra': self._electra_pooler,
-            'default': self._default_pooler
+            self.DEFAULT_POOLER_TYPE: self._default_pooler
         }
-        self.pooler = self.POOLER_MAPPING[model_name]
+        self.pooler = self.POOLER_MAPPING[self.model_type]
 
     def _default_pooler(self, x):
         return x

@@ -3,10 +3,6 @@ import os
 from .models_dl import SingleLayerClassifier, MultiLayerClassifier
 
 
-# Supported Transformer architectures
-TRANSFORMER_MODELS = ['bert', 'distilbert', 'albert', 'roberta', 'electra', 'BERT-of-Theseus-MNLI']
-
-
 def create_model(model_name, config):
     if model_name == 'single_layer_classifier':
         model = SingleLayerClassifier(config)
@@ -46,6 +42,13 @@ def create_transformer_model(model_name, config):
 
 def is_transformer_model(model_name):
     '''
-    (Soft) Check if given `model_name` is a transformer model.
+    Check if given `model_name` is a transformer
+    model by attempting to load the model config.
     '''
-    return any([m in model_name for m in TRANSFORMER_MODELS])
+    # Import here because it's an optional dependency
+    from transformers import AutoConfig
+    try:
+        config = AutoConfig.from_pretrained(model_name)
+        return True
+    except OSError:
+        return False
