@@ -4,7 +4,7 @@ from .models_dl import SingleLayerClassifier, MultiLayerClassifier
 
 
 # Supported Transformer architectures
-TRANSFORMER_MODELS = ['BERT-of-Theseus-MNLI', 'albert', 'distilbert', 'bert', 'electra', 'roberta']
+TRANSFORMER_MODELS = ['bert', 'distilbert', 'albert', 'roberta', 'electra', 'BERT-of-Theseus-MNLI']
 
 
 def create_model(model_name, config):

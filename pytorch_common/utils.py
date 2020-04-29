@@ -630,9 +630,11 @@ class SequencePooler(nn.Module):
         '''
         Set the appropriate pooler as per the `model_type`
         '''
+        # Import here because it's an optional dependency
+        from transformers.configuration_auto import CONFIG_MAPPING
+
         # Get a mapping from all `transformers` model types
         # (e.g. 'bert') to their exact model names 'bert-base-uncased'
-        from transformers.configuration_auto import CONFIG_MAPPING
         INVERSE_CONFIG_MAPPING = {config_class.model_type: model_name for \
                                   model_name, config_class in CONFIG_MAPPING.items()}
 
