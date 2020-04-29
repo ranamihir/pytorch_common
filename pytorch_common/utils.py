@@ -598,18 +598,18 @@ class ModelTracker(object):
         return epoch+1
 
 
-class SequencePooler(object):
+class SequencePooler(nn.Module):
     '''
-    Pool the sequence output for BERT-based models.
-    Class used instead of lambda functions
-    to remain compatible with `torch.save()`
-    and `torch.load()`.
+    Pool the sequence output for transformer-based models.
+    Class used instead of lambda functions to remain
+    compatible with `torch.save()` and `torch.load()`.
     '''
     def __init__(self, model_name='distilbert-base-uncased'):
+        super().__init__()
         self.model_name = model_name
         self._set_pooler()
 
-    def __call__(self, x):
+    def forward(self, x):
         return self.pooler(x)
 
     def _set_pooler(self):
@@ -646,7 +646,7 @@ class SequencePooler(object):
         **NOTE**: The sentence/sequence vector obtained
         from BERT does NOT correspond to the [CLS] vector.
         It takes as input this vector and then runs a small
-        NN on top of it to give the "pooled" sequence output.
+        network on top of it to give the "pooled" sequence output.
         See https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L368-L380
         and https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L631
         and https://www.kaggle.com/questions-and-answers/86510
