@@ -1,18 +1,45 @@
-from vrdscommon.dsp_pipeline import DspPipeline
 import logging
-from .models_dl import BasePyTorchModel, SingleLayerClassifier, MultiLayerClassifier
+import os
+from .models_dl import SingleLayerClassifier, MultiLayerClassifier
+
+
+# Supported Transformer architectures
+TRANSFORMER_MODELS = ['BERT-of-Theseus-MNLI', 'albert', 'distilbert', 'bert', 'electra', 'roberta']
 
 
 def create_model(model_name, config):
-    if model_name == 'base_pytorch_model':
-        model = BasePyTorchModel(config.model_type)
-    elif model_name == 'single_layer_classifier':
+    if model_name == 'single_layer_classifier':
         model = SingleLayerClassifier(config)
     elif model_name == 'multi_layer_classifier':
         model = MultiLayerClassifier(config)
+    elif any([m in model_name for m in TRANSFORMER_MODELS]):
+        model = create_transformer_model(model_name, config)
     else:
         raise RuntimeError(f'Unknown model name {model_name}.')
     return model
 
-def create_estimator(estimator_name, config):
-    return create_model(estimator_name, config)
+def create_transformer_model(model_name, config):
+    '''
+    Create a transformer model (e.g. BERT) either using the
+    default pretrained model or using the provided config.
+    '''
+    # Import here because it's an optional dependency
+    from transformers import AutoConfig, AutoModel
+
+    # Make sure model is supported
+    assert any([m in model_name for m in TRANSFORMER_MODELS])
+
+    model_class, config_class = AutoModel, AutoConfig
+
+    if hasattr(config, 'output_dir'): # Load trained model from config
+        kwargs = {
+            'pretrained_model_name_or_path': os.path.join(config.output_dir, config.model_name_or_path),
+            'from_tf': False,
+            'config': config_class.from_pretrained(os.path.join(config.output_dir, config.model_config_path))
+        }
+        model = model_class.from_pretrained(**kwargs)
+
+    else: # Load default pre-trained model
+        model = model_class.from_pretrained(model_name)
+
+    return model
