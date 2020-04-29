@@ -12,7 +12,7 @@ def create_model(model_name, config):
         model = SingleLayerClassifier(config)
     elif model_name == 'multi_layer_classifier':
         model = MultiLayerClassifier(config)
-    elif any([m in model_name for m in TRANSFORMER_MODELS]):
+    elif is_transformer_model(model_name):
         model = create_transformer_model(model_name, config)
     else:
         raise RuntimeError(f'Unknown model name {model_name}.')
@@ -27,7 +27,7 @@ def create_transformer_model(model_name, config):
     from transformers import AutoConfig, AutoModel
 
     # Make sure model is supported
-    assert any([m in model_name for m in TRANSFORMER_MODELS])
+    assert is_transformer_model(model_name)
 
     model_class, config_class = AutoModel, AutoConfig
 
@@ -43,3 +43,9 @@ def create_transformer_model(model_name, config):
         model = model_class.from_pretrained(model_name)
 
     return model
+
+def is_transformer_model(model_name):
+    '''
+    (Soft) Check if given `model_name` is a transformer model.
+    '''
+    return any([m in model_name for m in TRANSFORMER_MODELS])
