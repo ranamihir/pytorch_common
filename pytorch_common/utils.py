@@ -606,40 +606,49 @@ class SequencePooler(nn.Module):
     Class used instead of lambda functions to remain
     compatible with `torch.save()` and `torch.load()`.
     '''
-    def __init__(self, model_name='distilbert-base-uncased'):
+    def __init__(self, model_type='bert'):
+        '''
+        :param model_type: Type of `transformers` model.
+                           Can be manually specified or extracted
+                           from the model class like this:
+                               >>> from transformers import AutoModel
+                               >>> model = AutoModel.from_pretrained('bert-base-uncased')
+                               >>> model.config.model_type
+                               'bert'
+        '''
         super().__init__()
-        self.model_name = model_name
-        assert is_transformer_model(model_name)
+        self.model_type = model_type
         self._set_pooler()
 
     def forward(self, x):
         return self.pooler(x)
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(model_type={self.model_type})'
+
     def _set_pooler(self):
         '''
-        **NOTE**: The order of `if`s is important here.
-        E.g. if the check for 'bert' is before the
-        check for 'distilbert', it will return
-        the wrong pooler.
-        Relatedly, when adding support for a new
-        model, make sure to set its check as an `elif`,
-        or change the succeeding `if` statement to
-        `elif` as may be appropriate.
+        Set the appropriate pooler as per the `model_type`
         '''
-        if 'electra' in self.model_name:
-            self.pooler = self._electra_pooler
-        elif 'roberta' in self.model_name:
-            self.pooler = self._roberta_pooler
-        elif 'albert' in self.model_name:
-            self.pooler = self._albert_pooler
-        elif 'distilbert' in self.model_name:
-            self.pooler = self._distilbert_pooler
-        elif 'BERT-of-Theseus-MNLI' in self.model_name:
-            self.pooler = self._bert_of_theseus_pooler
-        elif 'bert' in self.model_name:
-            self.pooler = self._bert_pooler
-        else:
-            self.pooler = self._default_pooler
+        # Get a mapping from all `transformers` model types
+        # (e.g. 'bert') to their exact model names 'bert-base-uncased'
+        from transformers.configuration_auto import CONFIG_MAPPING
+        INVERSE_CONFIG_MAPPING = {config_class.model_type: model_name for \
+                                  model_name, config_class in CONFIG_MAPPING.items()}
+
+        # Get the provided model name (defaulting to `default`)
+        model_name = INVERSE_CONFIG_MAPPING.get(self.model_type, 'default')
+
+        # Set the appropriate pooler as per `model_name`
+        self.POOLER_MAPPING = {
+            'electra': self._electra_pooler,
+            'roberta': self._roberta_pooler,
+            'albert': self._albert_pooler,
+            'distilbert': self._distilbert_pooler,
+            'bert': self._bert_pooler,
+            'default': self._default_pooler
+        }
+        self.pooler = self.POOLER_MAPPING[model_name]
 
     def _default_pooler(self, x):
         return x
