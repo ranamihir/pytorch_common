@@ -26,10 +26,10 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         into the model and training is to be resumed from that point.
 
     Training may be paused at any time with a keyboard interrupt.
-    NOTE: However, please avoid interrupting after an epoch is finished and
-          before the next one begins, e.g. during saving a checkpoint, as it
-          may cause issues while loading the model. Instead pause it
-          during training/evaluation within an epoch.
+    NOTE: However, please avoid interrupting after an epoch is finished
+          and before the next one begins, e.g. during saving a
+          checkpoint, as it may cause issues while loading the model.
+          Instead pause it during training/evaluation within an epoch.
     '''
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file, best_model = '', None
@@ -294,15 +294,16 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None):
 def take_scheduler_step(scheduler, val_metric=None):
     '''
     Take a scheduler step.
-    Some schedulers, e.g. `ReduceLROnPlateau` require
+    Some schedulers, e.g. `ReduceLROnPlateau`, require
     the validation metric to take a step, while (most)
     others don't.
     '''
-    scheduler_name = scheduler.__class__.__name__
     REQUIRE_VAL_METRIC = ['ReduceLROnPlateau']
+
+    scheduler_name = scheduler.__class__.__name__
     if scheduler_name in REQUIRE_VAL_METRIC:
         assert val_metric is not None, \
-            f'Param "val_metric" must be provided for {scheduler_name} scheduler.'
+            f'Param "val_metric" must be provided for "{scheduler_name}" scheduler.'
         scheduler.step(val_metric)
     else:
         scheduler.step()
@@ -568,6 +569,8 @@ class EarlyStopping(object):
     Implements early stopping in PyTorch.
     Reference: https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d
                with a few improvements.
+    Common metrics (mse, accuracy, etc.) are ineherently supported, so specifying
+    their params is optional.
     '''
     SUPPORTED_CRITERIA = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
     SUPPORTED_MODES = {'minimize': 0., 'maximize': 1.}
@@ -592,6 +595,7 @@ class EarlyStopping(object):
         :param patience: No. of epochs (or steps) over which to monitor early stopping
         :param best_val: Best possible value of metric (if any)
         :param best_val_tol: Tolerance when comparing metric to best_val
+                             This must be provided if `best_val` is provided
         '''
         self.criterion = criterion
         self._init_params(mode=mode, min_delta=min_delta, patience=patience, \
@@ -605,12 +609,23 @@ class EarlyStopping(object):
             self.stop = lambda metric: False
 
     def _init_params(self, **kwargs):
+        '''
+        Initialize all params.
+        If it's a supported criterion, specifying parameters is optional.
+        If not, all of them must be provided (with the exception of
+        `best_val` and `best_val_tol`).
+        '''
+        # Supported criterion
         if self.criterion in self.SUPPORTED_CRITERIA:
             mode = self.CRITERIA_MODE_DICT[self.criterion]
             best_val = self.SUPPORTED_MODES[mode]
             params = {**self.DEFAULT_PARAMS, 'mode': mode, 'best_val': best_val}
+
+            # Keep specified params and fall back to default for others
             kwargs = {k: v if v is not None else params[k] for k, v in kwargs.items()}
+
         else:
+            # Non-default params must be provided for unsupported criteria
             for k, v in kwargs.items():
                 if k not in self.DEFAULT_PARAMS.keys():
                     assert v is not None, f'The only criteria currently supported by '\
@@ -625,8 +640,9 @@ class EarlyStopping(object):
         '''
         Check validity of mode of optimization
         '''
-        if self.mode not in self.SUPPORTED_MODES.keys():
-            raise ValueError(f'Mode "{self.mode}" is unknown.')
+        supported_modes = self.SUPPORTED_MODES.keys()
+        if self.mode not in supported_modes:
+            raise ValueError(f'Param "mode" ("{self.mode}") must be one of {supported_modes}.')
         if self.best_val is not None and self.best_val_tol is None:
             raise ValueError('Param "best_val_tol" must be provided if "best_val" is provided.')
 
