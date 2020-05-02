@@ -97,10 +97,10 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
                 logging.info(f'Stopping early after {stop_epoch} epochs.')
                 break
 
-            stop_epoch = epoch
-        except KeyboardInterrupt:
+            stop_epoch = epoch # Update last epoch trained
+        except KeyboardInterrupt: # Option to quit training with keyboard interrupt
             logging.warning('Keyboard Interrupted!')
-            stop_epoch = epoch - 1
+            stop_epoch = epoch - 1 # Current epoch training incomplete
             break
 
     # Save the model checkpoints
