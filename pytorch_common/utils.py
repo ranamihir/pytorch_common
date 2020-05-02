@@ -689,7 +689,7 @@ class DataParallel(nn.DataParallel):
     of nn.DataParallel.
     '''
     def __init__(self, model, **kwargs):
-        super(DataParallel, self).__init__(model, **kwargs)
+        super().__init__(model, **kwargs)
 
     def __getattr__(self, name):
         '''
@@ -732,7 +732,7 @@ class GELU(nn.Module):
     https://github.com/huggingface/transformers/blob/6d73c92cae3479e09ab31845c31e7715d9e59e6c/transformers/modeling_bert.py#L121-L127
     '''
     def __init__(self):
-        super(GELU, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return 0.5 * x * (1.0 + torch.erf(x / np.sqrt(2.0)))

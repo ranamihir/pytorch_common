@@ -205,7 +205,7 @@ class FocalLoss(nn.Module):
     '''
     # TODO: Extend this to multiclass
     def __init__(self, alpha=0.25, gamma=2):
-        super(FocalLoss, self).__init__()
+        super().__init__()
         self.alpha = alpha
         self.gamma = gamma
 
