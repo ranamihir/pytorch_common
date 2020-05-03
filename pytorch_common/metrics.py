@@ -9,7 +9,8 @@ import torch
 import torch.nn as nn
 
 from .utils import convert_tensor_to_numpy
-from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
+from sklearn.metrics import accuracy_score, precision_score, \
+                            f1_score, recall_score, roc_curve, auc
 
 
 LOSS_CRITERIA = ['mse', 'cross-entropy', 'focal-loss']
@@ -23,13 +24,15 @@ def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
                            for both train and test, otherwise the
                            specified one for test.
     '''
-    train_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction} # Add/update loss reduction
+    # Add/update train loss reduction and get criterion
+    train_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction}
     loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, \
                                               **train_loss_kwargs)
 
+    # Add/update test loss reduction and get criterion
     if reduction_test is None:
         reduction_test = reduction
-    test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_test} # Add/update loss reduction
+    test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_test}
     loss_criterion_test = get_loss_criterion(config, criterion=config.loss_criterion, \
                                              **test_loss_kwargs)
 
@@ -48,7 +51,8 @@ def get_eval_criteria(config, criteria, **kwargs):
     '''
     Get a dictionary of eval criterion functions
     '''
-    is_multilabel = config.model_type == 'classification' and config.classification_type == 'multilabel'
+    is_multilabel = config.model_type == 'classification' and \
+                    config.classification_type == 'multilabel'
     if is_multilabel:
         if not hasattr(kwargs, 'multilabel_reduction'):
             raise ValueError('Param "multilabel_reduction" must be provided.')

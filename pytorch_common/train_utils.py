@@ -15,9 +15,10 @@ from .utils import get_model_outputs_only, send_batch_to_device, \
 
 
 @timing
-def train_model(model, config, train_loader, val_loader, optimizer, loss_criterion_train, \
-                loss_criterion_test, eval_criteria, train_logger, val_logger, epochs, \
-                scheduler=None, early_stopping=None, config_info_dict=None, start_epoch=0):
+def train_model(model, config, train_loader, val_loader, optimizer, \
+                loss_criterion_train, loss_criterion_test, eval_criteria, \
+                train_logger, val_logger, epochs, scheduler=None, \
+                early_stopping=None, config_info_dict=None, start_epoch=0):
     '''
     Perform the entire model training routine.
       - Param `epochs` is deliberately not derived directly from config
@@ -72,10 +73,13 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
             if config.use_scheduler_after_epoch:
                 take_scheduler_step(scheduler, np.mean(val_losses))
 
+            # Get early stopping metric
+            early_stopping_metric = val_logger.get_early_stopping_metric()
+
             # Set best epoch
             # Check if current epoch better than previous best based
             # on early stopping (if used) or all epoch history
-            if (config.use_early_stopping and early_stopping.is_better(val_logger.get_early_stopping_metric()))\
+            if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric))\
                 or (not config.use_early_stopping and epoch == get_overall_best_epoch(val_logger)):
                 logging.info('Computing best epoch and adding to validation logger...')
                 val_logger.set_best_epoch(epoch)
@@ -83,7 +87,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
 
                 # Replace model checkpoint if required
                 if not config.disable_checkpointing:
-                    logging.info('Saving current best model checkpoint and removing previous one...')
+                    logging.info('Replacing current best model checkpoint...')
                     best_checkpoint_file = save_model(model, optimizer, config, \
                                                       train_logger, val_logger, epoch, \
                                                       config_info_dict, scheduler)
@@ -92,7 +96,7 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
                     logging.info('Done.')
 
             # Quit training if stopping criterion met
-            if config.use_early_stopping and early_stopping.stop(val_logger.get_early_stopping_metric()):
+            if config.use_early_stopping and early_stopping.stop(early_stopping_metric):
                 stop_epoch = epoch
                 logging.info(f'Stopping early after {stop_epoch} epochs.')
                 break
@@ -113,7 +117,8 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
         save_model(model.copy(), optimizer, config, train_logger, val_logger, \
                    stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
         if best_checkpoint_file != '':
-            checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
+            checkpoint = load_model(model.copy(), config, best_checkpoint_file, \
+                                    optimizer, scheduler)
             best_model = checkpoint['model']
             optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
             checkpoint = None # Free up memory
@@ -134,26 +139,32 @@ def train_model(model, config, train_loader, val_loader, optimizer, loss_criteri
     }
     return return_dict
 
-def train_epoch(model, dataloader, loss_criterion, device, epoch, optimizer, scheduler=None):
+def train_epoch(model, dataloader, loss_criterion, \
+                device, epoch, optimizer, scheduler=None):
     '''
     Perform one training epoch.
     See `perform_one_epoch()` for more details.
     '''
-    return perform_one_epoch(True, model, dataloader, loss_criterion, device, \
-                             epoch=epoch, optimizer=optimizer, scheduler=scheduler)
+    return perform_one_epoch(True, model, dataloader, \
+                             loss_criterion, device, epoch=epoch, \
+                             optimizer=optimizer, scheduler=scheduler)
 
 @torch.no_grad()
-def test_epoch(model, dataloader, loss_criterion, device, eval_criteria, return_outputs=False):
+def test_epoch(model, dataloader, loss_criterion, \
+               device, eval_criteria, return_outputs=False):
     '''
     Perform one evaluation epoch.
     See `perform_one_epoch()` for more details.
     '''
-    return perform_one_epoch(False, model, dataloader, loss_criterion, device, \
-                             eval_criteria=eval_criteria, return_outputs=return_outputs)
+    return perform_one_epoch(False, model, dataloader, \
+                             loss_criterion, device, \
+                             eval_criteria=eval_criteria, \
+                             return_outputs=return_outputs)
 
 @timing
-def perform_one_epoch(do_training, model, dataloader, loss_criterion, device, epoch=None, \
-                      optimizer=None, scheduler=None, eval_criteria=None, return_outputs=False):
+def perform_one_epoch(do_training, model, dataloader, loss_criterion, \
+                      device, epoch=None, optimizer=None, scheduler=None, \
+                      eval_criteria=None, return_outputs=False):
     '''
     Common loop for one training or evaluation epoch on the entire dataset.
     Return the loss per example for each iteration, and all eval criteria
@@ -213,7 +224,8 @@ def perform_one_epoch(do_training, model, dataloader, loss_criterion, device, ep
             if do_training:
                 # Backprop + clip gradients + take scheduler step
                 loss.backward()
-                nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, model.parameters()), 1.)
+                nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, \
+                                                model.parameters()), 1.)
                 optimizer.step()
                 if scheduler is not None:
                     take_scheduler_step(scheduler, loss_value)
@@ -542,15 +554,18 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
     obtained from `checkpoint_file`, if provided.
     '''
     allowed_checkpoint_types = ['state', 'model']
-    assert checkpoint_type in allowed_checkpoint_types, f'Param "checkpoint_type" ("{checkpoint_type}")'\
-                                                        f' must be one of {allowed_checkpoint_types}.'
+    assert checkpoint_type in allowed_checkpoint_types, \
+        f'Param "checkpoint_type" ("{checkpoint_type}") '\
+        f'must be one of {allowed_checkpoint_types}.'
 
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
         file_checkpoint_type = checkpoint_file.split('-', 3)[1]
         assert file_checkpoint_type == checkpoint_type, \
-            f'The type of checkpoint provided in param "checkpoint_type" ("{checkpoint_type}") does '\
-            f'not match that obtained from the model at "{checkpoint_file}" ("{file_checkpoint_type}").'
+            f'The type of checkpoint provided in param '\
+            f'"checkpoint_type" ("{checkpoint_type}") does '\
+            f'not match that obtained from the model at '\
+            f'"{checkpoint_file}" ("{file_checkpoint_type}").'
 
 def get_overall_best_epoch(val_logger):
     '''

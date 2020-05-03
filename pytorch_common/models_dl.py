@@ -1,4 +1,3 @@
-import numpy as np
 import logging
 from copy import deepcopy
 
@@ -104,12 +103,15 @@ class BasePyTorchModel(nn.Module):
 
         if threshold is not None:
             device = probs.device
-            pos_tensor, neg_tensor = torch.as_tensor(1, device=device), torch.as_tensor(0, device=device)
-            labels_for_class_i = lambda i: torch.where(probs[...,i] >= threshold, pos_tensor, neg_tensor)
+            pos_tensor = torch.as_tensor(1, device=device)
+            neg_tensor = torch.as_tensor(0, device=device)
+            labels_for_class_i = lambda i: torch.where(probs[...,i] >= threshold, \
+                                                       pos_tensor, neg_tensor)
             if num_classes == 2: # Only get labels for class 1 if binary classification
                 preds = labels_for_class_i(1)
             else: # Get labels for each class if multiclass classification
-                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)], dim=1).max(dim=-1)[1]
+                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)], \
+                                    dim=1).max(dim=-1)[1]
         else:
             # Get class with max probability (same as threshold=0.5)
             preds = probs.max(dim=-1)[1]

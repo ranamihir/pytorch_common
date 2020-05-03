@@ -662,9 +662,12 @@ class SequencePooler(nn.Module):
         from BERT does NOT correspond to the [CLS] vector.
         It takes as input this vector and then runs a small
         network on top of it to give the "pooled" sequence output.
-        See https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L368-L380
-        and https://github.com/huggingface/transformers/blob/31c23bd5ee26425a67f92fc170789656379252a6/transformers/modeling_bert.py#L631
-        and https://www.kaggle.com/questions-and-answers/86510
+        See:
+        1. https://github.com/huggingface/transformers/blob/1cdd2ad2afb73f6af185aafecb7dd7941a90c4d1
+           /src/transformers/modeling_bert.py#L426-L438
+        2. https://github.com/huggingface/transformers/blob/1cdd2ad2afb73f6af185aafecb7dd7941a90c4d1
+           /src/transformers/modeling_bert.py#L738-L739
+        3. https://www.kaggle.com/questions-and-answers/86510
         '''
         return x[1] # Pooled seq vector
 
@@ -712,7 +715,8 @@ class DaskProgressBar(Callback):
     Code reference: https://github.com/tqdm/tqdm/issues/278#issue-180452055
     '''
     def _start_state(self, dsk, state):
-        self._tqdm = tqdm(total=sum(len(state[k]) for k in ['ready', 'waiting', 'running', 'finished']))
+        self._tqdm = tqdm(total=sum(len(state[k]) for k in \
+                                    ['ready', 'waiting', 'running', 'finished']))
 
     def _posttask(self, key, result, dsk, state, worker_id):
         self._tqdm.update(1)
@@ -723,16 +727,16 @@ class DaskProgressBar(Callback):
 
 class GELU(nn.Module):
     '''
-    Original Implementation of the gelu activation function in Google Bert repo when initially created.
-    For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
-    0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+    Implementation of the gelu activation function
+    currently in Google BERT repo (identical to OpenAI GPT).
     Also see https://arxiv.org/abs/1606.08415
 
     Code referece:
-    https://github.com/huggingface/transformers/blob/6d73c92cae3479e09ab31845c31e7715d9e59e6c/transformers/modeling_bert.py#L121-L127
+    https://github.com/huggingface/transformers/blob/1cdd2ad2afb73f6af185aafecb7dd7941a90c4d1
+    /src/transformers/activations.py#L25-L29
     '''
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
-        return 0.5 * x * (1.0 + torch.erf(x / np.sqrt(2.0)))
+        return 0.5 * x * (1 + torch.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * torch.pow(x, 3.0))))

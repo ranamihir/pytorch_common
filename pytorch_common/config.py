@@ -48,7 +48,12 @@ def load_pytorch_common_config(dictionary):
 
         # Throw warning if both scheduler configs enabled (not common)
         if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
-            logging.warning('Scheduler is configured to take a step both after every step and epoch.')
+            logging.warning('Scheduler is configured to take a '\
+                            'step both after every step and every epoch.')
+
+        # Throw warning if checkpointing is disabled
+        if merged_config.disable_checkpointing:
+            logging.warning('Checkpointing is disabled. No models will be saved during training.')
     return merged_config
 
 def load_config(config_file='config.yaml'):
@@ -135,7 +140,8 @@ def set_loss_and_eval_criteria(config):
     '''
     # Set loss and eval criteria kwargs
     config.loss_kwargs = config.loss_kwargs if config.get('loss_kwargs') else {}
-    config.eval_criteria_kwargs = config.eval_criteria_kwargs if config.get('eval_criteria_kwargs') else {}
+    config.eval_criteria_kwargs = config.eval_criteria_kwargs \
+                                  if config.get('eval_criteria_kwargs') else {}
 
     # Check for evaluation criteria
     assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
@@ -171,7 +177,8 @@ def check_and_set_devices(config):
         if config.device_ids == -1:
             config.device_ids = list(range(torch.cuda.device_count()))
 
-        config.n_gpu = len(config.device_ids) if len(config.device_ids) else 1 # Set number of GPUs to be used
+        # Set number of GPUs to be used
+        config.n_gpu = len(config.device_ids) if len(config.device_ids) else 1
         assert config.n_gpu <= torch.cuda.device_count()
     else:
         assert config.device == 'cpu'
