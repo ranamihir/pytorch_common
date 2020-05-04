@@ -314,7 +314,7 @@ def send_batch_to_device(batch, device):
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)((send_batch_to_device(e, device) for e in batch))
-    else: # Structure/type of batch unknown / not understood.
+    else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
@@ -339,7 +339,7 @@ def convert_tensor_to_numpy(batch):
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)((convert_tensor_to_numpy(e) for e in batch))
-    else: # Structure/type of batch unknown / not understood.
+    else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
@@ -357,13 +357,29 @@ def convert_numpy_to_tensor(batch, device=None):
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
-    else: # Structure/type of batch unknown / not understood.
+    else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
+def get_total_grad_norm(parameters, norm_type=2):
+    '''
+    Get the total norm over all gradients
+    '''
+    if torch.is_tensor(parameters):
+        parameters = [parameters]
+    parameters = list(filter(lambda p: p.grad is not None, parameters))
+    norm_type = float(norm_type)
+    if norm_type == torch._six.inf:
+        total_norm = max(p.grad.detach().abs().max() for p in parameters)
+    else:
+        total_norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), norm_type) \
+                                             for p in parameters]), norm_type)
+    return total_norm
+
 def get_model_performance_trackers(config):
     '''
-    Initialize loss and eval criteria loggers for train and val datasets
+    Initialize loss and eval criteria
+    loggers for train and val datasets.
     '''
     train_logger = ModelTracker(config, is_train=1)
     val_logger = ModelTracker(config, is_train=0)

@@ -224,8 +224,7 @@ def perform_one_epoch(do_training, model, dataloader, loss_criterion, \
             if do_training:
                 # Backprop + clip gradients + take scheduler step
                 loss.backward()
-                nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, \
-                                                model.parameters()), 1.)
+                nn.utils.clip_grad_norm_(model.parameters(), 1.)
                 optimizer.step()
                 if scheduler is not None:
                     take_scheduler_step(scheduler, loss_value)
