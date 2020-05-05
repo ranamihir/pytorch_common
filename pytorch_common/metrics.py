@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 
 from .utils import convert_tensor_to_numpy
-from sklearn.metrics import accuracy_score, precision_score, \
-                            f1_score, recall_score, roc_curve, auc
+from sklearn.metrics import accuracy_score, precision_score, f1_score
+                            recall_score, roc_curve, auc
 
 
 LOSS_CRITERIA = ['mse', 'cross-entropy', 'focal-loss']
@@ -26,17 +26,17 @@ def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
     '''
     # Add/update train loss reduction and get criterion
     train_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction}
-    loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, \
+    loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion,
                                               **train_loss_kwargs)
 
     # Add/update test loss reduction and get criterion
     if reduction_test is None:
         reduction_test = reduction
     test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_test}
-    loss_criterion_test = get_loss_criterion(config, criterion=config.loss_criterion, \
+    loss_criterion_test = get_loss_criterion(config, criterion=config.loss_criterion,
                                              **test_loss_kwargs)
 
-    eval_criteria = get_eval_criteria(config, config.eval_criteria, \
+    eval_criteria = get_eval_criteria(config, config.eval_criteria,
                                       **config.eval_criteria_kwargs)
     return loss_criterion_train, loss_criterion_test, eval_criteria
 
@@ -239,4 +239,4 @@ class FocalLoss(nn.Module):
         return focal_loss.mean()
 
     def __repr__(self):
-        return f'FocalLoss(alpha={self.alpha}, gamma={self.gamma})'
+        return f'{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma})'

@@ -513,7 +513,7 @@ class ModelTracker(object):
         dataset_type = 'TRAIN' if self.is_train else 'VAL  '
         result_str = '\n\033[1m{} Epoch: {}\tAverage loss: {:.4f}, '\
                      .format(dataset_type, epoch_loss, np.mean(self.loss_hist[epoch_loss]))
-        result_str += ', '.join(['{}: {:.4f}'.format(eval_criterion, \
+        result_str += ', '.join(['{}: {:.4f}'.format(eval_criterion,
                                  self.eval_metrics_hist[eval_criterion][epoch_loss]) \
                                  for eval_criterion in self.eval_criteria])
         result_str += '\033[0m\n'

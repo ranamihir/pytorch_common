@@ -29,11 +29,11 @@ def create_transformer_model(model_name, config):
 
     if hasattr(config, 'output_dir'): # Load trained model from config
         kwargs = {
-            'pretrained_model_name_or_path': os.path.join(config.output_dir, \
+            'pretrained_model_name_or_path': os.path.join(config.output_dir,
                                                           config.model_name_or_path),
             'from_tf': False,
-            'config': config_class.from_pretrained(os.path.join(config.output_dir, \
-                                                   config.model_config_path))
+            'config': config_class.from_pretrained(os.path.join(config.output_dir,
+                                                                config.model_config_path))
         }
         model = model_class.from_pretrained(**kwargs)
 

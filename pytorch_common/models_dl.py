@@ -38,8 +38,8 @@ class BasePyTorchModel(nn.Module):
         '''
         num_params = sum(p.numel() for p in self.parameters())
         num_trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        logging.info('Number of trainable/total parameters in {}: {}/{}'.format(self.__name__, \
-                      num_trainable_params, num_params))
+        logging.info('Number of trainable/total parameters in {}: {}/{}'\
+                     .format(self.__name__, num_trainable_params, num_params))
         return {'trainable': num_trainable_params, 'total': num_params}
 
     def print(self):
@@ -105,12 +105,12 @@ class BasePyTorchModel(nn.Module):
             device = probs.device
             pos_tensor = torch.as_tensor(1, device=device)
             neg_tensor = torch.as_tensor(0, device=device)
-            labels_for_class_i = lambda i: torch.where(probs[...,i] >= threshold, \
+            labels_for_class_i = lambda i: torch.where(probs[...,i] >= threshold,
                                                        pos_tensor, neg_tensor)
             if num_classes == 2: # Only get labels for class 1 if binary classification
                 preds = labels_for_class_i(1)
             else: # Get labels for each class if multiclass classification
-                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)], \
+                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)],
                                     dim=1).max(dim=-1)[1]
         else:
             # Get class with max probability (same as threshold=0.5)
@@ -209,8 +209,7 @@ class MultiLayerClassifier(BasePyTorchModel):
         self.num_classes = config.num_classes
         self.num_layers = config.num_layers
 
-        trunk = [nn.Sequential(nn.Linear(self.in_dim, self.h_dim), \
-                               nn.ReLU(inplace=True))]
+        trunk = [nn.Sequential(nn.Linear(self.in_dim, self.h_dim), nn.ReLU(inplace=True))]
         for _ in range(self.num_layers-1):
             layer = nn.Sequential(
                 nn.Linear(self.h_dim, self.h_dim),

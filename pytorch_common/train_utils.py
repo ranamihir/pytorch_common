@@ -9,16 +9,16 @@ from vrdscommon import timing
 import torch
 import torch.nn as nn
 
-from .utils import get_model_outputs_only, send_batch_to_device, \
-                   send_model_to_device, send_optimizer_to_device, \
+from .utils import get_model_outputs_only, send_batch_to_device,
+                   send_model_to_device, send_optimizer_to_device,
                    remove_object, get_checkpoint_name
 
 
 @timing
-def train_model(model, config, train_loader, val_loader, optimizer, \
-                loss_criterion_train, loss_criterion_test, eval_criteria, \
-                train_logger, val_logger, epochs, scheduler=None, \
-                early_stopping=None, config_info_dict=None, start_epoch=0, \
+def train_model(model, config, train_loader, val_loader, optimizer,
+                loss_criterion_train, loss_criterion_test, eval_criteria,
+                train_logger, val_logger, epochs, scheduler=None,
+                early_stopping=None, config_info_dict=None, start_epoch=0,
                 decouple_fn_train=None, decouple_fn_eval=None):
     '''
     Perform the entire model training routine.
@@ -100,8 +100,8 @@ def train_model(model, config, train_loader, val_loader, optimizer, \
                 # Replace model checkpoint if required
                 if not config.disable_checkpointing:
                     logging.info('Replacing current best model checkpoint...')
-                    best_checkpoint_file = save_model(model, optimizer, config, \
-                                                      train_logger, val_logger, epoch, \
+                    best_checkpoint_file = save_model(model, optimizer, config,
+                                                      train_logger, val_logger, epoch,
                                                       config_info_dict, scheduler)
                     remove_model(config, best_epoch, config_info_dict)
                     best_epoch = epoch
@@ -122,19 +122,19 @@ def train_model(model, config, train_loader, val_loader, optimizer, \
     # Save the model checkpoints
     if not config.disable_checkpointing:
         logging.info('Dumping model and results...')
-        save_model(model, optimizer, config, train_logger, \
+        save_model(model, optimizer, config, train_logger,
                    val_logger, stop_epoch, config_info_dict, scheduler)
 
         # Save current and best models
-        save_model(model.copy(), optimizer, config, train_logger, val_logger, \
+        save_model(model.copy(), optimizer, config, train_logger, val_logger,
                    stop_epoch, config_info_dict, scheduler, checkpoint_type='model')
         if best_checkpoint_file != '':
-            checkpoint = load_model(model.copy(), config, best_checkpoint_file, \
+            checkpoint = load_model(model.copy(), config, best_checkpoint_file,
                                     optimizer, scheduler)
             best_model = checkpoint['model']
             optimizer, scheduler = checkpoint['optimizer'], checkpoint['scheduler']
             checkpoint = None # Free up memory
-            save_model(best_model, optimizer, config, train_logger, val_logger, \
+            save_model(best_model, optimizer, config, train_logger, val_logger,
                        best_epoch, config_info_dict, scheduler, checkpoint_type='model')
         logging.info('Done.')
 
@@ -151,31 +151,31 @@ def train_model(model, config, train_loader, val_loader, optimizer, \
     }
     return return_dict
 
-def train_epoch(model, dataloader, loss_criterion, device, \
+def train_epoch(model, dataloader, loss_criterion, device,
                 epoch, optimizer, scheduler=None, decouple_fn=None):
     '''
     Perform one training epoch.
     See `perform_one_epoch()` for more details.
     '''
-    return perform_one_epoch(True, model, dataloader, loss_criterion, \
-                             device, epoch=epoch, optimizer=optimizer, \
+    return perform_one_epoch(True, model, dataloader, loss_criterion,
+                             device, epoch=epoch, optimizer=optimizer,
                              scheduler=scheduler, decouple_fn=decouple_fn)
 
 @torch.no_grad()
-def test_epoch(model, dataloader, loss_criterion, device, \
+def test_epoch(model, dataloader, loss_criterion, device,
                eval_criteria, return_outputs=False, decouple_fn=None):
     '''
     Perform one evaluation epoch.
     See `perform_one_epoch()` for more details.
     '''
-    return perform_one_epoch(False, model, dataloader, loss_criterion, \
-                             device, eval_criteria=eval_criteria, \
-                             return_outputs=return_outputs, \
+    return perform_one_epoch(False, model, dataloader, loss_criterion,
+                             device, eval_criteria=eval_criteria,
+                             return_outputs=return_outputs,
                              decouple_fn=decouple_fn)
 
 @timing
-def perform_one_epoch(do_training, model, dataloader, loss_criterion, \
-                      device, epoch=None, optimizer=None, scheduler=None, \
+def perform_one_epoch(do_training, model, dataloader, loss_criterion,
+                      device, epoch=None, optimizer=None, scheduler=None,
                       eval_criteria=None, return_outputs=False, decouple_fn=None):
     '''
     Common loop for one training or evaluation epoch on the entire dataset.
@@ -362,13 +362,13 @@ def take_scheduler_step(scheduler, val_metric=None):
 
     scheduler_name = scheduler.__class__.__name__
     if scheduler_name in REQUIRE_VAL_METRIC:
-        assert val_metric is not None, \
+        assert val_metric is not None,
             f'Param "val_metric" must be provided for "{scheduler_name}" scheduler.'
         scheduler.step(val_metric)
     else:
         scheduler.step()
 
-def save_model(model, optimizer, config, train_logger, val_logger, \
+def save_model(model, optimizer, config, train_logger, val_logger,
                epoch, misc_info=None, scheduler=None, checkpoint_type='state'):
     '''
     Save the checkpoint at a given epoch.
@@ -397,7 +397,7 @@ def save_model(model, optimizer, config, train_logger, val_logger, \
     logging.info(f'Saving {checkpoint_type} checkpoint "{checkpoint_path}"...')
 
     # Generate appropriate checkpoint dictionary
-    checkpoint = generate_checkpoint_dict(optimizer, config, train_logger, \
+    checkpoint = generate_checkpoint_dict(optimizer, config, train_logger,
                                           val_logger, epoch, scheduler)
 
     # Save model in appropriate way
@@ -422,7 +422,7 @@ def save_model(model, optimizer, config, train_logger, val_logger, \
     logging.info('Done.')
     return checkpoint_file
 
-def generate_checkpoint_dict(optimizer, config, train_logger, \
+def generate_checkpoint_dict(optimizer, config, train_logger,
                              val_logger, epoch, scheduler=None):
     '''
     Generate a dictionary for storing a checkpoint.
@@ -448,7 +448,7 @@ def generate_checkpoint_dict(optimizer, config, train_logger, \
 
     return checkpoint
 
-def load_model(model, config, checkpoint_file, optimizer=None, \
+def load_model(model, config, checkpoint_file, optimizer=None,
                scheduler=None, checkpoint_type='state'):
     '''
     Load the checkpoint at a given epoch.
@@ -507,15 +507,15 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
         config = checkpoint['config']
 
         # Load optimizer and scheduler state dicts
-        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, \
+        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device,
                                                             optimizer, scheduler)
 
         # Extract last trained epoch from checkpoint file
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split('-epoch_')[-1])
 
         # Verify consistency of last epoch trained
-        assert epoch_trained == checkpoint['epoch'], \
-            f"Mismatch between epoch specified in checkpoint path (\"{epoch_trained}\"), "\
+        assert epoch_trained == checkpoint['epoch'],
+            f"Mismatch between epoch specified in checkpoint path (\"{epoch_trained}\"), "
             f"epoch specified at saving time (\"{checkpoint['epoch']}\")."
 
         # Throw warning if model trained for more epochs
@@ -526,8 +526,8 @@ def load_model(model, config, checkpoint_file, optimizer=None, \
 
         # Throw warning if best epoch is different
         if val_logger.best_epoch != epoch_trained:
-            logging.warning(f"The specified epoch was {epoch_trained} but the best "\
-                            f"epoch based on validation set was {val_logger.best_epoch}."\
+            logging.warning(f"The specified epoch was {epoch_trained} but the best "
+                            f"epoch based on validation set was {val_logger.best_epoch}."
                             f" Ignore this warning if it was intentional.")
 
         logging.info('Done.')
@@ -602,17 +602,17 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
     obtained from `checkpoint_file`, if provided.
     '''
     allowed_checkpoint_types = ['state', 'model']
-    assert checkpoint_type in allowed_checkpoint_types, \
-        f'Param "checkpoint_type" ("{checkpoint_type}") '\
+    assert checkpoint_type in allowed_checkpoint_types,
+        f'Param "checkpoint_type" ("{checkpoint_type}") '
         f'must be one of {allowed_checkpoint_types}.'
 
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
         file_checkpoint_type = checkpoint_file.split('-', 3)[1]
-        assert file_checkpoint_type == checkpoint_type, \
-            f'The type of checkpoint provided in param '\
-            f'"checkpoint_type" ("{checkpoint_type}") does '\
-            f'not match that obtained from the model at '\
+        assert file_checkpoint_type == checkpoint_type,
+            f'The type of checkpoint provided in param '
+            f'"checkpoint_type" ("{checkpoint_type}") does '
+            f'not match that obtained from the model at '
             f'"{checkpoint_file}" ("{file_checkpoint_type}").'
 
 def get_overall_best_epoch(val_logger):
@@ -647,7 +647,7 @@ class EarlyStopping(object):
     }
     DEFAULT_PARAMS = {'min_delta': 0.2*1e-3, 'patience': 5, 'best_val_tol': 5e-3}
 
-    def __init__(self, criterion='f1', mode=None, min_delta=None, \
+    def __init__(self, criterion='f1', mode=None, min_delta=None,
                  patience=None, best_val=None, best_val_tol=None):
         '''
         :param criterion: name of early stopping criterion
@@ -661,7 +661,7 @@ class EarlyStopping(object):
                              This must be provided if `best_val` is provided
         '''
         self.criterion = criterion
-        self._init_params(mode=mode, min_delta=min_delta, patience=patience, \
+        self._init_params(mode=mode, min_delta=min_delta, patience=patience,
                           best_val=best_val, best_val_tol=best_val_tol)
         self._validate_params()
         self.best = None
