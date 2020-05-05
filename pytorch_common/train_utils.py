@@ -4,7 +4,7 @@ import os
 import logging
 import dill
 from itertools import islice
-from vrdscommon import timing
+from pytorch_common import timing
 
 import torch
 import torch.nn as nn

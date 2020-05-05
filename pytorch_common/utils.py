@@ -42,6 +42,29 @@ def make_dirs(parent_dir_path, child_dirs=None):
             dir_path = os.path.join(parent_dir_path, dir_name)
             create_dir_if_not_exists(dir_path)
 
+def human_time_interval(time_seconds):
+    '''
+    Converts a time interval in seconds to a human-friendly
+    representation in hours, minutes, seconds and milliseconds.
+    :param time_seconds: time in seconds (float)
+
+    >>> human_time_interval(13301.1)
+    '3h 41m 41s 100ms'
+    '''
+    hours, time_seconds = divmod(time_seconds, 3600)
+    minutes, time_seconds= divmod(time_seconds, 60)
+    seconds, milliseconds = divmod(time_seconds, 1)
+    hours, minutes, seconds = int(hours), int(minutes), int(seconds)
+    milliseconds, float_milliseconds = int(milliseconds*1000), milliseconds*1000
+
+    if hours > 0:
+        return f'{hours}h {minutes:02}m {seconds:02}s {milliseconds:03}ms'
+    if minutes > 0:
+        return f'{minutes}m {seconds:02}s {milliseconds:03}ms'
+    if seconds > 0:
+        return f'{seconds}s {milliseconds:03}ms'
+    return f'{float_milliseconds:.2f}ms'
+
 def set_seed(config):
     '''
     Fix all random seeds

@@ -14,7 +14,7 @@ class BasePyTorchModel(nn.Module):
         super().__init__()
 
         self.model_type = model_type
-        self.__name__ = self.__class__.__name__ # Set class name
+        self.__name__ = self.__class__.__name__ # Set model name
 
     def initialize_model(self, init_weights=False, models_to_init=None):
         '''

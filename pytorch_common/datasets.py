@@ -27,6 +27,7 @@ class BasePyTorchDataset(Dataset):
           - Enable tqdm
         '''
         super().__init__()
+        self.__name__ = self.__class__.__name__ # Set dataset name
         self.target_col = 'target'
         tqdm.pandas() # Enable tqdm
 
