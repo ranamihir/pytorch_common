@@ -386,18 +386,11 @@ def convert_numpy_to_tensor(batch, device=None):
 
 def get_total_grad_norm(parameters, norm_type=2):
     '''
-    Get the total norm over all gradients
+    Get the total `norm_type` norm over
+    all parameter gradients
     '''
-    if torch.is_tensor(parameters):
-        parameters = [parameters]
-    parameters = list(filter(lambda p: p.grad is not None, parameters))
-    norm_type = float(norm_type)
-    if norm_type == torch._six.inf:
-        total_norm = max(p.grad.detach().abs().max() for p in parameters)
-    else:
-        total_norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), norm_type) \
-                                             for p in parameters]), norm_type)
-    return total_norm
+    return nn.utils.clip_grad_norm_(parameters, max_norm=np.inf,
+                                    norm_type=norm_type)
 
 def get_model_performance_trackers(config):
     '''
