@@ -165,6 +165,10 @@ class BasePyTorchDataset(Dataset):
 
 
 class DummyMultiClassDataset(BasePyTorchDataset):
+    '''
+    Dummy dataset for generating
+    random multi-class style data.
+    '''
     def __init__(self, size=50, dim=10, num_classes=2):
         super().__init__()
         self.size = size
@@ -182,6 +186,10 @@ class DummyMultiClassDataset(BasePyTorchDataset):
 
 
 class DummyMultiLabelDataset(BasePyTorchDataset):
+    '''
+    Dummy dataset for generating
+    random multi-label style data.
+    '''
     def __init__(self, size=50, dim=10, num_classes=5):
         super().__init__()
         self.size = size

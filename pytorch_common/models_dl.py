@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 class BasePyTorchModel(nn.Module):
     '''
-    Generic PyTorch Model implementing useful methods
+    Generic PyTorch Model implementing useful methods.
     '''
     def __init__(self, model_type='classification'):
         super().__init__()
@@ -34,7 +34,7 @@ class BasePyTorchModel(nn.Module):
 
     def get_trainable_params(self):
         '''
-        Print and return the number of trainable parameters of the model
+        Print and return the number of trainable parameters of the model.
         '''
         num_params = sum(p.numel() for p in self.parameters())
         num_trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -44,7 +44,7 @@ class BasePyTorchModel(nn.Module):
 
     def print(self):
         '''
-        Print model architecture
+        Print the model architecture.
         '''
         logging.info(self)
 
@@ -68,7 +68,7 @@ class BasePyTorchModel(nn.Module):
 
     def _initialize_weights_for_one_model(self, model):
         '''
-        Initialize weights for all Conv2d, BatchNorm2d, Linear, and Embedding layers
+        Initialize weights for all Conv2d, BatchNorm2d, Linear, and Embedding layers.
         # TODO: Improve init schemes / params
         '''
         for m in model.modules():
@@ -122,7 +122,7 @@ class BasePyTorchModel(nn.Module):
 
     def copy(self):
         '''
-        Return a copy of the model
+        Return a copy of the model.
         '''
         return deepcopy(self)
 

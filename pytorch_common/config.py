@@ -13,8 +13,8 @@ class Config(Munch):
     Configuration class that can be used to have fields for the
     configuration instead of just going off the dictionary.
 
-    This class extends dict so values can be accessed in the same
-    manner as a dictionary, like configobj['key'].
+    This class extends dict so values can be accessed
+    with both `configobj['key']` and `configobj.key`.
     '''
     def __init__(self, dictionary=None):
         if dictionary:

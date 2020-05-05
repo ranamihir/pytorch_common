@@ -20,12 +20,12 @@ from dask.callbacks import Callback
 def make_dirs(parent_dir_path, child_dirs=None):
     '''
     Create the parent and (optionally) all child
-    directories within parent directory
+    directories within parent directory.
     '''
     def create_dir_if_not_exists(dir_path):
         '''
         Create a directory at `dir_path`
-        if it doesn't exist already
+        if it doesn't exist already.
         '''
         if not os.path.isdir(dir_path):
             os.makedirs(dir_path)
@@ -67,7 +67,7 @@ def human_time_interval(time_seconds):
 
 def set_seed(config):
     '''
-    Fix all random seeds
+    Fix all random seeds.
     '''
     random.seed(config.seed)
     np.random.seed(config.seed)
@@ -86,7 +86,7 @@ def print_dataframe(data):
 
 def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
     '''
-    Save a high-quality plot created by matplotlib
+    Save a high-quality plot created by matplotlib.
     :param plot_name: Plot name, e.g. 'accuracy-vs-epochs'
     :param ext: file extension
     '''
@@ -203,7 +203,7 @@ def get_pickle_module(pickle_module='pickle'):
 
 def delete_model(model):
     '''
-    Delete model and free GPU memory
+    Delete model and free GPU memory.
     '''
     model = None
     torch.cuda.empty_cache()
@@ -309,15 +309,15 @@ def send_model_to_device(model, device, device_ids=None):
 
 def send_batch_to_device(batch, device):
     '''
-    Send batch to given device
-    Useful when the batch tuple is of variable lengths
+    Send batch to given device.
+    Useful when the batch tuple is of variable lengths.
     Specifically,
         - In regular multiclass setting:
             batch = (product_embedding, y)
         - In one-hot encoded multiclass / multilabel setting (e.g. ABSANet):
             batch = ( (product_embedding, label_embedding), y )
     This function will recursively send all tensors to the
-    device retaining the original structure of the batch
+    device retaining the original structure of the batch.
 
     E.g.:
         >>> a = torch.tensor([1,2,3], device='cpu')
@@ -386,8 +386,8 @@ def convert_numpy_to_tensor(batch, device=None):
 
 def get_total_grad_norm(parameters, norm_type=2):
     '''
-    Get the total `norm_type` norm over
-    all parameter gradients
+    Get the total `norm_type` norm
+    over all parameter gradients.
     '''
     return nn.utils.clip_grad_norm_(parameters, max_norm=np.inf,
                                     norm_type=norm_type)
@@ -548,7 +548,7 @@ class ModelTracker(object):
 
     def get_early_stopping_metric(self):
         '''
-        For validation loggers, returns the early_stopping_criterion
+        For validation loggers, returns the `early_stopping_criterion`
         for the last epoch for which history is stored.
         '''
         if self.is_train:
@@ -558,8 +558,8 @@ class ModelTracker(object):
 
     def get_eval_metrics_df(self, epoch=None):
         '''
-        Get a DataFrame object of all eval metrics for all (or optionally
-        a specific) epoch(s).
+        Get a DataFrame object of all eval metrics
+        for all (or optionally a specific) epoch(s).
         '''
         metrics_df = pd.DataFrame.from_dict(self.get_eval_metrics())
         metrics_df.insert(loc=0, column='epoch', value=metrics_df.index)
@@ -660,7 +660,7 @@ class SequencePooler(nn.Module):
 
     def _set_pooler(self):
         '''
-        Set the appropriate pooler as per the `model_type`
+        Set the appropriate pooler as per the `model_type`.
         '''
         # Import here because it's an optional dependency
         from transformers.configuration_auto import CONFIG_MAPPING
@@ -743,7 +743,7 @@ class DataParallel(nn.DataParallel):
 
 class DaskProgressBar(Callback):
     '''
-    Real-time tqdm progress bar adapted to dask dataframes (for `apply`)
+    Real-time tqdm progress bar adapted to dask dataframes (for `apply`).
     Code reference: https://github.com/tqdm/tqdm/issues/278#issue-180452055
     '''
     def _start_state(self, dsk, state):
@@ -761,9 +761,9 @@ class GELU(nn.Module):
     '''
     Implementation of the gelu activation function
     currently in Google BERT repo (identical to OpenAI GPT).
-    Also see https://arxiv.org/abs/1606.08415
+    Also see: https://arxiv.org/abs/1606.08415
 
-    Code referece:
+    Code reference:
     https://github.com/huggingface/transformers/blob/1cdd2ad2afb73f6af185aafecb7dd7941a90c4d1
     /src/transformers/activations.py#L25-L29
     '''

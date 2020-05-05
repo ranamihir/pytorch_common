@@ -151,8 +151,8 @@ def train_model(model, config, train_loader, val_loader, optimizer,
     }
     return return_dict
 
-def train_epoch(model, dataloader, loss_criterion, device,
-                epoch, optimizer, scheduler=None, decouple_fn=None):
+def train_epoch(model, dataloader, loss_criterion, device, epoch,
+                optimizer, scheduler=None, decouple_fn=None):
     '''
     Perform one training epoch.
     See `perform_one_epoch()` for more details.
@@ -281,7 +281,7 @@ def perform_one_epoch(do_training, model, dataloader, loss_criterion,
 def get_all_predictions(model, dataloader, device, threshold_prob=None, decouple_fn=None):
     '''
     Make predictions on entire dataset and return raw outputs and optionally
-    class predictions and probabilities if it's a classification model
+    class predictions and probabilities if it's a classification model.
     '''
     # Set evaluation decoupling function to get inputs from the batch
     if decouple_fn is None:
@@ -368,8 +368,8 @@ def take_scheduler_step(scheduler, val_metric=None):
     else:
         scheduler.step()
 
-def save_model(model, optimizer, config, train_logger, val_logger,
-               epoch, misc_info=None, scheduler=None, checkpoint_type='state'):
+def save_model(model, optimizer, config, train_logger, val_logger, epoch,
+               misc_info=None, scheduler=None, checkpoint_type='state'):
     '''
     Save the checkpoint at a given epoch.
     It can save either:
@@ -549,13 +549,12 @@ def load_model(model, config, checkpoint_file, optimizer=None,
 
 def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=None):
     '''
-    Load the state dict of a given optimizer
-    and scheduler, if they're provided.
+    Load the state dict of a given optimizer and scheduler, if they're provided.
     Helper function for `load_model()`.
     '''
     def load_state_dict(obj, key='optimizer'):
         '''
-        Properly load state dict of optimizer/scheduler
+        Properly load state dict of optimizer/scheduler.
         '''
         state_dict = checkpoint.get(key)
         if state_dict is not None:
@@ -701,7 +700,7 @@ class EarlyStopping(object):
 
     def _validate_params(self):
         '''
-        Check validity of mode of optimization
+        Check validity of mode of optimization.
         '''
         supported_modes = self.SUPPORTED_MODES.keys()
         if self.mode not in supported_modes:
@@ -711,7 +710,7 @@ class EarlyStopping(object):
 
     def is_better(self, metric):
         '''
-        Check if the provided `metric` is the best one so far
+        Check if the provided `metric` is the best one so far.
         '''
         if self.best is None:
             return True
@@ -721,7 +720,7 @@ class EarlyStopping(object):
 
     def stop(self, metric):
         '''
-        Check if early stopping criterion met
+        Check if early stopping criterion met.
         '''
         if self.best is None:
             self.best = metric

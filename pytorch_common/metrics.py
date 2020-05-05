@@ -16,7 +16,7 @@ EVAL_CRITERIA = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
 
 def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
     '''
-    Define train and val loss and evaluation criteria
+    Define train and val loss and evaluation criteria.
     :param reduction_test: If None, a common `reduction` will be used
                            for both train and test, otherwise the
                            specified one for test.
@@ -39,14 +39,14 @@ def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
 
 def get_loss_criterion(config, criterion='cross-entropy', **kwargs):
     '''
-    Get loss criterion function
+    Get loss criterion function.
     '''
     loss_criterion = set_loss_criterion_function(config, criterion=criterion, **kwargs)
     return loss_criterion
 
 def get_eval_criteria(config, criteria, **kwargs):
     '''
-    Get a dictionary of eval criterion functions
+    Get a dictionary of eval criterion functions.
     '''
     is_multilabel = config.model_type == 'classification' and \
                     config.classification_type == 'multilabel'
@@ -162,7 +162,7 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
 @torch.no_grad()
 def get_mse_loss(output_hist, y_true):
     '''
-    Get MSE loss
+    Compute MSE loss.
     '''
     assert y_true.shape == y_predicted.shape
     mse = nn.MSELoss()(y_predicted, y_true).item()
@@ -171,7 +171,7 @@ def get_mse_loss(output_hist, y_true):
 @torch.no_grad()
 def get_class_eval_metric(output_hist, y_true, criterion='accuracy', **kwargs):
     '''
-    Get eval criterion for a single class
+    Get eval criterion for a single class.
 
     As required, get:
       - class with max probability (for discrete metrics like accuracy etc.)
