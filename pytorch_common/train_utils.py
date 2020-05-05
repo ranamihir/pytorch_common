@@ -9,9 +9,9 @@ from vrdscommon import timing
 import torch
 import torch.nn as nn
 
-from .utils import get_model_outputs_only, send_batch_to_device,
-                   send_model_to_device, send_optimizer_to_device,
-                   remove_object, get_checkpoint_name
+from .utils import (get_model_outputs_only, send_batch_to_device,
+                    send_model_to_device, send_optimizer_to_device,
+                    remove_object, get_checkpoint_name)
 
 
 @timing
@@ -362,8 +362,8 @@ def take_scheduler_step(scheduler, val_metric=None):
 
     scheduler_name = scheduler.__class__.__name__
     if scheduler_name in REQUIRE_VAL_METRIC:
-        assert val_metric is not None,
-            f'Param "val_metric" must be provided for "{scheduler_name}" scheduler.'
+        assert val_metric is not None, (f'Param "val_metric" must be provided '
+                                        f'for "{scheduler_name}" scheduler.')
         scheduler.step(val_metric)
     else:
         scheduler.step()
@@ -514,14 +514,14 @@ def load_model(model, config, checkpoint_file, optimizer=None,
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split('-epoch_')[-1])
 
         # Verify consistency of last epoch trained
-        assert epoch_trained == checkpoint['epoch'],
-            f"Mismatch between epoch specified in checkpoint path (\"{epoch_trained}\"), "
-            f"epoch specified at saving time (\"{checkpoint['epoch']}\")."
+        assert epoch_trained == checkpoint['epoch'], \
+            (f"Mismatch between epoch specified in checkpoint path (\"{epoch_trained}\"), "
+             f"epoch specified at saving time (\"{checkpoint['epoch']}\").")
 
         # Throw warning if model trained for more epochs
         if max(train_logger.epochs) > epoch_trained:
-            logging.warning(f"The specified epoch was {epoch_trained} but the "\
-                            f"model was trained for {max(train_logger.epochs)} "\
+            logging.warning(f"The specified epoch was {epoch_trained} but the "
+                            f"model was trained for {max(train_logger.epochs)} "
                             f"epochs. Ignore this warning if it was intentional.")
 
         # Throw warning if best epoch is different
@@ -561,8 +561,8 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
         if state_dict is not None:
             obj.load_state_dict(state_dict)
         else:
-            raise KeyError(f'{key} argument expected its state dict in '\
-                            'the loaded checkpoint but none was found.')
+            raise KeyError(f'{key} argument expected its state dict in '
+                           f'the loaded checkpoint but none was found.')
         return obj
 
     # Load optimizer
@@ -602,18 +602,18 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
     obtained from `checkpoint_file`, if provided.
     '''
     allowed_checkpoint_types = ['state', 'model']
-    assert checkpoint_type in allowed_checkpoint_types,
-        f'Param "checkpoint_type" ("{checkpoint_type}") '
-        f'must be one of {allowed_checkpoint_types}.'
+    assert checkpoint_type in allowed_checkpoint_types, \
+        (f'Param "checkpoint_type" ("{checkpoint_type}") '
+         f'must be one of {allowed_checkpoint_types}.')
 
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
         file_checkpoint_type = checkpoint_file.split('-', 3)[1]
-        assert file_checkpoint_type == checkpoint_type,
-            f'The type of checkpoint provided in param '
-            f'"checkpoint_type" ("{checkpoint_type}") does '
-            f'not match that obtained from the model at '
-            f'"{checkpoint_file}" ("{file_checkpoint_type}").'
+        assert file_checkpoint_type == checkpoint_type, \
+            (f'The type of checkpoint provided in param '
+             f'"checkpoint_type" ("{checkpoint_type}") does '
+             f'not match that obtained from the model at '
+             f'"{checkpoint_file}" ("{file_checkpoint_type}").')
 
 def get_overall_best_epoch(val_logger):
     '''
@@ -691,9 +691,9 @@ class EarlyStopping(object):
             # Non-default params must be provided for unsupported criteria
             for k, v in kwargs.items():
                 if k not in self.DEFAULT_PARAMS.keys():
-                    assert v is not None, f'The only criteria currently supported by '\
-                                          f'default are {self.SUPPORTED_CRITERIA}, '\
-                                          f'and hence param "{k}" is required.'
+                    assert v is not None, (f'The only criteria currently supported by '
+                                           f'default are {self.SUPPORTED_CRITERIA}, '
+                                           f'and hence param "{k}" is required.')
 
         # Finally set values and validate them
         for k, v in kwargs.items():

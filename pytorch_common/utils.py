@@ -175,8 +175,8 @@ def get_pickle_module(pickle_module='pickle'):
         return pickle
     elif pickle_module == 'dill':
         return dill
-    raise ValueError(f'Param "pickle_module" ("{pickle_module}") must be '\
-                      'one of ["pickle", "dill"].')
+    raise ValueError(f'Param "pickle_module" ("{pickle_module}") '
+                     f'must be one of ["pickle", "dill"].')
 
 def delete_model(model):
     '''

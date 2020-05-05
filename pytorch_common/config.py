@@ -48,8 +48,8 @@ def load_pytorch_common_config(dictionary):
 
         # Throw warning if both scheduler configs enabled (not common)
         if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
-            logging.warning('Scheduler is configured to take a '\
-                            'step both after every step and every epoch.')
+            logging.warning('Scheduler is configured to take a step '
+                            'both after every step and every epoch.')
 
         # Throw warning if checkpointing is disabled
         if merged_config.disable_checkpointing:
@@ -103,8 +103,8 @@ def set_pytorch_config(config):
 
         # Ensure GPU availability as some models are prohibitively slow on CPU
         if config.assert_gpu:
-            assert config.n_gpu >= 1, "Usage of GPU is required as per config but either "\
-                                      "one isn't available or the device is set to CPU."
+            assert config.n_gpu >= 1, ("Usage of GPU is required as per config but either "
+                                       "one isn't available or the device is set to CPU.")
 
 def set_additional_dirs(config):
     '''
@@ -210,7 +210,7 @@ def set_batch_size(config):
     '''
     if config.get('batch_size_per_gpu'):
         if config.get('batch_size'):
-            raise ValueError(f"Please don't provide both \"batch_size\" and "\
+            raise ValueError(f"Please don't provide both \"batch_size\" and "
                              f"\"batch_size_per_gpu\" at the same time.")
 
         # Set correct batch size according to number of devices

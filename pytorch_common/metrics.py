@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 
 from .utils import convert_tensor_to_numpy
-from sklearn.metrics import accuracy_score, precision_score, f1_score
-                            recall_score, roc_curve, auc
+from sklearn.metrics import (accuracy_score, precision_score, f1_score,
+                             recall_score, roc_curve, auc)
 
 
 LOSS_CRITERIA = ['mse', 'cross-entropy', 'focal-loss']
@@ -90,7 +90,7 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
         elif multilabel_reduction == 'mean':
             agg_func = torch.mean
         else:
-            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '\
+            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '
                              f'must be one of ["sum", "mean"].')
 
     # Get per-label loss
@@ -138,7 +138,7 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
         elif multilabel_reduction == 'mean':
             agg_func = np.mean
         else:
-            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '\
+            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '
                              f'must be one of ["mean", "none"].')
 
     # Get per-label eval criterion
