@@ -712,7 +712,7 @@ class EarlyStopping(object):
         '''
         Check if the provided `metric` is the best one so far.
         '''
-        if self.best is None:
+        if self.best is None: # After first step
             return True
         if self.mode == 'minimize':
             return metric < self.best - self.min_delta
@@ -722,23 +722,24 @@ class EarlyStopping(object):
         '''
         Check if early stopping criterion met.
         '''
-        if self.best is None:
+        if self.best is None: # First step
             self.best = metric
             return False
 
         if np.isnan(metric):
             return True
 
-        if self.is_better(metric):
+        if self.is_better(metric): # Reset patience counter if better
             self.num_bad_epochs = 0
             self.best = metric
-        else:
+        else: # Otherwise increment counter by 1
             self.num_bad_epochs += 1
 
         # Check if already reached max value
         if self.best_val is not None and np.abs(self.best_val-metric) < self.best_val_tol:
             return True
 
+        # Check if patience counter reached
         if self.num_bad_epochs >= self.patience:
             return True
 

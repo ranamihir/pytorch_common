@@ -90,7 +90,7 @@ def set_pytorch_config(config):
         set_batch_size(config)
 
         # Fix seed
-        set_seed(config)
+        set_seed(config.seed)
 
         # Check for model and classification type
         assert (config.model_type == 'classification' and \
@@ -153,7 +153,7 @@ def set_loss_and_eval_criteria(config):
     if config.use_early_stopping:
         assert config.early_stopping_criterion is not None
     else:
-        default_stopping_criterion = 'accuracy' if config.model_type == 'classification' else 'mse'
+        default_stopping_criterion = 'mse' if config.model_type == 'regression' else 'accuracy'
         config.early_stopping_criterion = default_stopping_criterion
     assert config.early_stopping_criterion in config.eval_criteria
 

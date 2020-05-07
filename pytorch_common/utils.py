@@ -65,15 +65,14 @@ def human_time_interval(time_seconds):
         return f'{seconds}s {milliseconds:03}ms'
     return f'{float_milliseconds:.2f}ms'
 
-def set_seed(config):
+def set_seed(seed=0):
     '''
     Fix all random seeds.
     '''
-    random.seed(config.seed)
-    np.random.seed(config.seed)
-    torch.manual_seed(config.seed)
-    if config.n_gpu > 0:
-        torch.cuda.manual_seed_all(config.seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed) # Safe to call even if no GPU available
 
 def print_dataframe(data):
     '''
