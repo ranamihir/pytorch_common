@@ -33,7 +33,7 @@ setup(
 
     # Optional dependencies
     extras_require={
-        "nlp": ["transformers>=2.8.0"] # for NLP related projects
+        "nlp": ["transformers>=2.9.0"] # for NLP related projects
     },
 
     # Add config and sql files to the package
