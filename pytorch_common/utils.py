@@ -665,7 +665,7 @@ class SequencePooler(nn.Module):
         from transformers.configuration_auto import CONFIG_MAPPING
 
         # Get a list of all supported model types ('bert', 'distilbert', etc.)
-        self.supported_model_types = CONFIG_MAPPING.keys()
+        self.supported_model_types = list(CONFIG_MAPPING.keys())
 
         # Use default pooler if not supported
         if self.model_type not in self.supported_model_types:

@@ -26,14 +26,11 @@ def train_model(model, config, train_loader, val_loader, optimizer,
         so as to be able to change it on the fly without modifying config.
       - `start_epoch` may be provided if a trained checkpoint is loaded
         into the model and training is to be resumed from that point.
-      - `decouple_fn_train` is a function which takes in the batch
-        and returns the separated out inputs and targets.
-        It may be specified if this process deviates from the
+      - `decouple_fn_train` and `decouple_fn_eval` are functions which
+        take in the batch and return the separated out inputs
+        (and targets for training/evaluation).
+        They may be specified if this process deviates from the
         default behavior (see `decouple_batch_train`).
-      - `decouple_fn_eval` is a function which takes in the batch
-        and returns just the inputs.
-        It may be specified if this process deviates from the
-        default behavior (see `decouple_batch_eval`).
 
     NOTE: Training may be paused at any time with a keyboard interrupt.
           However, please avoid interrupting after an epoch is finished
@@ -49,8 +46,8 @@ def train_model(model, config, train_loader, val_loader, optimizer,
             train_losses = train_epoch(
                 model=model,
                 dataloader=train_loader,
-                loss_criterion=loss_criterion_train,
                 device=config.device,
+                loss_criterion=loss_criterion_train,
                 epoch=epoch,
                 optimizer=optimizer,
                 scheduler=scheduler if config.use_scheduler_after_step else None,
@@ -58,11 +55,11 @@ def train_model(model, config, train_loader, val_loader, optimizer,
             )
 
             # Test on training set
-            _, eval_metrics_train = test_epoch(
+            _, eval_metrics_train, _, _ = evaluate_epoch(
                 model=model,
                 dataloader=train_loader,
-                loss_criterion=loss_criterion_test,
                 device=config.device,
+                loss_criterion=loss_criterion_test,
                 eval_criteria=eval_criteria,
                 decouple_fn=decouple_fn_eval
             )
@@ -70,11 +67,11 @@ def train_model(model, config, train_loader, val_loader, optimizer,
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
 
             # Test on val set
-            val_losses, eval_metrics_val = test_epoch(
+            val_losses, eval_metrics_val, _, _ = evaluate_epoch(
                 model=model,
                 dataloader=val_loader,
-                loss_criterion=loss_criterion_test,
                 device=config.device,
+                loss_criterion=loss_criterion_test,
                 eval_criteria=eval_criteria,
                 decouple_fn=decouple_fn_eval
             )
@@ -151,116 +148,164 @@ def train_model(model, config, train_loader, val_loader, optimizer,
     }
     return return_dict
 
-def train_epoch(model, dataloader, loss_criterion, device, epoch,
+def train_epoch(model, dataloader, device, loss_criterion, epoch,
                 optimizer, scheduler=None, decouple_fn=None):
     '''
     Perform one training epoch.
     See `perform_one_epoch()` for more details.
     '''
-    return perform_one_epoch(True, model, dataloader, loss_criterion,
-                             device, epoch=epoch, optimizer=optimizer,
+    return perform_one_epoch('train', model, dataloader, device,
+                             loss_criterion=loss_criterion,
+                             epoch=epoch, optimizer=optimizer,
                              scheduler=scheduler, decouple_fn=decouple_fn)
 
 @torch.no_grad()
-def test_epoch(model, dataloader, loss_criterion, device,
-               eval_criteria, return_outputs=False, decouple_fn=None):
+def evaluate_epoch(model, dataloader, device, loss_criterion,
+                   eval_criteria, decouple_fn=None):
     '''
     Perform one evaluation epoch.
     See `perform_one_epoch()` for more details.
     '''
-    return perform_one_epoch(False, model, dataloader, loss_criterion,
-                             device, eval_criteria=eval_criteria,
-                             return_outputs=return_outputs,
+    return perform_one_epoch('eval', model, dataloader, device,
+                             loss_criterion=loss_criterion,
+                             eval_criteria=eval_criteria,
+                             decouple_fn=decouple_fn)
+
+@torch.no_grad()
+def get_all_predictions(model, dataloader, device, threshold_prob=None, decouple_fn=None):
+    '''
+    Make predictions on entire dataset and return raw outputs and optionally
+    class predictions and probabilities if it's a classification model.
+    See `perform_one_epoch()` for more details.
+    '''
+    return perform_one_epoch('test', model, dataloader, device,
+                             threshold_prob=threshold_prob,
                              decouple_fn=decouple_fn)
 
 @timing
-def perform_one_epoch(do_training, model, dataloader, loss_criterion,
-                      device, epoch=None, optimizer=None, scheduler=None,
-                      eval_criteria=None, return_outputs=False, decouple_fn=None):
+def perform_one_epoch(phase, model, dataloader, device, loss_criterion=None,
+                      epoch=None, optimizer=None, scheduler=None, eval_criteria=None,
+                      threshold_prob=None, decouple_fn=None):
     '''
-    Common loop for one training or evaluation epoch on the entire dataset.
-    Return the loss per example for each iteration, and all eval criteria
-    if evaluation to be performed.
-    :param do_training: If training is to be performed (otherwise evaluation)
+    Common loop for one training / evaluation / testing epoch on the entire dataset.
+      - For training, returns the loss per example for each iteration.
+      - For evaluation, returns the loss per example for each iteration and all eval criteria.
+      - For testing, returns raw model outputs, and optionally class predictions and
+        probabilities if it's a classification model.
+
+    :param phase: Type of pass to perform over data
+                  Choices = 'train' | 'eval' | 'test'
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
                       after each batch iteration (e.g. CyclicLR), otherwise None
-    :return_outputs: For evaluation (`do_training=False`), whether to return
-                     the targets and model outputs
 
-    If `do_training` is True, params `optimizer` and `epoch` must be provided.
-    Otherwise for evaluation, param `eval_criteria` must be provided.
-    At a time, either only training or only evaluation will be performed.
+    If `mode=='train'`, params `optimizer` and `epoch` must be provided.
+    If `mode=='eval'`, param `eval_criteria` must be provided.
+
+    At a time, only one of training / evaluation / testing will be performed.
+    For a given mode, all arguments that pertain to other modes will be ignored.
     '''
-    do_eval = not do_training # Whether to perform evaluation
-    if do_training:
-        for param_name, param in zip(['epoch', 'optimizer'], [epoch, optimizer]):
-            assert param is not None, f'Param "{param_name}" must not be None for training.'
-    else:
-        assert eval_criteria is not None, 'Param "eval_criteria" must not be None for evaluation.'
+    ALLOWED_PHASES = ['train', 'eval', 'test']
 
-    # Set training decoupling function to extract inputs and targets from batch
+    # Check presence of required arguments
+    if phase == 'train':
+        for param_name, param in zip(['epoch', 'optimizer', 'loss_criterion'],
+                                     [epoch, optimizer, loss_criterion]):
+            assert param is not None, f'Param "{param_name}" must not be None for training.'
+    elif phase == 'eval':
+        for param_name, param in zip(['eval_criteria', 'loss_criterion'],
+                                     [eval_criteria, loss_criterion]):
+            assert param is not None, f'Param "{param_name}" must not be None for evaluation.'
+    elif phase != 'test':
+        raise ValueError(f'Param "phase" ("{phase}") must be one of {ALLOWED_PHASES}.')
+
+    # Mode for retaining gradients / graph
+    MODE = phase == 'train'
+
+    # Set decoupling function to extract inputs (and optionally targets) from batch
     if decouple_fn is None:
-        decouple_fn = decouple_batch_train
+        decouple_fn = decouple_batch_test if phase == 'test' else decouple_batch_train
 
     # Set model in training/eval mode as required
-    model.train(mode=do_training)
+    model.train(mode=MODE)
 
+    # Get required dataloader params
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
     batch_size = dataloader.batch_size
 
     # Print 50 times in an epoch (or every time, if num_batches < 50)
     batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
-    # Store all losses, targets, and outputs
-    loss_hist, targets_hist, outputs_hist = [], [], []
+    # Store all required items to be returned
+    loss_hist, targets_hist, outputs_hist, preds_hist, probs_hist = [], [], [], [], []
 
     # Enable gradient computation if training to be performed else disable it.
-    # Technically not required if this function is called from `test_epoch()`
-    # because of decorator, but just being sure.
-    with torch.set_grad_enabled(do_training):
+    # Technically not required if this function is called from other supported
+    # functions, e.g. `evaluate_epoch()` (because of decorator), but just being sure.
+    with torch.set_grad_enabled(MODE):
         for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
-            # Get inputs and targets
-            inputs, targets = send_batch_to_device(decouple_fn(batch), device)
+            # Get inputs for testing
+            if phase == 'test':
+                inputs = send_batch_to_device(decouple_fn(batch), device)
+            else: # Get inputs and targets for training/evaluation
+                inputs, targets = send_batch_to_device(decouple_fn(batch), device)
 
             # Reset gradients to zero
-            if do_training:
+            if phase == 'train':
                 optimizer.zero_grad()
                 model.zero_grad()
 
             # Get model outputs
             outputs = get_model_outputs_only(model(inputs))
 
-            # Compute and store loss
-            loss = loss_criterion(outputs, targets)
-            loss_value = loss.item()
-            loss_hist.append(loss_value)
+            # Store items for testing + print progress
+            if phase == 'test':
+                outputs = send_batch_to_device(outputs, 'cpu')
+                outputs_hist.extend(outputs)
 
-            # Perform training only steps
-            if do_training:
-                # Backprop + clip gradients + take scheduler step
-                loss.backward()
-                nn.utils.clip_grad_norm_(model.parameters(), 1.)
-                optimizer.step()
-                if scheduler is not None:
-                    take_scheduler_step(scheduler, loss_value)
+                # Get class predictions and probabilities
+                if model.model_type == 'classification':
+                    preds, probs = model.predict_proba(outputs, threshold_prob)
+                    preds_hist.extend(preds)
+                    probs_hist.extend(probs)
 
                 # Print progess
                 if batch_idx in batches_to_print:
-                    logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, (batch_idx+1) * batch_size, num_examples,
-                        100. * (batch_idx+1) / num_batches, loss_value))
+                    logging.info('{}/{} ({:.0f}%) complete.'.format(
+                        (batch_idx+1) * batch_size, num_examples,
+                        100. * (batch_idx+1) / num_batches))
 
-            else: # Store targets and model outputs on CPU for evaluation
-                outputs, targets = send_batch_to_device((outputs, targets), 'cpu')
-                outputs_hist.append(outputs)
-                targets_hist.append(targets)
+            else: # Perform training / evaluation
+                # Compute and store loss
+                loss = loss_criterion(outputs, targets)
+                loss_value = loss.item()
+                loss_hist.append(loss_value)
+
+                # Perform training
+                if phase == 'train':
+                    # Backprop + clip gradients + take scheduler step
+                    loss.backward()
+                    nn.utils.clip_grad_norm_(model.parameters(), 1.)
+                    optimizer.step()
+                    if scheduler is not None:
+                        take_scheduler_step(scheduler, loss_value)
+
+                    # Print progess
+                    if batch_idx in batches_to_print:
+                        logging.info('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                            epoch, (batch_idx+1) * batch_size, num_examples,
+                            100. * (batch_idx+1) / num_batches, loss_value))
+
+                else: # Store items for evaluation
+                    outputs, targets = send_batch_to_device((outputs, targets), 'cpu')
+                    outputs_hist.append(outputs)
+                    targets_hist.append(targets)
 
     # Reset gradients back to zero
-    if do_training:
+    if phase == 'train':
         optimizer.zero_grad()
         model.zero_grad()
 
-    else: # Perform evaluation on whole dataset
+    elif phase == 'eval': # Perform evaluation on whole dataset
         outputs_hist = torch.cat(outputs_hist, dim=0)
         targets_hist = torch.cat(targets_hist, dim=0)
 
@@ -268,58 +313,19 @@ def perform_one_epoch(do_training, model, dataloader, loss_criterion,
         eval_metrics = {eval_criterion: eval_fn(outputs_hist, targets_hist) \
                         for eval_criterion, eval_fn in eval_criteria.items()}
 
-    # Return necessary variables
-    return_list = [loss_hist]
-    if do_eval:
-        return_list.append(eval_metrics)
-        if return_outputs:
-            return_list.extend([outputs_hist, targets_hist])
-    return return_list
+    else: # Get outputs, predictions, probabilities
+        outputs_hist = torch.stack(outputs_hist, dim=0)
+        if model.model_type == 'classification':
+            preds_hist = torch.stack(preds_hist, dim=0)
+            probs_hist = torch.stack(probs_hist, dim=0)
 
-@timing
-@torch.no_grad()
-def get_all_predictions(model, dataloader, device, threshold_prob=None, decouple_fn=None):
-    '''
-    Make predictions on entire dataset and return raw outputs and optionally
-    class predictions and probabilities if it's a classification model.
-    '''
-    # Set evaluation decoupling function to get inputs from the batch
-    if decouple_fn is None:
-        decouple_fn = decouple_batch_eval
-
-    model.eval()
-
-    num_batches, num_examples = len(dataloader), len(dataloader.dataset)
-    batch_size = dataloader.batch_size
-
-    # Print 50 times in an epoch (or every time, if num_batches < 50)
-    batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
-
-    outputs_hist, preds_hist, probs_hist = [], [], []
-    for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
-        inputs = send_batch_to_device(decouple_fn(batch), device)
-
-        # Get model outputs
-        outputs = get_model_outputs_only(model(inputs))
-        outputs = send_batch_to_device(outputs, 'cpu')
-        outputs_hist.extend(outputs)
-
-        if model.model_type == 'classification': # Get class predictions and probabilities
-            preds, probs = model.predict_proba(outputs, threshold_prob)
-            preds_hist.extend(preds)
-            probs_hist.extend(probs)
-
-        # Print progess
-        if batch_idx in batches_to_print:
-            logging.info('{}/{} ({:.0f}%) complete.'.format(
-                (batch_idx+1) * batch_size, num_examples,
-                100. * (batch_idx+1) / num_batches))
-
-    outputs_hist = torch.stack(outputs_hist, dim=0)
-    if model.model_type == 'classification':
-        preds_hist = torch.stack(preds_hist, dim=0)
-        probs_hist = torch.stack(probs_hist, dim=0)
-    return outputs_hist, preds_hist, probs_hist
+    # Return necessary items
+    if phase == 'train':
+        return loss_hist
+    elif phase == 'eval':
+        return loss_hist, eval_metrics, outputs_hist, targets_hist
+    else:
+        return outputs_hist, preds_hist, probs_hist
 
 def decouple_batch_train(batch):
     '''
@@ -336,7 +342,7 @@ def decouple_batch_train(batch):
     inputs, targets = batch[:2]
     return inputs, targets
 
-def decouple_batch_eval(batch):
+def decouple_batch_test(batch):
     '''
     Extract and return just the inputs
     from a batch assuming it's the first
@@ -600,10 +606,10 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
     Check that the passed `checkpoint_type` is valid and matches that
     obtained from `checkpoint_file`, if provided.
     '''
-    allowed_checkpoint_types = ['state', 'model']
-    assert checkpoint_type in allowed_checkpoint_types, \
+    ALLOWED_CHECKPOINT_TYPES = ['state', 'model']
+    assert checkpoint_type in ALLOWED_CHECKPOINT_TYPES, \
         (f'Param "checkpoint_type" ("{checkpoint_type}") '
-         f'must be one of {allowed_checkpoint_types}.')
+         f'must be one of {ALLOWED_CHECKPOINT_TYPES}.')
 
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
