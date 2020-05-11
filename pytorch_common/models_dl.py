@@ -190,7 +190,7 @@ class SingleLayerClassifier(BasePyTorchModel):
         self.in_dim = config.in_dim
         self.num_classes = config.num_classes
 
-        self.fc = nn.Linear(config.in_dim, self.num_classes)
+        self.fc = nn.Linear(self.in_dim, self.num_classes)
 
         self.initialize_model()
 

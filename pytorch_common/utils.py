@@ -42,6 +42,14 @@ def make_dirs(parent_dir_path, child_dirs=None):
             dir_path = os.path.join(parent_dir_path, dir_name)
             create_dir_if_not_exists(dir_path)
 
+def remove_dir(dir_path):
+    '''
+    Remove an empty directory.
+    Raises `OSError` if directory is not empty.
+    '''
+    if os.path.isdir(dir_path):
+        os.rmdir(dir_path)
+
 def human_time_interval(time_seconds):
     '''
     Converts a time interval in seconds to a human-friendly
@@ -96,14 +104,26 @@ def save_plot(config, fig, plot_name, model_name, config_info_dict, ext='png'):
 
 def save_object(obj, primary_path, file_name=None, module='pickle'):
     '''
-    This is a defensive way to write (pickle/dill).dump,
-    allowing for very large files on all platforms.
+    This is a generic function to save any given
+    object using different `module`s, e.g. pickle,
+    dill, and yaml.
 
     Note: See `get_file_path()` for details on how
           how to set `primary_path` and `file_name`.
     '''
     file_path = get_file_path(primary_path, file_name)
     logging.info(f'Saving "{file_path}"...')
+    if module == 'yaml':
+        save_yaml(obj, file_path)
+    else:
+        save_pickle(obj, file_path, module)
+    logging.info('Done.')
+
+def save_pickle(obj, file_path, module='pickle'):
+    '''
+    This is a defensive way to write (pickle/dill).dump,
+    allowing for very large files on all platforms.
+    '''
     pickle_module = get_pickle_module(module)
     bytes_out = pickle_module.dumps(obj, protocol=pickle_module.HIGHEST_PROTOCOL)
     n_bytes = sys.getsizeof(bytes_out)
@@ -111,7 +131,14 @@ def save_object(obj, primary_path, file_name=None, module='pickle'):
     with open(file_path, 'wb') as f_out:
         for idx in range(0, n_bytes, MAX_BYTES):
             f_out.write(bytes_out[idx:idx+MAX_BYTES])
-    logging.info('Done.')
+
+def save_yaml(obj, file_path):
+    '''
+    Save a given yaml file.
+    '''
+    assert isinstance(obj, dict), 'Only `dict` objects can be stored as YAML files.'
+    with open(file_path, 'w') as f_out:
+        yaml.dump(obj, f_out)
 
 def load_object(primary_path, file_name=None, module='pickle'):
     '''
@@ -134,10 +161,11 @@ def load_object(primary_path, file_name=None, module='pickle'):
     else:
         raise FileNotFoundError(f'Could not find "{file_path}".')
 
-def load_pickle(file_path, module):
+def load_pickle(file_path, module='pickle'):
     '''
     This is a defensive way to write (pickle/dill).load,
     allowing for very large files on all platforms.
+
     This function is intended to be called inside
     `load_object()`, and assumes that the file
     already exists.
@@ -155,7 +183,9 @@ def load_pickle(file_path, module):
 def load_yaml(file_path):
     '''
     Load a given yaml file.
+
     Return an empty dictionary if file is empty.
+
     This function is intended to be called inside
     `load_object()`, and assumes that the file
     already exists.
@@ -225,11 +255,13 @@ def get_string_from_dict(config_info_dict=None):
 def get_unique_config_name(primary_name, config_info_dict=None):
     '''
     Returns a unique name for the current configuration.
+
     The name will comprise the `primary_name` followed by a
     hash value uniquely generated from the `config_info_dict`.
     :param primary_name: Primary name of the object being stored.
     :param config_info_dict: An optional dict provided containing
                              information about current config.
+
     E.g.:
     `subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882`
     Each attribute in `config_info_dict` is in the "{name}_{value}"
@@ -309,6 +341,7 @@ def send_model_to_device(model, device, device_ids=None):
 def send_batch_to_device(batch, device):
     '''
     Send batch to given device.
+
     Useful when the batch tuple is of variable lengths.
     Specifically,
         - In regular multiclass setting:
@@ -383,6 +416,54 @@ def convert_numpy_to_tensor(batch, device=None):
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
+def compare_tensors_or_arrays(batch_a, batch_b):
+    '''
+    Compare the contents of two batches.
+    Each batch may be of type `np.ndarray` or
+    `torch.Tensor` or a list/tuple of them.
+
+    Will return True if the types of the two
+    batches are different but contents are the same.
+    '''
+    if torch.is_tensor(batch_a):
+        batch_a = convert_tensor_to_numpy(batch_a)
+    if torch.is_tensor(batch_b):
+        batch_b = convert_tensor_to_numpy(batch_b)
+
+    if isinstance(batch_a, np.ndarray) and isinstance(batch_b, np.ndarray):
+        return np.all(batch_a == batch_b)
+    elif isinstance(batch_a, (list, tuple)) and isinstance(batch_b, (list, tuple)):
+        return all(compare_tensors_or_arrays(a, b) for a, b in zip(batch_a, batch_b))
+    else: # Structure/type of batch unknown
+        raise RuntimeError(f'Types of each batch "({type(batch_a)}, {type(batch_b)})" must '
+                           f'be `np.ndarray`, `torch.Tensor` or a list/tuple of them.')
+
+def is_batch_on_gpu(batch):
+    '''
+    Check if a `batch` is on a GPU.
+
+    Similar to `send_batch_to_device()`, can take a
+    torch.Tensor or a tuple/list of them as input.
+    '''
+    if torch.is_tensor(batch):
+        return batch.is_cuda
+    elif isinstance(batch, (list, tuple)):
+        return all(is_batch_on_gpu(e) for e in batch)
+    else: # Structure/type of batch unknown
+        raise RuntimeError(f'Type "{type(batch)}" not understood.')
+
+def is_model_on_gpu(model):
+    '''
+    Check if a `model` is on a GPU.
+    '''
+    return is_batch_on_gpu(next(model.parameters()))
+
+def is_model_parallelized(model):
+    '''
+    Check if a `model` is parallelized on multiple GPUs.
+    '''
+    return is_model_on_gpu(model) and isinstance(model, DataParallel)
+
 def get_total_grad_norm(parameters, norm_type=2):
     '''
     Get the total `norm_type` norm
@@ -404,6 +485,7 @@ def get_model_performance_trackers(config):
 class ModelTracker(object):
     '''
     Class for tracking model's progress.
+
     Use this for keeping track of the loss and
     any evaluation metrics (accuracy, f1, etc.)
     at each epoch.
@@ -598,6 +680,7 @@ class ModelTracker(object):
     def epochs(self):
         '''
         Returns the total list of epochs for which history is stored.
+
         Assumes that history is stored for the same number of epochs
         for both loss and eval_metrics.
         '''
@@ -632,6 +715,7 @@ class ModelTracker(object):
 class SequencePooler(nn.Module):
     '''
     Pool the sequence output for transformer-based models.
+
     Class used instead of lambda functions to remain
     compatible with `torch.save()` and `torch.load()`.
     '''
@@ -648,8 +732,7 @@ class SequencePooler(nn.Module):
                                'roberta'
         '''
         super().__init__()
-        self.model_type = model_type
-        self._set_pooler()
+        self._set_pooler(model_type)
 
     def __repr__(self):
         return f'{self.__class__.__name__}(model_type={self.model_type})'
@@ -657,32 +740,28 @@ class SequencePooler(nn.Module):
     def forward(self, x):
         return self.pooler(x)
 
-    def _set_pooler(self):
+    def _set_pooler(self, model_type):
         '''
         Set the appropriate pooler as per the `model_type`.
         '''
-        # Import here because it's an optional dependency
-        from transformers.configuration_auto import CONFIG_MAPPING
-
-        # Get a list of all supported model types ('bert', 'distilbert', etc.)
-        self.supported_model_types = list(CONFIG_MAPPING.keys())
-
-        # Use default pooler if not supported
-        if self.model_type not in self.supported_model_types:
-            logging.warning(f'No supported sequence pooler was found for model of '\
-                            f'type "{self.model_type}". Using the default one.')
-            self.model_type = self.DEFAULT_POOLER_TYPE
-
         # Set the appropriate pooler as per `model_type`
         self.POOLER_MAPPING = {
             'bert': self._bert_pooler,
             'distilbert': self._distilbert_pooler,
             'albert': self._albert_pooler,
             'roberta': self._roberta_pooler,
-            'electra': self._electra_pooler,
-            self.DEFAULT_POOLER_TYPE: self._default_pooler
+            'electra': self._electra_pooler
         }
-        self.pooler = self.POOLER_MAPPING[self.model_type]
+
+        # Use default pooler if not supported
+        if model_type in self.POOLER_MAPPING.keys():
+            self.model_type = model_type
+            self.pooler = self.POOLER_MAPPING[self.model_type]
+        else:
+            logging.warning(f'No supported sequence pooler was found for model of '\
+                            f'type "{self.model_type}". Using the default one.')
+            self.model_type = self.DEFAULT_POOLER_TYPE
+            self.pooler = self._default_pooler
 
     def _default_pooler(self, x):
         return x
@@ -718,6 +797,7 @@ class SequencePooler(nn.Module):
 class DataParallel(nn.DataParallel):
     '''
     Custom DataParallel class inherited from nn.DataParallel.
+
     Purpose is to allow direct access to model attributes and
     methods when it is wrapped in a `module` attribute because
     of nn.DataParallel.
@@ -729,6 +809,7 @@ class DataParallel(nn.DataParallel):
         '''
         Return model's own attribute if available, otherwise
         fallback to attribute of parent class.
+
         Solves the issue that when nn.DataParallel is applied,
         methods and attributes defined in BasePyTorchModel
         like `predict()` can only be accessed with

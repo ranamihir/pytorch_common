@@ -334,7 +334,7 @@ def decouple_batch_train(batch):
     in the batch, and return them.
     Used commonly during training.
 
-    This is required becaue often other things
+    This is required because often other things
     are also passed in the batch for debugging.
     '''
     # Assume first two elements of batch
@@ -349,7 +349,7 @@ def decouple_batch_test(batch):
     element in the batch.
     Used commonly to make predictions.
 
-    This is required becaue often other things
+    This is required because often other things
     are also passed in the batch for debugging.
     '''
     # Only inputs are needed for making predictions

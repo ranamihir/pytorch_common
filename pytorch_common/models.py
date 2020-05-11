@@ -14,7 +14,7 @@ def create_model(model_name, config):
         raise RuntimeError(f'Unknown model name {model_name}.')
     return model
 
-def create_transformer_model(model_name, config):
+def create_transformer_model(model_name, config=None):
     '''
     Create a transformer model (e.g. BERT) either using the
     default pretrained model or using the provided config.
@@ -27,7 +27,7 @@ def create_transformer_model(model_name, config):
 
     model_class, config_class = AutoModel, AutoConfig
 
-    if hasattr(config, 'output_dir'): # Load trained model from config
+    if config is not None and hasattr(config, 'output_dir'): # Load trained model from config
         kwargs = {
             'pretrained_model_name_or_path': os.path.join(config.output_dir,
                                                           config.model_name_or_path),
