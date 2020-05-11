@@ -121,6 +121,10 @@ class TestModels(unittest.TestCase):
 
 		self.assertTrue(utils.compare_tensors_or_arrays(batch_torch,
 						utils.convert_numpy_to_tensor(batch_np)))
+		if torch.cuda.is_available():
+			batch_torch_cuda = utils.convert_numpy_to_tensor(batch_np, 'cuda:0')
+			self.assertTrue(utils.compare_tensors_or_arrays(batch_torch, batch_torch_cuda))
+			self.assertTrue(utils.is_batch_on_gpu(batch_torch_cuda))
 
 
 if __name__ == '__main__':
