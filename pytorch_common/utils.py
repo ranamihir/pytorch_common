@@ -759,7 +759,7 @@ class SequencePooler(nn.Module):
             self.pooler = self.POOLER_MAPPING[self.model_type]
         else:
             logging.warning(f'No supported sequence pooler was found for model of '\
-                            f'type "{self.model_type}". Using the default one.')
+                            f'type "{model_type}". Using the default one.')
             self.model_type = self.DEFAULT_POOLER_TYPE
             self.pooler = self._default_pooler
 
