@@ -1,19 +1,19 @@
 import unittest
-import pandas as pd
+from pytorch_common.additional_configs import BaseModelConfig
+from pytorch_common.models import create_model
+from pytorch_common.models_dl import SingleLayerClassifier, MultiLayerClassifier
 
-from pytorch_common.models import NoOpTransformer
 
+class TestModels(unittest.TestCase):
+	def test_create_model(self):
+		config = BaseModelConfig({'in_dim': 10, 'num_classes': 2})
+		self.assertIsInstance(create_model('single_layer_classifier', config), SingleLayerClassifier)
 
-class TransformersTest(unittest.TestCase):
+		config = BaseModelConfig({'in_dim': 10, 'h_dim': 10, 'num_layers': 1, 'num_classes': 2})
+		self.assertIsInstance(create_model('multi_layer_classifier', config), MultiLayerClassifier)
 
-    def setUp(self):
-        self.test_data = pd.DataFrame({'a': [1, 2, 3], 'b': list('def'), 'c': [True, False, True]})
-
-    def test_no_op_transformer(self):
-        transformer = NoOpTransformer()
-        transformed_df = transformer.transform(self.test_data)
-        self.assertTrue(self.test_data.equals(transformed_df))
-
+		with self.assertRaises(RuntimeError):
+			create_model('dummy', config)
 
 if __name__ == '__main__':
-    unittest.main()
+	unittest.main()
