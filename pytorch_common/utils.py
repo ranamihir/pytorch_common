@@ -2,6 +2,7 @@ import random
 import numpy as np
 import pandas as pd
 import os
+import shutil
 import sys
 import yaml
 import logging
@@ -42,13 +43,19 @@ def make_dirs(parent_dir_path, child_dirs=None):
             dir_path = os.path.join(parent_dir_path, dir_name)
             create_dir_if_not_exists(dir_path)
 
-def remove_dir(dir_path):
+def remove_dir(dir_path, force=False):
     '''
-    Remove an empty directory.
-    Raises `OSError` if directory is not empty.
+    Remove a directory at `dir_path`.
+    :param force: whether to delete the directory
+                  even if it is not empty.
+                  If False and directory is not
+                  empty, raises `OSError`.
     '''
     if os.path.isdir(dir_path):
-        os.rmdir(dir_path)
+        if force:
+            shutil.rmtree(dir_path, ignore_errors=True)
+        else:
+            os.rmdir(dir_path)
 
 def human_time_interval(time_seconds):
     '''

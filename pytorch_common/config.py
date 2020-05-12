@@ -54,7 +54,9 @@ def load_pytorch_common_config(dictionary):
         # Throw warning if checkpointing is disabled
         if merged_config.disable_checkpointing:
             logging.warning('Checkpointing is disabled. No models will be saved during training.')
-    return merged_config
+
+        return Munch(merged_config)
+    return Munch(dictionary)
 
 def load_config(config_file='config.yaml'):
     '''
@@ -139,9 +141,11 @@ def set_loss_and_eval_criteria(config):
     respective kwargs.
     '''
     # Set loss and eval criteria kwargs
-    config.loss_kwargs = config.loss_kwargs if config.get('loss_kwargs') else {}
-    config.eval_criteria_kwargs = config.eval_criteria_kwargs \
-                                  if config.get('eval_criteria_kwargs') else {}
+    # This logic allows leaving their values empty even if their keys are specified
+    if config.get('loss_kwargs'):
+        config.loss_kwargs = {}
+    if not config.get('eval_criteria_kwargs'):
+        config.eval_criteria_kwargs = {}
 
     # Check for evaluation criteria
     assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
@@ -153,8 +157,9 @@ def set_loss_and_eval_criteria(config):
     if config.use_early_stopping:
         assert config.early_stopping_criterion is not None
     else:
-        default_stopping_criterion = 'mse' if config.model_type == 'regression' else 'accuracy'
-        config.early_stopping_criterion = default_stopping_criterion
+        if not hasattr(config, 'early_stopping_criterion'):
+            default_stopping_criterion = 'mse' if config.model_type == 'regression' else 'accuracy'
+            config.early_stopping_criterion = default_stopping_criterion
     assert config.early_stopping_criterion in config.eval_criteria
 
 def check_and_set_devices(config):
@@ -182,6 +187,7 @@ def check_and_set_devices(config):
         assert config.n_gpu <= torch.cuda.device_count()
     else:
         assert config.device == 'cpu'
+        assert (not config.get('device_ids') or config.device_ids == -1)
         config.device_ids = []
         config.n_gpu = 0
 
