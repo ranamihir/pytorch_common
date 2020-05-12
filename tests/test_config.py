@@ -10,7 +10,8 @@ class TestConfig(unittest.TestCase):
 	def setUpClass(cls):
 		cls.config = {
 			'load_pytorch_common_config': True,
-			'transientdir': 'dummy_dir'
+			'transientdir': 'dummy_dir',
+			'device': 'cuda:0' if torch.cuda.is_available() else 'cpu'
 		}
 
 		cls.n_gpu = torch.cuda.device_count()
@@ -22,13 +23,12 @@ class TestConfig(unittest.TestCase):
 	def test_load_pytorch_common_config(self):
 		dictionary = {
 			**self.config,
-			'assert_gpu': True,
-			'device': 'cuda:1'
+			'classification_type': 'multiclass'
 		}
 		config = self._load_config(dictionary)
-		self.assertTrue(config.assert_gpu)
-		self.assertEqual(config.device, 'cuda:1')
-		self.assertEqual(config.eval_criteria, ['accuracy'])
+		self.assertEqual(config.classification_type, 'multiclass')
+		self.assertEqual(config.device, 'cpu')
+		self.assertFalse(config.assert_gpu)
 
 	def test_set_loss_and_eval_criteria(self):
 		self._test_error({'model_type': 'regression', 'loss_criterion': 'accuracy'})
