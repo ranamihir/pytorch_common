@@ -8,10 +8,12 @@ from pytorch_common import utils
 class TestConfig(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
+		cls.default_device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+
 		cls.config = {
 			'load_pytorch_common_config': True,
 			'transientdir': 'dummy_dir',
-			'device': 'cuda:0' if torch.cuda.is_available() else 'cpu'
+			'device': cls.default_device
 		}
 
 		cls.n_gpu = torch.cuda.device_count()
@@ -27,7 +29,7 @@ class TestConfig(unittest.TestCase):
 		}
 		config = self._load_config(dictionary)
 		self.assertEqual(config.classification_type, 'multiclass')
-		self.assertEqual(config.device, 'cpu')
+		self.assertEqual(config.device, self.default_device)
 		self.assertFalse(config.assert_gpu)
 
 	def test_set_loss_and_eval_criteria(self):
