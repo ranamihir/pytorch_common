@@ -1,8 +1,14 @@
 import unittest
-from transformers import AutoModel, AutoConfig
+
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import is_transformer_model, create_transformer_model
 from pytorch_common import utils
+
+try:
+    from transformers import AutoModel, AutoConfig
+    TRANSFORMERS_INSTALLED = True
+except ImportError:
+    TRANSFORMERS_INSTALLED = False
 
 
 class TestTransformerModels(unittest.TestCase):
@@ -36,5 +42,5 @@ class TestTransformerModels(unittest.TestCase):
         self.assertEqual(get_seq_pooler('dummy').model_type, 'default')
 
 
-if __name__ == '__main__':
+if __name__ == '__main__' and TRANSFORMERS_INSTALLED:
     unittest.main()
