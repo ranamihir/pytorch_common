@@ -12,6 +12,11 @@ except ImportError:
 
 
 class TestTransformerModels(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not TRANSFORMERS_INSTALLED:
+            raise unittest.SkipTest('`transformers` not installed.')
+
     def test_is_transformer_model(self):
         self.assertTrue(is_transformer_model('distilbert-base-uncased'))
         self.assertTrue(is_transformer_model('google/electra-small-discriminator'))
@@ -42,5 +47,5 @@ class TestTransformerModels(unittest.TestCase):
         self.assertEqual(get_seq_pooler('dummy').model_type, 'default')
 
 
-if __name__ == '__main__' and TRANSFORMERS_INSTALLED:
+if __name__ == '__main__':
     unittest.main()

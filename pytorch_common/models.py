@@ -19,10 +19,10 @@ def create_transformer_model(model_name, config=None):
     Create a transformer model (e.g. BERT) either using the
     default pretrained model or using the provided config.
     '''
-    # Import here because it's an optional dependency
     # Make sure model is supported
     assert is_transformer_model(model_name)
 
+    # Import here because it's an optional dependency
     from transformers import AutoConfig, AutoModel
 
     model_class, config_class = AutoModel, AutoConfig
@@ -47,10 +47,10 @@ def is_transformer_model(model_name):
     Check if given `model_name` is a transformer
     model by attempting to load the model config.
     '''
+    # Import here because it's an optional dependency
+    from transformers import AutoConfig
     try:
-        # Import here because it's an optional dependency
-        from transformers import AutoConfig
         config = AutoConfig.from_pretrained(model_name)
         return True
-    except (ImportError, OSError):
+    except OSError:
         return False

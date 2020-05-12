@@ -13,9 +13,6 @@ class TestModels(unittest.TestCase):
         config = BaseModelConfig({'in_dim': 10, 'h_dim': 10, 'num_layers': 1, 'num_classes': 2})
         self.assertIsInstance(create_model('multi_layer_classifier', config), MultiLayerClassifier)
 
-        with self.assertRaises(RuntimeError):
-            create_model('dummy', config)
-
 
 if __name__ == '__main__':
     unittest.main()
