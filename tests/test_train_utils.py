@@ -8,7 +8,8 @@ from pytorch_common.config import load_pytorch_common_config, set_pytorch_config
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.datasets import DummyMultiClassDataset
 from pytorch_common.models import create_model
-from pytorch_common import train_utils, utils, metrics
+from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
+from pytorch_common import train_utils, utils
 
 
 class TestTrainUtils(unittest.TestCase):
@@ -33,7 +34,7 @@ class TestTrainUtils(unittest.TestCase):
             utils.remove_dir(cls.config[directory], force=True)
 
     def test_early_stopping(self):
-        for eval_criterion in metrics.EVAL_CRITERIA:
+        for eval_criterion in EVAL_CRITERIA:
             early_stopping = train_utils.EarlyStopping(eval_criterion)
         self._test_error(train_utils.EarlyStopping, 'dummy_criterion')
 
@@ -90,7 +91,7 @@ class TestTrainUtils(unittest.TestCase):
         cls.optimizer = SGD(cls.model.parameters(), lr=1e-3)
 
         cls.loss_criterion_train, cls.loss_criterion_test, cls.eval_criteria = \
-            metrics.get_loss_eval_criteria(cls.config, reduction='mean')
+            get_loss_eval_criteria(cls.config, reduction='mean')
 
 
 if __name__ == '__main__':
