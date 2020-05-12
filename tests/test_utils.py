@@ -10,7 +10,7 @@ from pytorch_common import utils
 
 class TestUtils(unittest.TestCase):
     def test_pickle_file_handling(self):
-        def test_file_handling(data, primary_path, file_name=None, module='pickle'):
+        def _test_file_handling(data, primary_path, file_name=None, module='pickle'):
             utils.save_object(data, primary_path, file_name, module=module)
             loaded_data = utils.load_object(primary_path, file_name, module=module)
             result = data == loaded_data
@@ -33,10 +33,10 @@ class TestUtils(unittest.TestCase):
         for data, file_name, module in zip([dummy_np_data, dummy_np_data, dummy_yaml_data],
                                            ['dummy_data.pkl', 'dummy_data.pkl', 'dummy_data.yaml'],
                                            ['pickle', 'dill', 'yaml']):
-            test_file_handling(data, file_name, module=module)
+            _test_file_handling(data, file_name, module=module)
 
             utils.make_dirs(primary_path)
-            test_file_handling(data, primary_path, file_name=file_name, module=module)
+            _test_file_handling(data, primary_path, file_name=file_name, module=module)
             utils.remove_dir(primary_path)
             self.assertFalse(os.path.isdir(primary_path))
 
