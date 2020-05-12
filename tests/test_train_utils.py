@@ -53,6 +53,11 @@ class TestTrainUtils(unittest.TestCase):
                                 self.eval_criteria, self.train_logger, self.val_logger,
                                 self.config.epochs)
 
+    def test_get_all_predictions(self):
+        train_utils.get_all_predictions(self.model, self.val_loader, self.config.device)
+        train_utils.get_all_predictions(self.model, self.val_loader, self.config.device,
+                                        threshold_prob=0.8)
+
     def _test_error(self, func, args, error=AssertionError):
         with self.assertRaises(error):
             func(args)
