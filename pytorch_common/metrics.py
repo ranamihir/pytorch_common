@@ -18,8 +18,8 @@ def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
     '''
     Define train and val loss and evaluation criteria.
     :param reduction_test: If None, a common `reduction` will be used
-                           for both train and test, otherwise the
-                           specified one for test.
+                           for both train and test losses, otherwise
+                           the specified one for test loss.
     '''
     # Add/update train loss reduction and get criterion
     train_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction}
@@ -51,7 +51,7 @@ def get_eval_criteria(config, criteria, **kwargs):
     is_multilabel = config.model_type == 'classification' and \
                     config.classification_type == 'multilabel'
     if is_multilabel:
-        if not hasattr(kwargs, 'multilabel_reduction'):
+        if not kwargs.get('multilabel_reduction'):
             raise ValueError('Param "multilabel_reduction" must be provided.')
         multilabel_reduction = kwargs['multilabel_reduction']
 
@@ -77,18 +77,23 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
                     Choices: 'sum' | 'mean'
     '''
     # Check for multilabel classification
-    if config.model_type == 'classification' and config.classification_type == 'multilabel':
-        if not hasattr(kwargs, 'multilabel_reduction'):
-            raise ValueError('Param "multilabel_reduction" must be provided.')
+    if config.model_type == 'classification':
+        # TODO: Remove this after extending FocalLoss
+        if criterion == 'focal-loss' and config.classification_type != 'binary':
+            raise ValueError('FocalLoss is currently only supported for binary classification.')
 
-        multilabel_reduction = kwargs.pop('multilabel_reduction')
-        if multilabel_reduction == 'sum':
-            agg_func = torch.sum
-        elif multilabel_reduction == 'mean':
-            agg_func = torch.mean
-        else:
-            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '
-                             f'must be one of ["sum", "mean"].')
+        elif config.classification_type == 'multilabel':
+            if not kwargs.get('multilabel_reduction'):
+                raise ValueError('Param "multilabel_reduction" must be provided.')
+
+            multilabel_reduction = kwargs.pop('multilabel_reduction')
+            if multilabel_reduction == 'sum':
+                agg_func = torch.sum
+            elif multilabel_reduction == 'mean':
+                agg_func = torch.mean
+            else:
+                raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '
+                                 f'must be one of ["sum", "mean"].')
 
     # Get per-label loss
     if criterion == 'mse':
@@ -96,7 +101,8 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
     elif criterion == 'cross-entropy':
         loss_criterion = nn.CrossEntropyLoss(**kwargs)
     elif criterion == 'focal-loss':
-        loss_criterion = FocalLoss(**kwargs)
+        # Remove `reduction` from kwargs since it's not required for FocalLoss
+        loss_criterion = FocalLoss(**{k: v for k, v in kwargs.items() if k != 'reduction'})
     else:
         raise ValueError(f'Param "criterion" ("{criterion}") must be one of {LOSS_CRITERIA}.')
 

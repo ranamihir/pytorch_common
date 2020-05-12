@@ -101,7 +101,8 @@ def set_pytorch_config(config):
 
         # TODO: Remove this after extending FocalLoss
         if config.model_type == 'classification' and config.loss_criterion == 'focal-loss':
-            assert config.classification_type == 'binary'
+            assert config.classification_type == 'binary', ('FocalLoss is currently only supported'
+                                                            'for binary classification.')
 
         # Ensure GPU availability as some models are prohibitively slow on CPU
         if config.assert_gpu:
