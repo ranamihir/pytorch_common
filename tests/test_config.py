@@ -23,14 +23,13 @@ class TestConfig(unittest.TestCase):
 		utils.remove_dir(cls.config['transientdir'], force=True)
 
 	def test_load_pytorch_common_config(self):
-		dictionary = {
-			**self.config,
-			'classification_type': 'multiclass'
-		}
-		config = self._load_config(dictionary)
+		config = self._load_config({'classification_type': 'multiclass'})
 		self.assertEqual(config.classification_type, 'multiclass')
 		self.assertEqual(config.device, self.default_device)
 		self.assertFalse(config.assert_gpu)
+
+		dictionary = {'load_pytorch_common_config': False}
+		self.assertEqual(dict(self._load_config(dictionary)), self._get_merged_dict(dictionary))
 
 	def test_set_loss_and_eval_criteria(self):
 		self._test_error({'model_type': 'regression', 'loss_criterion': 'accuracy'})
@@ -81,11 +80,13 @@ class TestConfig(unittest.TestCase):
 			config = self._load_config(dictionary)
 
 	def _load_config(self, dictionary):
-		dictionary = {**self.config, **dictionary}
+		dictionary = self._get_merged_dict(dictionary)
 		config = load_pytorch_common_config(dictionary)
 		set_pytorch_config(config)
 		return config
 
+	def _get_merged_dict(self, dictionary):
+		return {**self.config, **dictionary}
 
 if __name__ == '__main__':
 	unittest.main()
