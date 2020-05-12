@@ -142,7 +142,7 @@ def set_loss_and_eval_criteria(config):
     '''
     # Set loss and eval criteria kwargs
     # This logic allows leaving their values empty even if their keys are specified
-    if config.get('loss_kwargs'):
+    if not config.get('loss_kwargs'):
         config.loss_kwargs = {}
     if not config.get('eval_criteria_kwargs'):
         config.eval_criteria_kwargs = {}

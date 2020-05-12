@@ -445,6 +445,30 @@ def compare_tensors_or_arrays(batch_a, batch_b):
         raise RuntimeError(f'Types of each batch "({type(batch_a)}, {type(batch_b)})" must '
                            f'be `np.ndarray`, `torch.Tensor` or a list/tuple of them.')
 
+def compare_model_parameters(parameters1, parameters2):
+    '''
+    Compare two sets of model parameters.
+    Useful in unit tests for ensuring consistency
+    on saving and then loading the same set of
+    parameters.
+    '''
+    for p1, p2 in zip(parameters1, parameters2):
+        if p1.data.ne(p2.data).sum() > 0:
+            return False
+    return True
+
+def compare_model_state_dicts(state_dict1, state_dict2):
+    '''
+    Compare two sets of model state dicts.
+    Useful in unit tests for ensuring
+    consistency on saving and then
+    loading the same state dict.
+    '''
+    for key1, key2 in zip(state_dict1, state_dict2):
+        if state_dict1[key1].ne(state_dict2[key2]).sum() > 0:
+            return False
+    return True
+
 def is_batch_on_gpu(batch):
     '''
     Check if a `batch` is on a GPU.
@@ -624,14 +648,21 @@ class ModelTracker(object):
         logging.info(result_str)
         return result_str
 
+    def add_metrics(self, losses, eval_metrics, epoch=-1):
+        '''
+        Shorthand function to add losses and eval metrics
+        at the end of a given epoch.
+        '''
+        self.add_losses(losses, epoch)
+        self.add_eval_metrics(eval_metrics, epoch)
+
     def add_and_log_metrics(self, losses, eval_metrics, epoch=-1):
         '''
         Shorthand function to add losses and eval metrics
         at the end of a given epoch, and then print the
         results for that epoch.
         '''
-        self.add_losses(losses, epoch)
-        self.add_eval_metrics(eval_metrics, epoch)
+        self.add_metrics(losses, eval_metrics, epoch)
         self.log_epoch_metrics(epoch)
 
     def get_early_stopping_metric(self):
