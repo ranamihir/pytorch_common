@@ -12,7 +12,9 @@ class TestConfig(unittest.TestCase):
 
 		cls.config = {
 			'load_pytorch_common_config': True,
-			'transientdir': 'dummy_dir',
+			'transientdir': 'dummy_transientdir',
+			'packagedir': 'dummy_package_dir',
+			'misc_data_dir': 'dummy_misc_data_dir',
 			'device': cls.default_device
 		}
 
@@ -20,7 +22,8 @@ class TestConfig(unittest.TestCase):
 
 	@classmethod
 	def tearDownClass(cls):
-		utils.remove_dir(cls.config['transientdir'], force=True)
+		for directory in ['transientdir', 'packagedir', 'misc_data_dir']:
+			utils.remove_dir(cls.config[directory], force=True)
 
 	def test_load_pytorch_common_config(self):
 		config = self._load_config({'classification_type': 'multiclass'})
