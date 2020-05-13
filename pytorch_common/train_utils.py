@@ -40,7 +40,7 @@ def train_model(model, config, train_loader, val_loader, optimizer,
     '''
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file, best_model = '', None
-    for epoch in range(1+start_epoch, epochs+1+start_epoch):
+    for epoch in range(1+start_epoch, 1+start_epoch+epochs):
         try:
             # Train epoch
             train_losses = train_epoch(

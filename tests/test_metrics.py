@@ -1,7 +1,12 @@
 import unittest
+import numpy as np
+import torch
 from munch import Munch
+from sklearn.metrics import (accuracy_score, precision_score, f1_score,
+                             recall_score, roc_curve, auc, mean_squared_error)
 
-from pytorch_common.metrics import LOSS_CRITERIA, EVAL_CRITERIA, get_loss_eval_criteria
+from pytorch_common.utils import compare_tensors_or_arrays
+from pytorch_common import metrics
 
 
 class TestMetrics(unittest.TestCase):
@@ -25,16 +30,17 @@ class TestMetrics(unittest.TestCase):
         '''
         # Ensure inter-compatibility of all supported
         # loss and eval criteria for binary classification
-        for loss_criterion in LOSS_CRITERIA:
+        for loss_criterion in metrics.LOSS_CRITERIA:
             self._get_loss_eval_criteria({'loss_criterion': loss_criterion,
-                                          'eval_criteria': EVAL_CRITERIA})
+                                          'eval_criteria': metrics.EVAL_CRITERIA})
 
         # Ensure inter-compatibility of supported loss and
         # eval criteria for multiclass/multilabel classification
-        for loss_criterion in LOSS_CRITERIA:
+        for loss_criterion in metrics.LOSS_CRITERIA:
             for classification_type in ['multiclass', 'multilabel']:
                 dictionary = {'classification_type': classification_type,
-                              'loss_criterion': loss_criterion, 'eval_criteria': EVAL_CRITERIA}
+                              'loss_criterion': loss_criterion,
+                              'eval_criteria': metrics.EVAL_CRITERIA}
                 if loss_criterion == 'focal-loss':
                     # FocalLoss only compatible with binary classification
                     self._test_error(self._get_loss_eval_criteria, dictionary, error=ValueError)
@@ -46,6 +52,42 @@ class TestMetrics(unittest.TestCase):
                             dictionary[key] = {'multilabel_reduction': 'mean'}
                     self._get_loss_eval_criteria(dictionary)
 
+    def test_regression_metrics(self):
+        '''
+        Test the computation correctness of
+        all supported regression metrics.
+        '''
+        predictions, targets = np.array([1.5,2.5,5.]), np.array([1.4,2.2,5.1])
+
+        # Compute true values
+        true_values = {
+            'mse': mean_squared_error(targets, predictions)
+        }
+
+        # Compute all evaluation criteria
+        self._test_metrics(predictions, targets, metrics.REGRESSION_EVAL_CRITERIA, true_values)
+
+    def test_classification_metrics(self):
+        '''
+        Test the computation correctness of
+        all supported classification metrics.
+        '''
+        predictions, targets = np.array([[0.2,0.8],[0.4,0.6],[1.0,0.]]), np.array([0,1,0])
+        predictions_binary = np.where(predictions[:,1] > 0.5, 1, 0) # Binary predictions
+
+        # Compute true values
+        true_values = {
+            'accuracy': accuracy_score(targets, predictions_binary),
+            'precision': precision_score(targets, predictions_binary),
+            'recall': recall_score(targets, predictions_binary),
+            'f1': f1_score(targets, predictions_binary),
+        }
+        fpr, tpr, _ = roc_curve(targets, predictions[:,1])
+        true_values['auc'] = auc(fpr, tpr)
+
+        # Compute all evaluation criteria
+        self._test_metrics(predictions, targets, metrics.CLASSIFICATION_EVAL_CRITERIA, true_values)
+
     def _get_loss_eval_criteria(self, dictionary):
         '''
         Load the default config, override it with
@@ -53,7 +95,29 @@ class TestMetrics(unittest.TestCase):
         criteria with this config.
         '''
         config = Munch(self._get_merged_dict(dictionary))
-        return get_loss_eval_criteria(config)
+        return metrics.get_loss_eval_criteria(config)
+
+    def _test_metrics(self, predictions, targets, eval_criteria, true_values):
+        '''
+        Test that all `eval_criteria` values computed using
+        `predictions` and `targets` match the `true_values`.
+        '''
+        # Ensure that the `true_values` of all `eval_criteria` are present
+        self.assertTrue(compare_tensors_or_arrays(np.sort(list(true_values.keys())),
+                                                  np.sort(eval_criteria)))
+
+        # Get torch tensors
+        predictions = torch.as_tensor(predictions).float()
+        targets = torch.as_tensor(targets).float()
+
+        # Get all eval metrics
+        _, _, eval_criteria = self._get_loss_eval_criteria({'eval_criteria': eval_criteria})
+        eval_metrics = {eval_criterion: eval_fn(predictions, targets) \
+                        for eval_criterion, eval_fn in eval_criteria.items()}
+
+        # Test that computed metrics match true values
+        for metric, value in eval_metrics.items():
+            np.testing.assert_allclose(value, true_values[metric], atol=1e-3)
 
     def _test_error(self, func, args, error=AssertionError):
         '''

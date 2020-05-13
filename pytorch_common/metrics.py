@@ -7,11 +7,16 @@ import torch.nn as nn
 
 from .utils import convert_tensor_to_numpy
 from sklearn.metrics import (accuracy_score, precision_score, f1_score,
-                             recall_score, roc_curve, auc)
+                             recall_score, roc_curve, auc, mean_squared_error)
 
 
-LOSS_CRITERIA = ['mse', 'cross-entropy', 'focal-loss']
-EVAL_CRITERIA = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
+REGRESSION_LOSS_CRITERIA = ['mse']
+CLASSIFICATION_LOSS_CRITERIA = ['cross-entropy', 'focal-loss']
+LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA + CLASSIFICATION_LOSS_CRITERIA
+
+REGRESSION_EVAL_CRITERIA = ['mse']
+CLASSIFICATION_EVAL_CRITERIA = ['accuracy', 'precision', 'recall', 'f1', 'auc']
+EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
 
 
 def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
@@ -147,7 +152,7 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
     # Get per-label eval criterion
     if criterion == 'mse':
         eval_criterion = get_mse_loss
-    elif criterion in ['accuracy', 'precision', 'recall', 'f1', 'auc']:
+    elif criterion in CLASSIFICATION_EVAL_CRITERIA:
         eval_criterion = partial(get_class_eval_metric, criterion=criterion, **kwargs)
     else:
         raise ValueError(f'Param "criterion" ("{criterion}") must be one of {EVAL_CRITERIA}.')
@@ -170,8 +175,9 @@ def get_mse_loss(output_hist, y_true):
     '''
     Compute MSE loss.
     '''
-    assert y_true.shape == y_predicted.shape
-    mse = nn.MSELoss()(y_predicted, y_true).item()
+    output_hist, y_true = convert_tensor_to_numpy((output_hist, y_true))
+    assert y_true.shape == output_hist.shape
+    mse = mean_squared_error(y_true, output_hist)
     return mse
 
 @torch.no_grad()
