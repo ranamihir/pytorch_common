@@ -149,9 +149,7 @@ def set_loss_and_eval_criteria(config):
         config.eval_criteria_kwargs = {}
 
     # Check for evaluation criteria
-    assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
-    for eval_criterion in config.eval_criteria:
-        assert eval_criterion in metrics.EVAL_CRITERIA
+    _check_loss_and_eval_criteria(config)
 
     # If early stopping not used, the criterion is still
     # defined just for getting the "best" epoch
@@ -162,6 +160,29 @@ def set_loss_and_eval_criteria(config):
             default_stopping_criterion = 'mse' if config.model_type == 'regression' else 'accuracy'
             config.early_stopping_criterion = default_stopping_criterion
     assert config.early_stopping_criterion in config.eval_criteria
+
+def _check_loss_and_eval_criteria(config):
+    '''
+    Ensure that the loss and eval criteria
+    provided are consistent with the
+    specified `model_type`.
+    '''
+    assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
+
+    if config.model_type == 'classification':
+        LOSS_CRITERIA = metrics.CLASSIFICATION_LOSS_CRITERIA
+        EVAL_CRITERIA = metrics.CLASSIFICATION_EVAL_CRITERIA
+    else:
+        LOSS_CRITERIA = metrics.REGRESSION_LOSS_CRITERIA
+        EVAL_CRITERIA = metrics.REGRESSION_EVAL_CRITERIA
+
+    assert config.loss_criterion in LOSS_CRITERIA, (f"Loss criterion (\"{config.loss_criterion}\") "
+                                                    f"for `model_type=='classification' must be one"
+                                                    f" of {LOSS_CRITERIA}.")
+    for eval_criterion in config.eval_criteria:
+        assert eval_criterion in EVAL_CRITERIA, (f"Eval criterion (\"{eval_criterion}\") for "
+                                                 f"`model_type=='classification' must be one"
+                                                 f" of {EVAL_CRITERIA}.")
 
 def check_and_set_devices(config):
     '''
