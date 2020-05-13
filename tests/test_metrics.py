@@ -90,9 +90,9 @@ class TestMetrics(unittest.TestCase):
 
     def _get_loss_eval_criteria(self, dictionary):
         '''
-        Load the default config, override it with
-        `dictionary`, and get the loss and eval
-        criteria with this config.
+        Load the default config, override it
+        with `dictionary`, and get the loss
+        and eval criteria with this config.
         '''
         config = Munch(self._get_merged_dict(dictionary))
         return metrics.get_loss_eval_criteria(config)

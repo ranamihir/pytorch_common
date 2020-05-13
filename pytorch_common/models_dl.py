@@ -23,7 +23,7 @@ class BasePyTorchModel(nn.Module):
         :param models_to_init: See `initialize_weights()`
 
         **NOTE**: If your model is/includes a pretrained model,
-                  make sure not to set `models_to_init=True` when
+                  make sure to set `init_weights=False` when
                   calling this function, otherwise the pretrained
                   model will also be reinitialized.
         '''
@@ -183,7 +183,7 @@ class BasePyTorchModel(nn.Module):
 
 class SingleLayerClassifier(BasePyTorchModel):
     '''
-    Dummy Single-layer multi-class "neural" network.
+    Dummy single-layer multi-class "neural" network.
     '''
     def __init__(self, config):
         super().__init__(model_type=config.model_type)
@@ -200,7 +200,7 @@ class SingleLayerClassifier(BasePyTorchModel):
 
 class MultiLayerClassifier(BasePyTorchModel):
     '''
-    Dummy Multi-layer multi-class model.
+    Dummy multi-layer multi-class neural network.
     '''
     def __init__(self, config):
         super().__init__(model_type=config.model_type)
@@ -224,3 +224,48 @@ class MultiLayerClassifier(BasePyTorchModel):
 
     def forward(self, x):
         return self.classifier(self.trunk(x))
+
+
+class SingleLayerRegressor(BasePyTorchModel):
+    '''
+    Dummy single-layer "neural" regressor.
+    '''
+    def __init__(self, config):
+        super().__init__(model_type=config.model_type)
+        self.in_dim = config.in_dim
+        self.out_dim = config.out_dim
+
+        self.fc = nn.Linear(self.in_dim, self.out_dim)
+
+        self.initialize_model()
+
+    def forward(self, x):
+        return self.fc(x)
+
+
+class MultiLayerRegressor(BasePyTorchModel):
+    '''
+    Dummy multi-layer neural regressor.
+    '''
+    def __init__(self, config):
+        super().__init__(model_type=config.model_type)
+        self.in_dim = config.in_dim
+        self.h_dim = config.h_dim
+        self.out_dim = config.out_dim
+        self.num_layers = config.num_layers
+
+        trunk = [nn.Sequential(nn.Linear(self.in_dim, self.h_dim), nn.ReLU(inplace=True))]
+        for _ in range(self.num_layers-1):
+            layer = nn.Sequential(
+                nn.Linear(self.h_dim, self.h_dim),
+                nn.ReLU(inplace=True)
+            )
+            trunk.append(layer)
+        self.trunk = nn.Sequential(*trunk)
+
+        self.head = nn.Linear(self.h_dim, self.out_dim)
+
+        self.initialize_model(init_weights=True)
+
+    def forward(self, x):
+        return self.head(self.trunk(x))

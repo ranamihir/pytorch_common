@@ -1,6 +1,7 @@
 import logging
 import os
-from .models_dl import SingleLayerClassifier, MultiLayerClassifier
+from .models_dl import (SingleLayerClassifier, MultiLayerClassifier,
+                        SingleLayerRegressor, MultiLayerRegressor)
 
 
 def create_model(model_name, config):
@@ -8,6 +9,10 @@ def create_model(model_name, config):
         model = SingleLayerClassifier(config)
     elif model_name == 'multi_layer_classifier':
         model = MultiLayerClassifier(config)
+    elif model_name == 'single_layer_regressor':
+        model = SingleLayerRegressor(config)
+    elif model_name == 'multi_layer_regressor':
+        model = MultiLayerRegressor(config)
     elif is_transformer_model(model_name):
         model = create_transformer_model(model_name, config)
     else:

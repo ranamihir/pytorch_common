@@ -32,6 +32,8 @@ class TestTransformerModels(unittest.TestCase):
 
         self.assertFalse(is_transformer_model('single_layer_classifier'))
         self.assertFalse(is_transformer_model('multi_layer_classifier'))
+        self.assertFalse(is_transformer_model('single_layer_regressor'))
+        self.assertFalse(is_transformer_model('multi_layer_regressor'))
 
     def test_create_transformer_model(self):
         '''
