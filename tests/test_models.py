@@ -7,6 +7,10 @@ from pytorch_common.models_dl import SingleLayerClassifier, MultiLayerClassifier
 
 class TestModels(unittest.TestCase):
     def test_create_model(self):
+        '''
+        Test creation of non-transformer
+        based supported models.
+        '''
         config = BaseModelConfig({'in_dim': 10, 'num_classes': 2})
         self.assertIsInstance(create_model('single_layer_classifier', config), SingleLayerClassifier)
 
