@@ -198,11 +198,15 @@ def perform_one_epoch(phase, model, dataloader, device, loss_criterion=None,
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
                       after each batch iteration (e.g. CyclicLR), otherwise None
 
-    If `mode=='train'`, params `optimizer` and `epoch` must be provided.
-    If `mode=='eval'`, param `eval_criteria` must be provided.
+    If `phase=='train'`, params `optimizer` and `epoch` must be provided.
+    If `phase=='eval'`, param `eval_criteria` must be provided.
+
+    In `phase=='test'`, the dataloader may not have the true labels (by
+    definition), and hence, the decoupling function must only return the
+    inputs. For the other two phases, they must return the targets as well.
 
     At a time, only one of training / evaluation / testing will be performed.
-    For a given mode, all arguments that pertain to other modes will be ignored.
+    For a given phase, all arguments that pertain to other phases will be ignored.
     '''
     ALLOWED_PHASES = ['train', 'eval', 'test']
 
