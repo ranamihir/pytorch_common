@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from .utils import convert_tensor_to_numpy
 from sklearn.metrics import (accuracy_score, precision_score, f1_score,
-                             recall_score, roc_curve, auc, mean_squared_error)
+                             recall_score, roc_curve, auc)
 
 
 REGRESSION_LOSS_CRITERIA = ['mse']
@@ -122,7 +122,7 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
     # Multilabel classification
     else:
         return lambda output_hist, y_hist: \
-               agg_func(torch.stack([loss_criterion(output_hist[...,i], y_hist[...,i]) \
+               agg_func(torch.stack([loss_criterion(output_hist, y_hist[...,i]) \
                                      for i in range(y_hist.shape[-1])], dim=0))
 
 def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
@@ -151,7 +151,7 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
 
     # Get per-label eval criterion
     if criterion == 'mse':
-        eval_criterion = get_mse_loss
+        eval_criterion = partial(get_mse_loss, **kwargs)
     elif criterion in CLASSIFICATION_EVAL_CRITERIA:
         eval_criterion = partial(get_class_eval_metric, criterion=criterion, **kwargs)
     else:
@@ -167,17 +167,17 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
 
     # Multilabel classification
     else:
-        return lambda output_hist, y_hist: agg_func([eval_criterion(output_hist[:,i], y_hist[:,i]) \
-                                                     for i in range(y_hist.shape[1])])
+        return lambda output_hist, y_hist: \
+            agg_func([eval_criterion(output_hist, y_hist[...,i]) \
+                      for i in range(y_hist.shape[-1])])
 
 @torch.no_grad()
-def get_mse_loss(output_hist, y_true):
+def get_mse_loss(output_hist, y_true, **kwargs):
     '''
     Compute MSE loss.
     '''
-    output_hist, y_true = convert_tensor_to_numpy((output_hist, y_true))
     assert y_true.shape == output_hist.shape
-    mse = mean_squared_error(y_true, output_hist)
+    mse = nn.MSELoss(**kwargs)(output_hist, y_true).item()
     return mse
 
 @torch.no_grad()

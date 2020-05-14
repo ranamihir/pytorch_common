@@ -22,17 +22,7 @@ class TestTrainUtils(unittest.TestCase):
         Also get all objects required for training,
         like model, dataloaders, loggers, optimizer, etc.
         '''
-        cls.default_device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-
-        cls.config = {
-            'load_pytorch_common_config': True,
-            'transientdir': 'dummy_transientdir',
-            'packagedir': 'dummy_package_dir',
-            'misc_data_dir': 'dummy_misc_data_dir',
-            'device': cls.default_device,
-            'epochs': 1
-        }
-        cls.config = cls._load_config(cls.config)
+        cls._load_config()
 
     @classmethod
     def tearDownClass(cls):
@@ -61,6 +51,8 @@ class TestTrainUtils(unittest.TestCase):
         all_kwargs = self._get_all_combination_kwargs()
 
         for model_type in all_kwargs.keys():
+            self._load_config(self.default_config_dict) # Reload default config
+            self.config.model_type = model_type
             loss_criterion = 'cross-entropy' if model_type == 'classification' else 'mse'
             eval_criterion = 'accuracy' if model_type == 'classification' else 'mse'
             for dataset_kwargs, model_kwargs in all_kwargs[model_type]:
@@ -79,7 +71,10 @@ class TestTrainUtils(unittest.TestCase):
 
         # Define classification kwargs
         classification_dataset_kwargs = [
-            {'dataset_name': 'multi_class_dataset', 'size': size, 'dim': in_dim, 'num_classes': 2},
+            {'dataset_name': 'multi_class_dataset', 'size': size, 'dim': in_dim,
+             'num_classes': num_classes},
+            {'dataset_name': 'multi_label_dataset', 'size': size, 'dim': in_dim,
+             'num_classes': num_classes, 'multilabel_reduction': 'mean'}
         ]
 
         classification_model_kwargs = [
@@ -94,7 +89,7 @@ class TestTrainUtils(unittest.TestCase):
         # Define regression kwargs
         regression_dataset_kwargs = [
             {'dataset_name': 'regression_dataset', 'size': size,
-             'in_dim': in_dim, 'out_dim': out_dim},
+             'in_dim': in_dim, 'out_dim': out_dim}
         ]
 
         regression_model_kwargs = [
@@ -179,7 +174,7 @@ class TestTrainUtils(unittest.TestCase):
         dictionary = cls._get_merged_dict(dictionary)
         config = load_pytorch_common_config(dictionary)
         set_pytorch_config(config)
-        return config
+        cls.config = config
 
     @classmethod
     def _get_merged_dict(cls, dictionary=None):
@@ -187,9 +182,20 @@ class TestTrainUtils(unittest.TestCase):
         Override default config with
         `dictionary` if provided.
         '''
+        cls.default_device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+
+        cls.default_config_dict = {
+            'load_pytorch_common_config': True,
+            'transientdir': 'dummy_transientdir',
+            'packagedir': 'dummy_package_dir',
+            'misc_data_dir': 'dummy_misc_data_dir',
+            'device': cls.default_device,
+            'epochs': 1
+        }
+
         if dictionary is None:
-            return cls.config.copy()
-        return {**cls.config, **dictionary}
+            return cls.default_config_dict
+        return {**cls.default_config_dict, **dictionary}
 
     def _get_training_objects(self, loss_criterion, eval_criterion, **kwargs):
         '''
@@ -197,6 +203,8 @@ class TestTrainUtils(unittest.TestCase):
         model, dataloaders, loggers, optimizer, etc.
         '''
         dataset_kwargs, model_kwargs = kwargs['dataset_kwargs'], kwargs['model_kwargs']
+
+        multilabel_reduction = dataset_kwargs.pop('multilabel_reduction', None)
 
         # Get training/validation dataloaders
         train_loader, val_loader = self._get_dataloaders(**dataset_kwargs)
@@ -211,6 +219,10 @@ class TestTrainUtils(unittest.TestCase):
         train_logger, val_logger = self._get_loggers(loss_criterion, eval_criterion)
 
         # Get training/testing loss and eval criteria
+        if multilabel_reduction is not None:
+            self.config.classification_type = 'multilabel'
+            self.config.loss_kwargs['multilabel_reduction'] = multilabel_reduction
+            self.config.eval_criteria_kwargs['multilabel_reduction'] = multilabel_reduction
         loss_criterion_train, loss_criterion_test, eval_criteria = \
             get_loss_eval_criteria(self.config, reduction='mean')
 
@@ -262,9 +274,9 @@ class TestTrainUtils(unittest.TestCase):
         loggers and feed in some dummy
         logs to emulate training.
         '''
-        self.config['loss_criterion'] = loss_criterion
-        self.config['eval_criteria'] = [eval_criterion]
-        self.config['early_stopping_criterion'] = eval_criterion
+        self.config.loss_criterion = loss_criterion
+        self.config.eval_criteria = [eval_criterion]
+        self.config.early_stopping_criterion = eval_criterion
         train_logger, val_logger = utils.get_model_performance_trackers(self.config)
         train_logger.add_metrics(np.random.randn(10), {eval_criterion: np.random.randn(10)})
         val_logger.add_metrics(np.random.randn(self.config.epochs),
