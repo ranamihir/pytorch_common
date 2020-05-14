@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import itertools
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import SGD
@@ -33,12 +34,6 @@ class TestTrainUtils(unittest.TestCase):
         }
         cls.config = cls._load_config(cls.config)
 
-        # Define default dataset and model hyperparams
-        cls.default_dataset_kwargs = {'dataset_name': 'multi_class_dataset', 'size': 5,
-                                      'dim': 8, 'num_classes': 2}
-        cls.default_model_kwargs = {'model_name': 'single_layer_classifier', 'in_dim': 8,
-                                    'num_classes': 2}
-
     @classmethod
     def tearDownClass(cls):
         '''
@@ -55,14 +50,73 @@ class TestTrainUtils(unittest.TestCase):
             early_stopping = train_utils.EarlyStopping(eval_criterion)
         self._test_error(train_utils.EarlyStopping, 'dummy_criterion')
 
-    def test_saving_loading_models(self):
+    def test_all_models(self, **kwargs):
+        '''
+        Test all models for all compatible
+        datasets by:
+          - ensuring that saving/loading model works
+          - performing the whole training routine
+          - getting all predictions at test time
+        '''
+        all_kwargs = self._get_all_combination_kwargs()
+
+        for model_type in all_kwargs.keys():
+            loss_criterion = 'cross-entropy' if model_type == 'classification' else 'mse'
+            eval_criterion = 'accuracy' if model_type == 'classification' else 'mse'
+            for dataset_kwargs, model_kwargs in all_kwargs[model_type]:
+                kwargs = {'dataset_kwargs': dataset_kwargs, 'model_kwargs': model_kwargs}
+                self._test_saving_loading_models(loss_criterion, eval_criterion, **model_kwargs)
+                self._test_train_model(loss_criterion, eval_criterion, **kwargs)
+                self._test_get_all_predictions(loss_criterion, eval_criterion, **kwargs)
+
+    def _get_all_combination_kwargs(self):
+        '''
+        Generate a list of kwargs for all compatible
+        combinations of datasets and models.
+        '''
+        # Define dataset and model hyperparams
+        size, in_dim, h_dim, out_dim, num_layers, num_classes = 5, 4, 4, 1, 2, 2
+
+        # Define classification kwargs
+        classification_dataset_kwargs = [
+            {'dataset_name': 'multi_class_dataset', 'size': size, 'dim': in_dim, 'num_classes': 2},
+        ]
+
+        classification_model_kwargs = [
+            {'model_name': 'single_layer_classifier', 'in_dim': in_dim, 'num_classes': num_classes},
+            {'model_name': 'multi_layer_classifier', 'in_dim': in_dim, 'num_classes': num_classes,
+             'h_dim': h_dim, 'num_layers': num_layers}
+        ]
+
+        classification_kwargs = list(itertools.product(classification_dataset_kwargs,
+                                                       classification_model_kwargs))
+
+        # Define regression kwargs
+        regression_dataset_kwargs = [
+            {'dataset_name': 'regression_dataset', 'size': size,
+             'in_dim': in_dim, 'out_dim': out_dim},
+        ]
+
+        regression_model_kwargs = [
+            {'model_name': 'single_layer_regressor', 'in_dim': in_dim, 'out_dim': out_dim},
+            {'model_name': 'multi_layer_regressor', 'in_dim': in_dim, 'out_dim': out_dim,
+             'h_dim': h_dim, 'num_layers': num_layers}
+        ]
+
+        regression_kwargs = list(itertools.product(regression_dataset_kwargs,
+                                                   regression_model_kwargs))
+
+        all_kwargs = {'classification': classification_kwargs, 'regression': regression_kwargs}
+        return all_kwargs
+
+    def _test_saving_loading_models(self, loss_criterion, eval_criterion, **model_kwargs):
         '''
         Test saving and loading of models.
         '''
         # Get required training objects
-        model = self._get_model(**self.default_model_kwargs)
+        model = self._get_model(**model_kwargs)
         optimizer = self._get_optimizer(model)
-        train_logger, val_logger = self._get_loggers(eval_criterion='accuracy')
+        train_logger, val_logger = self._get_loggers(loss_criterion, eval_criterion)
 
         # Ensure that original model state dict matches the
         # one obtained from saving and then loading the model
@@ -74,14 +128,12 @@ class TestTrainUtils(unittest.TestCase):
         self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig,
                         return_dict['model'].state_dict()))
 
-    def test_train_model(self):
+    def _test_train_model(self, loss_criterion, eval_criterion, **kwargs):
         '''
         Test the whole training routine of a model.
         '''
         # Get all training objects
-        kwargs = {'dataset_kwargs': self.default_dataset_kwargs,
-                  'model_kwargs': self.default_model_kwargs}
-        return_dict = self._get_training_objects(eval_criterion='accuracy', **kwargs)
+        return_dict = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
 
         # Train model
         train_utils.train_model(return_dict['model'], self.config, return_dict['train_loader'],
@@ -91,14 +143,12 @@ class TestTrainUtils(unittest.TestCase):
                                 return_dict['train_logger'], return_dict['val_logger'],
                                 self.config.epochs)
 
-    def test_get_all_predictions(self):
+    def _test_get_all_predictions(self, loss_criterion, eval_criterion, **kwargs):
         '''
         Test the routine of obtaining predictions from a model.
         '''
         # Get all training objects
-        kwargs = {'dataset_kwargs': self.default_dataset_kwargs,
-                  'model_kwargs': self.default_model_kwargs}
-        return_dict = self._get_training_objects(eval_criterion='accuracy', **kwargs)
+        return_dict = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
 
         # Get all predictions
         outputs_val, preds_val, probs_val = \
@@ -141,8 +191,7 @@ class TestTrainUtils(unittest.TestCase):
             return cls.config.copy()
         return {**cls.config, **dictionary}
 
-    @classmethod
-    def _get_training_objects(cls, eval_criterion, **kwargs):
+    def _get_training_objects(self, loss_criterion, eval_criterion, **kwargs):
         '''
         Get all objects required for training, like
         model, dataloaders, loggers, optimizer, etc.
@@ -150,20 +199,20 @@ class TestTrainUtils(unittest.TestCase):
         dataset_kwargs, model_kwargs = kwargs['dataset_kwargs'], kwargs['model_kwargs']
 
         # Get training/validation dataloaders
-        train_loader, val_loader = cls._get_dataloaders(**dataset_kwargs)
+        train_loader, val_loader = self._get_dataloaders(**dataset_kwargs)
 
         # Get model
-        model = cls._get_model(**model_kwargs)
+        model = self._get_model(**model_kwargs)
 
         # Get optimizer
-        optimizer = cls._get_optimizer(model)
+        optimizer = self._get_optimizer(model)
 
         # Get training/validation loggers
-        train_logger, val_logger = cls._get_loggers(eval_criterion=eval_criterion)
+        train_logger, val_logger = self._get_loggers(loss_criterion, eval_criterion)
 
         # Get training/testing loss and eval criteria
         loss_criterion_train, loss_criterion_test, eval_criteria = \
-            get_loss_eval_criteria(cls.config, reduction='mean')
+            get_loss_eval_criteria(self.config, reduction='mean')
 
         training_objects = {
             'train_loader': train_loader,
@@ -178,10 +227,9 @@ class TestTrainUtils(unittest.TestCase):
         }
         return training_objects
 
-    @classmethod
-    def _get_dataloaders(cls, **kwargs):
+    def _get_dataloaders(self, **kwargs):
         '''
-        Get training and validation dataloaders
+        Get training and validation dataloaders.
         '''
         dataset_name = kwargs.pop('dataset_name')
         dataset_config = BaseDatasetConfig(kwargs)
@@ -191,36 +239,36 @@ class TestTrainUtils(unittest.TestCase):
 
         return train_loader, val_loader
 
-    @classmethod
-    def _get_model(cls, **kwargs):
+    def _get_model(self, **kwargs):
         '''
-        Get model
+        Get model.
         '''
         model_name = kwargs.pop('model_name')
         model_config = BaseModelConfig(kwargs)
         model = create_model(model_name, model_config)
-        model = utils.send_model_to_device(model, cls.config.device, cls.config.device_ids)
+        model = utils.send_model_to_device(model, self.config.device, self.config.device_ids)
         return model
 
-    @classmethod
-    def _get_optimizer(cls, model):
+    def _get_optimizer(self, model):
         '''
-        Get optimizer
+        Get optimizer.
         '''
         optimizer = SGD(model.parameters(), lr=1e-3)
         return optimizer
 
-    @classmethod
-    def _get_loggers(cls, **kwargs):
+    def _get_loggers(self, loss_criterion, eval_criterion):
         '''
-        Get training/validation loggers and feed
-        in some dummy logs to emulate training
+        Get training and validation
+        loggers and feed in some dummy
+        logs to emulate training.
         '''
-        metric = kwargs['eval_criterion']
-        train_logger, val_logger = utils.get_model_performance_trackers(cls.config)
-        train_logger.add_metrics(np.random.randn(10), {metric: np.random.randn(10)})
-        val_logger.add_metrics(np.random.randn(cls.config.epochs),
-                                   {metric: np.random.randn(cls.config.epochs)})
+        self.config['loss_criterion'] = loss_criterion
+        self.config['eval_criteria'] = [eval_criterion]
+        self.config['early_stopping_criterion'] = eval_criterion
+        train_logger, val_logger = utils.get_model_performance_trackers(self.config)
+        train_logger.add_metrics(np.random.randn(10), {eval_criterion: np.random.randn(10)})
+        val_logger.add_metrics(np.random.randn(self.config.epochs),
+                               {eval_criterion: np.random.randn(self.config.epochs)})
         val_logger.set_best_epoch(1)
 
         return train_logger, val_logger
