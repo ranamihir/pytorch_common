@@ -191,7 +191,7 @@ class DummyMultiClassDataset(BasePyTorchDataset):
         # Fix torch random generator seed and numpy random state for reproducibility
         x = torch.rand(self.dim, generator=torch.Generator().manual_seed(index))
         y = torch.as_tensor(np.random.RandomState(index).choice(range(self.num_classes)))
-        return x, y
+        return x.float(), y.long()
 
     def __len__(self):
         return self.size
@@ -212,6 +212,7 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
         # Fix torch random generator seed and numpy random state for reproducibility
         x = torch.rand(self.dim, generator=torch.Generator().manual_seed(index))
         y = torch.as_tensor(np.random.RandomState(index).choice([0,1], size=self.num_classes))
+        return x.float(), y.long()
 
     def __len__(self):
         return self.size
@@ -222,7 +223,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
     Dummy dataset for generating
     random regression style data.
     '''
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self.size = config.size
         self.in_dim = config.in_dim
@@ -232,7 +233,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
         # Fix torch random generator seed and numpy random state for reproducibility
         x = torch.rand(self.in_dim, generator=torch.Generator().manual_seed(index))
         y = torch.as_tensor(np.random.RandomState(index).randn(self.out_dim))
-        return x, y
+        return x.float(), y.float()
 
     def __len__(self):
         return self.size

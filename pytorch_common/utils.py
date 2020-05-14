@@ -688,16 +688,31 @@ class ModelTracker(object):
             return metrics_df.query('epoch == @epoch')
         return metrics_df
 
-    def set_best_epoch(self, best_epoch):
+    def set_best_epoch(self, best_epoch=None):
         '''
         Add the `best_epoch` attribute to validation
         logger for future evaluation purposes.
         '''
         if self.is_train:
             raise ValueError('Best epoch can only be stored into validation logger.')
-        if best_epoch not in self.epochs:
-            raise ValueError(f'Best epoch provided ({best_epoch}) must be one of {self.epochs}.')
-        self.best_epoch = best_epoch
+        if best_epoch is None:
+            self.best_epoch = self.get_overall_best_epoch()
+        else:
+            if best_epoch not in self.epochs:
+                raise ValueError(f'Best epoch provided ({best_epoch}) must be one of {self.epochs}.')
+            self.best_epoch = best_epoch
+
+    def get_overall_best_epoch(self):
+        '''
+        Get the overall best epoch if early stopping is not used.
+
+        Returns the maximum value across all epochs based
+        on the (early) stopping criterion, which defaults
+        to accuracy / mse if it isn't defined.
+        '''
+        eval_metrics_dict = self.get_eval_metrics(self.early_stopping_criterion)
+        best_epoch = max(eval_metrics_dict, key=eval_metrics_dict.get)
+        return best_epoch
 
     @property
     def _epochs_loss(self):

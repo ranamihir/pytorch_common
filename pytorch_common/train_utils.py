@@ -89,7 +89,7 @@ def train_model(model, config, train_loader, val_loader, optimizer,
             # Check if current epoch better than previous best based
             # on early stopping (if used) or all epoch history
             if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric))\
-                or (not config.use_early_stopping and epoch == get_overall_best_epoch(val_logger)):
+                or (not config.use_early_stopping and epoch == val_logger.get_overall_best_epoch()):
                 logging.info('Computing best epoch and adding to validation logger...')
                 val_logger.set_best_epoch(epoch)
                 logging.info('Done.')
@@ -619,17 +619,6 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
              f'"checkpoint_type" ("{checkpoint_type}") does '
              f'not match that obtained from the model at '
              f'"{checkpoint_file}" ("{file_checkpoint_type}").')
-
-def get_overall_best_epoch(val_logger):
-    '''
-    Get the overall best epoch if early stopping is not used.
-    Returns the maximum value across all epochs based
-    on the (early) stopping criterion, which defaults
-    to accuracy / mse if it isn't defined.
-    '''
-    eval_metrics_dict = val_logger.get_eval_metrics(val_logger.early_stopping_criterion)
-    best_epoch = max(eval_metrics_dict, key=eval_metrics_dict.get)
-    return best_epoch
 
 
 class EarlyStopping(object):
