@@ -1,4 +1,3 @@
-import logging
 import os
 from .models_dl import (SingleLayerClassifier, MultiLayerClassifier,
                         SingleLayerRegressor, MultiLayerRegressor)
