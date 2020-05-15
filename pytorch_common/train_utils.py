@@ -151,7 +151,8 @@ def train_model(model, config, train_loader, val_loader, optimizer,
 def train_epoch(model, dataloader, device, loss_criterion, epoch,
                 optimizer, scheduler=None, decouple_fn=None):
     '''
-    Perform one training epoch.
+    Perform one training epoch and return the loss per example
+    for each iteration.
     See `perform_one_epoch()` for more details.
     '''
     return perform_one_epoch('train', model, dataloader, device,
@@ -163,7 +164,9 @@ def train_epoch(model, dataloader, device, loss_criterion, epoch,
 def evaluate_epoch(model, dataloader, device, loss_criterion,
                    eval_criteria, decouple_fn=None):
     '''
-    Perform one evaluation epoch.
+    Perform one evaluation epoch and return the loss per example
+    for each epoch, all eval criteria, raw model outputs, and
+    the true targets.
     See `perform_one_epoch()` for more details.
     '''
     return perform_one_epoch('eval', model, dataloader, device,
@@ -174,8 +177,9 @@ def evaluate_epoch(model, dataloader, device, loss_criterion,
 @torch.no_grad()
 def get_all_predictions(model, dataloader, device, threshold_prob=None, decouple_fn=None):
     '''
-    Make predictions on entire dataset and return raw outputs and optionally
-    class predictions and probabilities if it's a classification model.
+    Make predictions on entire dataset and return raw outputs
+    and optionally class predictions and probabilities if it's
+    a classification model.
     See `perform_one_epoch()` for more details.
     '''
     return perform_one_epoch('test', model, dataloader, device,
@@ -189,9 +193,10 @@ def perform_one_epoch(phase, model, dataloader, device, loss_criterion=None,
     '''
     Common loop for one training / evaluation / testing epoch on the entire dataset.
       - For training, returns the loss per example for each iteration.
-      - For evaluation, returns the loss per example for each iteration and all eval criteria.
-      - For testing, returns raw model outputs, and optionally class predictions and
-        probabilities if it's a classification model.
+      - For evaluation, returns the loss per example for each epoch, all eval
+        criteria, raw model outputs, and the true targets.
+      - For testing, returns raw model outputs, and optionally class predictions
+        and probabilities if it's a classification model.
 
     :param phase: Type of pass to perform over data
                   Choices = 'train' | 'eval' | 'test'
@@ -336,7 +341,7 @@ def decouple_batch_train(batch):
     Separate out batch into inputs and targets
     by assuming they're the first two elements
     in the batch, and return them.
-    Used commonly during training.
+    Used commonly during training/evaluation.
 
     This is required because often other things
     are also passed in the batch for debugging.
@@ -351,7 +356,7 @@ def decouple_batch_test(batch):
     Extract and return just the inputs
     from a batch assuming it's the first
     element in the batch.
-    Used commonly to make predictions.
+    Used commonly to make test-time predictions.
 
     This is required because often other things
     are also passed in the batch for debugging.
