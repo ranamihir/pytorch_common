@@ -16,8 +16,8 @@ from .utils import (get_model_outputs_only, send_batch_to_device,
 
 @timing
 def train_model(model, config, train_loader, val_loader, optimizer,
-                loss_criterion_train, loss_criterion_test, eval_criteria,
-                train_logger, val_logger, epochs, scheduler=None,
+                loss_criterion_train, loss_criterion_eval, eval_criteria,
+                train_logger, val_logger, epochs=None, scheduler=None,
                 early_stopping=None, config_info_dict=None, start_epoch=0,
                 decouple_fn_train=None, decouple_fn_eval=None):
     '''
@@ -37,7 +37,30 @@ def train_model(model, config, train_loader, val_loader, optimizer,
           and before the next one begins, e.g. during saving a
           checkpoint, as it may cause issues while loading the model.
           Instead pause it during training/evaluation within an epoch.
+
+    :param loss_criterion_train: Training loss criterion
+    :param loss_criterion_eval: Evaluation loss criterion
+    :param eval_criteria: Dict of evaluation criteria.
+                          Keys are names and values are
+                          the respective functions.
+    :param train_logger: Logger for performance metrics
+                         on training set
+    :param val_logger: Logger for performance metrics
+                       on validation set
+    :param start_epoch: May be set to the last trained epoch
+                        if training is resumed from an
+                        earlier saved checkpoint
+    :param decouple_fn_train: Decoupling function to extract
+                              inputs and targets from a batch
+                              during training
+    :param decouple_fn_eval: Decoupling function to extract
+                             inputs from a batch during evaluation
     '''
+    # Provision to override epochs
+    # Otherwise derive from config
+    if epochs is None:
+        epochs = config.epochs
+
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file, best_model = '', None
     for epoch in range(1+start_epoch, 1+start_epoch+epochs):
@@ -54,24 +77,24 @@ def train_model(model, config, train_loader, val_loader, optimizer,
                 decouple_fn=decouple_fn_train
             )
 
-            # Test on training set
+            # Evaluate on training set
             _, eval_metrics_train, _, _ = evaluate_epoch(
                 model=model,
                 dataloader=train_loader,
                 device=config.device,
-                loss_criterion=loss_criterion_test,
+                loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
                 decouple_fn=decouple_fn_eval
             )
             # Add train losses+eval metrics, and log them
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
 
-            # Test on val set
+            # Evaluate on val set
             val_losses, eval_metrics_val, _, _ = evaluate_epoch(
                 model=model,
                 dataloader=val_loader,
                 device=config.device,
-                loss_criterion=loss_criterion_test,
+                loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
                 decouple_fn=decouple_fn_eval
             )

@@ -19,28 +19,28 @@ CLASSIFICATION_EVAL_CRITERIA = ['accuracy', 'precision', 'recall', 'f1', 'auc']
 EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
 
 
-def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
+def get_loss_eval_criteria(config, reduction='mean', reduction_val=None):
     '''
     Define train and val loss and evaluation criteria.
-    :param reduction_test: If None, a common `reduction` will be used
-                           for both train and test losses, otherwise
-                           the specified one for test loss.
+    :param reduction_val: If None, a common `reduction` will be used
+                          for both train and val losses, otherwise
+                          the specified one for val loss.
     '''
     # Add/update train loss reduction and get criterion
     train_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction}
     loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion,
                                               **train_loss_kwargs)
 
-    # Add/update test loss reduction and get criterion
-    if reduction_test is None:
-        reduction_test = reduction
-    test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_test}
-    loss_criterion_test = get_loss_criterion(config, criterion=config.loss_criterion,
-                                             **test_loss_kwargs)
+    # Add/update val loss reduction and get criterion
+    if reduction_val is None:
+        reduction_val = reduction
+    val_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_val}
+    loss_criterion_val = get_loss_criterion(config, criterion=config.loss_criterion,
+                                             **val_loss_kwargs)
 
     eval_criteria = get_eval_criteria(config, config.eval_criteria,
                                       **config.eval_criteria_kwargs)
-    return loss_criterion_train, loss_criterion_test, eval_criteria
+    return loss_criterion_train, loss_criterion_val, eval_criteria
 
 def get_loss_criterion(config, criterion='cross-entropy', **kwargs):
     '''
