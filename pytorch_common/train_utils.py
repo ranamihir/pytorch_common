@@ -384,7 +384,7 @@ def take_scheduler_step(scheduler, val_metric=None):
         scheduler.step()
 
 def save_model(model, optimizer, config, train_logger, val_logger, epoch,
-               misc_info=None, scheduler=None, checkpoint_type='state'):
+               config_info_dict=None, scheduler=None, checkpoint_type='state'):
     '''
     Save the checkpoint at a given epoch.
     It can save either:
@@ -399,10 +399,10 @@ def save_model(model, optimizer, config, train_logger, val_logger, epoch,
           losses and eval metrics so far
         - Current training config
 
-    :param misc_info: Dict comprising additional information
-                      about the config which will be used to
-                      generate a unique string for the
-                      checkpoint name
+    :param config_info_dict: Dict comprising additional information
+                             about the config which will be used to
+                             generate a unique string for the
+                             checkpoint name
     :param checkpoint_type: Type of checkpoint to load
                             Choices = 'state' | model'
                             Default = 'state'
@@ -411,7 +411,7 @@ def save_model(model, optimizer, config, train_logger, val_logger, epoch,
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     logging.info(f'Saving {checkpoint_type} checkpoint "{checkpoint_path}"...')
 
@@ -594,16 +594,16 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
 
     return optimizer, scheduler
 
-def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
+def remove_model(config, epoch, config_info_dict=None, checkpoint_type='state'):
     '''
     Remove a checkpoint/model at a given epoch.
     Used in early stopping if better performance
     is observed at a subsequent epoch.
 
-    :param misc_info: Dict comprising additional information
-                      about the config which will be used to
-                      generate a unique string for the
-                      checkpoint name
+    :param config_info_dict: Dict comprising additional information
+                             about the config which will be used to
+                             generate a unique string for the
+                             checkpoint name
     :param checkpoint_type: Type of checkpoint to load
                             Choices = 'state' | model'
                             Default = 'state'
@@ -611,7 +611,7 @@ def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
         logging.info(f'Removing {checkpoint_type} checkpoint "{checkpoint_path}"...')
