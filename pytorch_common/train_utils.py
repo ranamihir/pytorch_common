@@ -399,6 +399,10 @@ def save_model(model, optimizer, config, train_logger, val_logger, epoch,
           losses and eval metrics so far
         - Current training config
 
+    :param misc_info: Dict comprising additional information
+                      about the config which will be used to
+                      generate a unique string for the
+                      checkpoint name
     :param checkpoint_type: Type of checkpoint to load
                             Choices = 'state' | model'
                             Default = 'state'
@@ -596,6 +600,10 @@ def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
     Used in early stopping if better performance
     is observed at a subsequent epoch.
 
+    :param misc_info: Dict comprising additional information
+                      about the config which will be used to
+                      generate a unique string for the
+                      checkpoint name
     :param checkpoint_type: Type of checkpoint to load
                             Choices = 'state' | model'
                             Default = 'state'
