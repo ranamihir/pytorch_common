@@ -47,6 +47,10 @@ def train_model(model, config, train_loader, val_loader, optimizer,
                          on training set
     :param val_logger: Logger for performance metrics
                        on validation set
+    :param config_info_dict: Dict comprising additional information
+                             about the config which will be used to
+                             generate a unique string for the
+                             checkpoint name
     :param start_epoch: May be set to the last trained epoch
                         if training is resumed from an
                         earlier saved checkpoint
@@ -229,7 +233,7 @@ def perform_one_epoch(phase, model, dataloader, device, loss_criterion=None,
     If `phase=='train'`, params `optimizer` and `epoch` must be provided.
     If `phase=='eval'`, param `eval_criteria` must be provided.
 
-    In `phase=='test'`, the dataloader may not have the true labels (by
+    If `phase=='test'`, the dataloader may not have the true labels (by
     definition), and hence, the decoupling function must only return the
     inputs. For the other two phases, they must return the targets as well.
 
@@ -369,8 +373,8 @@ def decouple_batch_train(batch):
     This is required because often other things
     are also passed in the batch for debugging.
     '''
-    # Assume first two elements of batch
-    # are (inputs, targets)
+    # Assume first two elements of
+    # batch are (inputs, targets)
     inputs, targets = batch[:2]
     return inputs, targets
 
@@ -422,10 +426,6 @@ def save_model(model, optimizer, config, train_logger, val_logger, epoch,
           losses and eval metrics so far
         - Current training config
 
-    :param config_info_dict: Dict comprising additional information
-                             about the config which will be used to
-                             generate a unique string for the
-                             checkpoint name
     :param checkpoint_type: Type of checkpoint to load
                             Choices = 'state' | model'
                             Default = 'state'
