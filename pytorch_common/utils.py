@@ -345,9 +345,15 @@ def send_model_to_device(model, device, device_ids=None):
         logging.info('Done.')
     return model
 
-def send_batch_to_device(batch, device):
+def send_batch_to_device(batch, device, non_blocking=True):
     '''
     Send batch to given device.
+
+    :param non_blocking: If True and this copy is between CPU
+                         and GPU, the copy may occur asynchronously
+                         with respect to the host. For other cases,
+                         this argument has no effect.
+                         For explanation, see: https://stackoverflow.com/a/55564072
 
     Useful when the batch tuple is of variable lengths.
     Specifically,
@@ -364,18 +370,18 @@ def send_batch_to_device(batch, device):
         >>> c = torch.tensor([7,8,9], device='cpu')
         >>> batch = ((a, b), c)
         >>> cuda_batch = send_batch_to_device(batch, 'cuda:0')
-        >>> cuda_batch == batch
+        >>> compare_tensors_or_arrays(cuda_batch, batch)
         True
-        >>> batch[1].device
-        device(type='cpu')
-        >>> cuda_batch[1].device
-        device(type='cuda:0')
+        >>> is_batch_on_gpu(batch)
+        False
+        >>> is_batch_on_gpu(cuda_batch)
+        True
     '''
     if torch.is_tensor(batch):
-        return batch.to(device)
+        return batch.to(device=device, non_blocking=non_blocking)
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)((send_batch_to_device(e, device) for e in batch))
+        return type(batch)(send_batch_to_device(e, device, non_blocking) for e in batch)
     else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
@@ -400,12 +406,12 @@ def convert_tensor_to_numpy(batch):
         return batch.to('cpu').detach().numpy()
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)((convert_tensor_to_numpy(e) for e in batch))
+        return type(batch)(convert_tensor_to_numpy(e) for e in batch)
     else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
-def convert_numpy_to_tensor(batch, device=None):
+def convert_numpy_to_tensor(batch, device=None, non_blocking=False):
     '''
     Convert numpy array(s) to torch tensor(s) and
     optionally sends them to the desired device.
@@ -415,10 +421,10 @@ def convert_numpy_to_tensor(batch, device=None):
     '''
     if isinstance(batch, np.ndarray):
         batch = torch.as_tensor(batch)
-        return batch if device is None else batch.to(device)
+        return batch if device is None else send_batch_to_device(batch, device, non_blocking)
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
+        return type(batch)(convert_numpy_to_tensor(e, device, non_blocking) for e in batch)
     else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
