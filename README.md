@@ -63,6 +63,6 @@ I have some enhancements in mind which I haven't gotten around to adding to this
 
 This repo is a personal project, and as such, has not been as heavily tested. It is (and will likely always be) a work-in-progress, as I try my best to keep it current with the advancements in PyTorch.
 
-If you come across any bugs, or have questions/suggestions, please consider opening an issue, [reaching out to me](mailto:ranamihir@gmail.com), or better yet, sending across a PR. :)
+If you come across any bugs, or have questions/suggestions, please consider opening an issue, [reaching out to me](mailto:mrana@tripadvisor.com), or better yet, sending across a PR. :)
 
 Author: [Mihir Rana](https://github.com/ranamihir)

@@ -4,12 +4,11 @@ from copy import deepcopy
 
 class BaseDatasetConfig(Munch):
     '''
-    Base Dataset Configuration class that can be
-    used to have fields for the configuration
-    instead of just going off the dictionary.
+    Base configuration class for
+    dataset-related settings.
 
-    This class extends dict so values can be accessed
-    with both `configobj['key']` and `configobj.key`.
+    Class attributes can be accessed with both
+    `configobj['key']` and `configobj.key`.
     '''
     def __init__(self, dictionary=None):
         if dictionary:
@@ -35,12 +34,11 @@ class BaseDatasetConfig(Munch):
 
 class BaseModelConfig(Munch):
     '''
-    Base Model Configuration class that can be
-    used to have fields for the configuration
-    instead of just going off the dictionary.
+    Base configuration class for
+    model-related settings.
 
-    This class extends dict so values can be accessed
-    with both `configobj['key']` and `configobj.key`.
+    Class attributes can be accessed with both
+    `configobj['key']` and `configobj.key`.
     '''
 
     def __init__(self, dictionary=None, model_type='classification'):
