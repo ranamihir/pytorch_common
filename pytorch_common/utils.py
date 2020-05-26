@@ -411,7 +411,7 @@ def convert_tensor_to_numpy(batch):
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
-def convert_numpy_to_tensor(batch, device=None, non_blocking=False):
+def convert_numpy_to_tensor(batch, device=None, non_blocking=True):
     '''
     Convert numpy array(s) to torch tensor(s) and
     optionally sends them to the desired device.
