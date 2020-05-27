@@ -195,7 +195,7 @@ class SingleLayerClassifier(BasePyTorchModel):
 
         self.fc = nn.Linear(self.in_dim, self.num_classes)
 
-        self.initialize_model()
+        self.initialize_model(init_weights=True)
 
     def forward(self, x):
         return self.fc(x)
@@ -240,7 +240,7 @@ class SingleLayerRegressor(BasePyTorchModel):
 
         self.fc = nn.Linear(self.in_dim, self.out_dim)
 
-        self.initialize_model()
+        self.initialize_model(init_weights=True)
 
     def forward(self, x):
         return self.fc(x)
