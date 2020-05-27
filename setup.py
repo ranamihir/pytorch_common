@@ -5,7 +5,7 @@ setup(
     name="pytorch_common",
     version="1.2.1",
     author="Mihir Rana",
-    author_email="ranamihir@gmail.com",
+    author_email="mrana@tripadvisor.com",
     description="Repo for common PyTorch code",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
