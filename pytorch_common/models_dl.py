@@ -30,8 +30,9 @@ class BasePyTorchModel(nn.Module):
         self.print() # Print model architecture
         self.get_trainable_params() # Print number of trainable parameters
         if init_weights: # Initialize weights
-        logging.warning('You have set `init_weights=True`. Make sure your model does not include '
-                        'a pretrained model, otherwise its weights will also be reinitialized.')
+            logging.warning('You have set `init_weights=True`. Make sure your model does not '
+                            'include a pretrained model, otherwise its weights will also be '
+                            'reinitialized.')
             self.initialize_weights(models_to_init)
 
     def get_trainable_params(self):
