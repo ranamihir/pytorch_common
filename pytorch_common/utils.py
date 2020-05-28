@@ -2,6 +2,7 @@ import random
 import numpy as np
 import pandas as pd
 import os
+import shutil
 import sys
 import yaml
 import logging
@@ -42,13 +43,19 @@ def make_dirs(parent_dir_path, child_dirs=None):
             dir_path = os.path.join(parent_dir_path, dir_name)
             create_dir_if_not_exists(dir_path)
 
-def remove_dir(dir_path):
+def remove_dir(dir_path, force=False):
     '''
-    Remove an empty directory.
-    Raises `OSError` if directory is not empty.
+    Remove a directory at `dir_path`.
+    :param force: whether to delete the directory
+                  even if it is not empty.
+                  If False and directory is not
+                  empty, raises `OSError`.
     '''
     if os.path.isdir(dir_path):
-        os.rmdir(dir_path)
+        if force:
+            shutil.rmtree(dir_path, ignore_errors=True)
+        else:
+            os.rmdir(dir_path)
 
 def human_time_interval(time_seconds):
     '''
@@ -338,9 +345,15 @@ def send_model_to_device(model, device, device_ids=None):
         logging.info('Done.')
     return model
 
-def send_batch_to_device(batch, device):
+def send_batch_to_device(batch, device, non_blocking=True):
     '''
     Send batch to given device.
+
+    :param non_blocking: If True and this copy is between CPU
+                         and GPU, the copy may occur asynchronously
+                         with respect to the host. For other cases,
+                         this argument has no effect.
+                         For explanation, see: https://stackoverflow.com/a/55564072
 
     Useful when the batch tuple is of variable lengths.
     Specifically,
@@ -357,18 +370,18 @@ def send_batch_to_device(batch, device):
         >>> c = torch.tensor([7,8,9], device='cpu')
         >>> batch = ((a, b), c)
         >>> cuda_batch = send_batch_to_device(batch, 'cuda:0')
-        >>> cuda_batch == batch
+        >>> compare_tensors_or_arrays(cuda_batch, batch)
         True
-        >>> batch[1].device
-        device(type='cpu')
-        >>> cuda_batch[1].device
-        device(type='cuda:0')
+        >>> is_batch_on_gpu(batch)
+        False
+        >>> is_batch_on_gpu(cuda_batch)
+        True
     '''
     if torch.is_tensor(batch):
-        return batch.to(device)
+        return batch.to(device=device, non_blocking=non_blocking)
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)((send_batch_to_device(e, device) for e in batch))
+        return type(batch)(send_batch_to_device(e, device, non_blocking) for e in batch)
     else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
@@ -393,12 +406,12 @@ def convert_tensor_to_numpy(batch):
         return batch.to('cpu').detach().numpy()
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)((convert_tensor_to_numpy(e) for e in batch))
+        return type(batch)(convert_tensor_to_numpy(e) for e in batch)
     else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
 
-def convert_numpy_to_tensor(batch, device=None):
+def convert_numpy_to_tensor(batch, device=None, non_blocking=True):
     '''
     Convert numpy array(s) to torch tensor(s) and
     optionally sends them to the desired device.
@@ -408,10 +421,10 @@ def convert_numpy_to_tensor(batch, device=None):
     '''
     if isinstance(batch, np.ndarray):
         batch = torch.as_tensor(batch)
-        return batch if device is None else batch.to(device)
+        return batch if device is None else send_batch_to_device(batch, device, non_blocking)
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)((convert_numpy_to_tensor(e, device) for e in batch))
+        return type(batch)(convert_numpy_to_tensor(e, device, non_blocking) for e in batch)
     else: # Structure/type of batch unknown
         logging.warning(f'Type "{type(batch)}" not understood. Returning variable as-is.')
         return batch
@@ -437,6 +450,30 @@ def compare_tensors_or_arrays(batch_a, batch_b):
     else: # Structure/type of batch unknown
         raise RuntimeError(f'Types of each batch "({type(batch_a)}, {type(batch_b)})" must '
                            f'be `np.ndarray`, `torch.Tensor` or a list/tuple of them.')
+
+def compare_model_parameters(parameters1, parameters2):
+    '''
+    Compare two sets of model parameters.
+    Useful in unit tests for ensuring consistency
+    on saving and then loading the same set of
+    parameters.
+    '''
+    for p1, p2 in zip(parameters1, parameters2):
+        if p1.data.ne(p2.data).sum() > 0:
+            return False
+    return True
+
+def compare_model_state_dicts(state_dict1, state_dict2):
+    '''
+    Compare two sets of model state dicts.
+    Useful in unit tests for ensuring
+    consistency on saving and then
+    loading the same state dict.
+    '''
+    for key1, key2 in zip(state_dict1, state_dict2):
+        if state_dict1[key1].ne(state_dict2[key2]).sum() > 0:
+            return False
+    return True
 
 def is_batch_on_gpu(batch):
     '''
@@ -617,14 +654,21 @@ class ModelTracker(object):
         logging.info(result_str)
         return result_str
 
+    def add_metrics(self, losses, eval_metrics, epoch=-1):
+        '''
+        Shorthand function to add losses and eval metrics
+        at the end of a given epoch.
+        '''
+        self.add_losses(losses, epoch)
+        self.add_eval_metrics(eval_metrics, epoch)
+
     def add_and_log_metrics(self, losses, eval_metrics, epoch=-1):
         '''
         Shorthand function to add losses and eval metrics
         at the end of a given epoch, and then print the
         results for that epoch.
         '''
-        self.add_losses(losses, epoch)
-        self.add_eval_metrics(eval_metrics, epoch)
+        self.add_metrics(losses, eval_metrics, epoch)
         self.log_epoch_metrics(epoch)
 
     def get_early_stopping_metric(self):
@@ -650,16 +694,31 @@ class ModelTracker(object):
             return metrics_df.query('epoch == @epoch')
         return metrics_df
 
-    def set_best_epoch(self, best_epoch):
+    def set_best_epoch(self, best_epoch=None):
         '''
         Add the `best_epoch` attribute to validation
         logger for future evaluation purposes.
         '''
         if self.is_train:
             raise ValueError('Best epoch can only be stored into validation logger.')
-        if best_epoch not in self.epochs:
-            raise ValueError(f'Best epoch provided ({best_epoch}) must be one of {self.epochs}.')
-        self.best_epoch = best_epoch
+        if best_epoch is None:
+            self.best_epoch = self.get_overall_best_epoch()
+        else:
+            if best_epoch not in self.epochs:
+                raise ValueError(f'Best epoch provided ({best_epoch}) must be one of {self.epochs}.')
+            self.best_epoch = best_epoch
+
+    def get_overall_best_epoch(self):
+        '''
+        Get the overall best epoch if early stopping is not used.
+
+        Returns the maximum value across all epochs based
+        on the (early) stopping criterion, which defaults
+        to accuracy / mse if it isn't defined.
+        '''
+        eval_metrics_dict = self.get_eval_metrics(self.early_stopping_criterion)
+        best_epoch = max(eval_metrics_dict, key=eval_metrics_dict.get)
+        return best_epoch
 
     @property
     def _epochs_loss(self):
@@ -759,7 +818,7 @@ class SequencePooler(nn.Module):
             self.pooler = self.POOLER_MAPPING[self.model_type]
         else:
             logging.warning(f'No supported sequence pooler was found for model of '\
-                            f'type "{self.model_type}". Using the default one.')
+                            f'type "{model_type}". Using the default one.')
             self.model_type = self.DEFAULT_POOLER_TYPE
             self.pooler = self._default_pooler
 

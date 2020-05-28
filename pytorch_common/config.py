@@ -10,11 +10,10 @@ from .utils import load_object, make_dirs, set_seed
 
 class Config(Munch):
     '''
-    Configuration class that can be used to have fields for the
-    configuration instead of just going off the dictionary.
+    Configuration class for PyTorch-related settings.
 
-    This class extends dict so values can be accessed
-    with both `configobj['key']` and `configobj.key`.
+    Class attributes can be accessed with both
+    `configobj['key']` and `configobj.key`.
     '''
     def __init__(self, dictionary=None):
         if dictionary:
@@ -54,7 +53,9 @@ def load_pytorch_common_config(dictionary):
         # Throw warning if checkpointing is disabled
         if merged_config.disable_checkpointing:
             logging.warning('Checkpointing is disabled. No models will be saved during training.')
-    return merged_config
+
+        return Munch(merged_config)
+    return Munch(dictionary)
 
 def load_config(config_file='config.yaml'):
     '''
@@ -99,7 +100,8 @@ def set_pytorch_config(config):
 
         # TODO: Remove this after extending FocalLoss
         if config.model_type == 'classification' and config.loss_criterion == 'focal-loss':
-            assert config.classification_type == 'binary'
+            assert config.classification_type == 'binary', ('FocalLoss is currently only supported'
+                                                            'for binary classification.')
 
         # Ensure GPU availability as some models are prohibitively slow on CPU
         if config.assert_gpu:
@@ -139,23 +141,47 @@ def set_loss_and_eval_criteria(config):
     respective kwargs.
     '''
     # Set loss and eval criteria kwargs
-    config.loss_kwargs = config.loss_kwargs if config.get('loss_kwargs') else {}
-    config.eval_criteria_kwargs = config.eval_criteria_kwargs \
-                                  if config.get('eval_criteria_kwargs') else {}
+    # This logic allows leaving their values empty even if their keys are specified
+    if not config.get('loss_kwargs'):
+        config.loss_kwargs = {}
+    if not config.get('eval_criteria_kwargs'):
+        config.eval_criteria_kwargs = {}
 
     # Check for evaluation criteria
-    assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
-    for eval_criterion in config.eval_criteria:
-        assert eval_criterion in metrics.EVAL_CRITERIA
+    _check_loss_and_eval_criteria(config)
 
     # If early stopping not used, the criterion is still
     # defined just for getting the "best" epoch
     if config.use_early_stopping:
         assert config.early_stopping_criterion is not None
     else:
-        default_stopping_criterion = 'mse' if config.model_type == 'regression' else 'accuracy'
-        config.early_stopping_criterion = default_stopping_criterion
+        if not hasattr(config, 'early_stopping_criterion'):
+            default_stopping_criterion = 'mse' if config.model_type == 'regression' else 'accuracy'
+            config.early_stopping_criterion = default_stopping_criterion
     assert config.early_stopping_criterion in config.eval_criteria
+
+def _check_loss_and_eval_criteria(config):
+    '''
+    Ensure that the loss and eval criteria
+    provided are consistent with the
+    specified `model_type`.
+    '''
+    assert config.get('eval_criteria') and isinstance(config.eval_criteria, list)
+
+    if config.model_type == 'classification':
+        LOSS_CRITERIA = metrics.CLASSIFICATION_LOSS_CRITERIA
+        EVAL_CRITERIA = metrics.CLASSIFICATION_EVAL_CRITERIA
+    else:
+        LOSS_CRITERIA = metrics.REGRESSION_LOSS_CRITERIA
+        EVAL_CRITERIA = metrics.REGRESSION_EVAL_CRITERIA
+
+    assert config.loss_criterion in LOSS_CRITERIA, (f"Loss criterion (\"{config.loss_criterion}\") "
+                                                    f"for `model_type=='classification' must be one"
+                                                    f" of {LOSS_CRITERIA}.")
+    for eval_criterion in config.eval_criteria:
+        assert eval_criterion in EVAL_CRITERIA, (f"Eval criterion (\"{eval_criterion}\") for "
+                                                 f"`model_type=='classification' must be one"
+                                                 f" of {EVAL_CRITERIA}.")
 
 def check_and_set_devices(config):
     '''
@@ -182,6 +208,7 @@ def check_and_set_devices(config):
         assert config.n_gpu <= torch.cuda.device_count()
     else:
         assert config.device == 'cpu'
+        assert (not config.get('device_ids') or config.device_ids == -1)
         config.device_ids = []
         config.n_gpu = 0
 

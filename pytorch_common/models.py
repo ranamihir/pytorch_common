@@ -1,6 +1,6 @@
-import logging
 import os
-from .models_dl import SingleLayerClassifier, MultiLayerClassifier
+from .models_dl import (SingleLayerClassifier, MultiLayerClassifier,
+                        SingleLayerRegressor, MultiLayerRegressor)
 
 
 def create_model(model_name, config):
@@ -8,6 +8,10 @@ def create_model(model_name, config):
         model = SingleLayerClassifier(config)
     elif model_name == 'multi_layer_classifier':
         model = MultiLayerClassifier(config)
+    elif model_name == 'single_layer_regressor':
+        model = SingleLayerRegressor(config)
+    elif model_name == 'multi_layer_regressor':
+        model = MultiLayerRegressor(config)
     elif is_transformer_model(model_name):
         model = create_transformer_model(model_name, config)
     else:
@@ -19,11 +23,11 @@ def create_transformer_model(model_name, config=None):
     Create a transformer model (e.g. BERT) either using the
     default pretrained model or using the provided config.
     '''
-    # Import here because it's an optional dependency
-    from transformers import AutoConfig, AutoModel
-
     # Make sure model is supported
     assert is_transformer_model(model_name)
+
+    # Import here because it's an optional dependency
+    from transformers import AutoConfig, AutoModel
 
     model_class, config_class = AutoModel, AutoConfig
 

@@ -16,8 +16,8 @@ from .utils import (get_model_outputs_only, send_batch_to_device,
 
 @timing
 def train_model(model, config, train_loader, val_loader, optimizer,
-                loss_criterion_train, loss_criterion_test, eval_criteria,
-                train_logger, val_logger, epochs, scheduler=None,
+                loss_criterion_train, loss_criterion_eval, eval_criteria,
+                train_logger, val_logger, epochs=None, scheduler=None,
                 early_stopping=None, config_info_dict=None, start_epoch=0,
                 decouple_fn_train=None, decouple_fn_eval=None):
     '''
@@ -37,10 +37,37 @@ def train_model(model, config, train_loader, val_loader, optimizer,
           and before the next one begins, e.g. during saving a
           checkpoint, as it may cause issues while loading the model.
           Instead pause it during training/evaluation within an epoch.
+
+    :param loss_criterion_train: Training loss criterion
+    :param loss_criterion_eval: Evaluation loss criterion
+    :param eval_criteria: Dict of evaluation criteria.
+                          Keys are names and values are
+                          the respective functions.
+    :param train_logger: Logger for performance metrics
+                         on training set
+    :param val_logger: Logger for performance metrics
+                       on validation set
+    :param config_info_dict: Dict comprising additional information
+                             about the config which will be used to
+                             generate a unique string for the
+                             checkpoint name
+    :param start_epoch: May be set to the last trained epoch
+                        if training is resumed from an
+                        earlier saved checkpoint
+    :param decouple_fn_train: Decoupling function to extract
+                              inputs and targets from a batch
+                              during training
+    :param decouple_fn_eval: Decoupling function to extract
+                             inputs from a batch during evaluation
     '''
+    # Provision to override epochs
+    # Otherwise derive from config
+    if epochs is None:
+        epochs = config.epochs
+
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file, best_model = '', None
-    for epoch in range(1+start_epoch, epochs+1+start_epoch):
+    for epoch in range(1+start_epoch, 1+start_epoch+epochs):
         try:
             # Train epoch
             train_losses = train_epoch(
@@ -54,24 +81,24 @@ def train_model(model, config, train_loader, val_loader, optimizer,
                 decouple_fn=decouple_fn_train
             )
 
-            # Test on training set
+            # Evaluate on training set
             _, eval_metrics_train, _, _ = evaluate_epoch(
                 model=model,
                 dataloader=train_loader,
                 device=config.device,
-                loss_criterion=loss_criterion_test,
+                loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
                 decouple_fn=decouple_fn_eval
             )
             # Add train losses+eval metrics, and log them
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
 
-            # Test on val set
+            # Evaluate on val set
             val_losses, eval_metrics_val, _, _ = evaluate_epoch(
                 model=model,
                 dataloader=val_loader,
                 device=config.device,
-                loss_criterion=loss_criterion_test,
+                loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
                 decouple_fn=decouple_fn_eval
             )
@@ -89,7 +116,7 @@ def train_model(model, config, train_loader, val_loader, optimizer,
             # Check if current epoch better than previous best based
             # on early stopping (if used) or all epoch history
             if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric))\
-                or (not config.use_early_stopping and epoch == get_overall_best_epoch(val_logger)):
+                or (not config.use_early_stopping and epoch == val_logger.get_overall_best_epoch()):
                 logging.info('Computing best epoch and adding to validation logger...')
                 val_logger.set_best_epoch(epoch)
                 logging.info('Done.')
@@ -151,7 +178,8 @@ def train_model(model, config, train_loader, val_loader, optimizer,
 def train_epoch(model, dataloader, device, loss_criterion, epoch,
                 optimizer, scheduler=None, decouple_fn=None):
     '''
-    Perform one training epoch.
+    Perform one training epoch and return the loss per example
+    for each iteration.
     See `perform_one_epoch()` for more details.
     '''
     return perform_one_epoch('train', model, dataloader, device,
@@ -163,7 +191,9 @@ def train_epoch(model, dataloader, device, loss_criterion, epoch,
 def evaluate_epoch(model, dataloader, device, loss_criterion,
                    eval_criteria, decouple_fn=None):
     '''
-    Perform one evaluation epoch.
+    Perform one evaluation epoch and return the loss per example
+    for each epoch, all eval criteria, raw model outputs, and
+    the true targets.
     See `perform_one_epoch()` for more details.
     '''
     return perform_one_epoch('eval', model, dataloader, device,
@@ -174,8 +204,9 @@ def evaluate_epoch(model, dataloader, device, loss_criterion,
 @torch.no_grad()
 def get_all_predictions(model, dataloader, device, threshold_prob=None, decouple_fn=None):
     '''
-    Make predictions on entire dataset and return raw outputs and optionally
-    class predictions and probabilities if it's a classification model.
+    Make predictions on entire dataset and return raw outputs
+    and optionally class predictions and probabilities if it's
+    a classification model.
     See `perform_one_epoch()` for more details.
     '''
     return perform_one_epoch('test', model, dataloader, device,
@@ -189,20 +220,25 @@ def perform_one_epoch(phase, model, dataloader, device, loss_criterion=None,
     '''
     Common loop for one training / evaluation / testing epoch on the entire dataset.
       - For training, returns the loss per example for each iteration.
-      - For evaluation, returns the loss per example for each iteration and all eval criteria.
-      - For testing, returns raw model outputs, and optionally class predictions and
-        probabilities if it's a classification model.
+      - For evaluation, returns the loss per example for each epoch, all eval
+        criteria, raw model outputs, and the true targets.
+      - For testing, returns raw model outputs, and optionally class predictions
+        and probabilities if it's a classification model.
 
     :param phase: Type of pass to perform over data
                   Choices = 'train' | 'eval' | 'test'
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
                       after each batch iteration (e.g. CyclicLR), otherwise None
 
-    If `mode=='train'`, params `optimizer` and `epoch` must be provided.
-    If `mode=='eval'`, param `eval_criteria` must be provided.
+    If `phase=='train'`, params `optimizer` and `epoch` must be provided.
+    If `phase=='eval'`, param `eval_criteria` must be provided.
+
+    If `phase=='test'`, the dataloader may not have the true labels (by
+    definition), and hence, the decoupling function must only return the
+    inputs. For the other two phases, they must return the targets as well.
 
     At a time, only one of training / evaluation / testing will be performed.
-    For a given mode, all arguments that pertain to other modes will be ignored.
+    For a given phase, all arguments that pertain to other phases will be ignored.
     '''
     ALLOWED_PHASES = ['train', 'eval', 'test']
 
@@ -332,13 +368,13 @@ def decouple_batch_train(batch):
     Separate out batch into inputs and targets
     by assuming they're the first two elements
     in the batch, and return them.
-    Used commonly during training.
+    Used commonly during training/evaluation.
 
     This is required because often other things
     are also passed in the batch for debugging.
     '''
-    # Assume first two elements of batch
-    # are (inputs, targets)
+    # Assume first two elements of
+    # batch are (inputs, targets)
     inputs, targets = batch[:2]
     return inputs, targets
 
@@ -347,7 +383,7 @@ def decouple_batch_test(batch):
     Extract and return just the inputs
     from a batch assuming it's the first
     element in the batch.
-    Used commonly to make predictions.
+    Used commonly to make test-time predictions.
 
     This is required because often other things
     are also passed in the batch for debugging.
@@ -375,7 +411,7 @@ def take_scheduler_step(scheduler, val_metric=None):
         scheduler.step()
 
 def save_model(model, optimizer, config, train_logger, val_logger, epoch,
-               misc_info=None, scheduler=None, checkpoint_type='state'):
+               config_info_dict=None, scheduler=None, checkpoint_type='state'):
     '''
     Save the checkpoint at a given epoch.
     It can save either:
@@ -398,7 +434,7 @@ def save_model(model, optimizer, config, train_logger, val_logger, epoch,
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     logging.info(f'Saving {checkpoint_type} checkpoint "{checkpoint_path}"...')
 
@@ -581,12 +617,16 @@ def load_optimizer_and_scheduler(checkpoint, device, optimizer=None, scheduler=N
 
     return optimizer, scheduler
 
-def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
+def remove_model(config, epoch, config_info_dict=None, checkpoint_type='state'):
     '''
     Remove a checkpoint/model at a given epoch.
     Used in early stopping if better performance
     is observed at a subsequent epoch.
 
+    :param config_info_dict: Dict comprising additional information
+                             about the config which will be used to
+                             generate a unique string for the
+                             checkpoint name
     :param checkpoint_type: Type of checkpoint to load
                             Choices = 'state' | model'
                             Default = 'state'
@@ -594,7 +634,7 @@ def remove_model(config, epoch, misc_info=None, checkpoint_type='state'):
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, misc_info)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
     checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
         logging.info(f'Removing {checkpoint_type} checkpoint "{checkpoint_path}"...')
@@ -619,17 +659,6 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
              f'"checkpoint_type" ("{checkpoint_type}") does '
              f'not match that obtained from the model at '
              f'"{checkpoint_file}" ("{file_checkpoint_type}").')
-
-def get_overall_best_epoch(val_logger):
-    '''
-    Get the overall best epoch if early stopping is not used.
-    Returns the maximum value across all epochs based
-    on the (early) stopping criterion, which defaults
-    to accuracy / mse if it isn't defined.
-    '''
-    eval_metrics_dict = val_logger.get_eval_metrics(val_logger.early_stopping_criterion)
-    best_epoch = max(eval_metrics_dict, key=eval_metrics_dict.get)
-    return best_epoch
 
 
 class EarlyStopping(object):

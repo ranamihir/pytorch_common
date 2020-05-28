@@ -10,32 +10,37 @@ from sklearn.metrics import (accuracy_score, precision_score, f1_score,
                              recall_score, roc_curve, auc)
 
 
-LOSS_CRITERIA = ['mse', 'cross-entropy', 'focal-loss']
-EVAL_CRITERIA = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
+REGRESSION_LOSS_CRITERIA = ['mse']
+CLASSIFICATION_LOSS_CRITERIA = ['cross-entropy', 'focal-loss']
+LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA + CLASSIFICATION_LOSS_CRITERIA
+
+REGRESSION_EVAL_CRITERIA = ['mse']
+CLASSIFICATION_EVAL_CRITERIA = ['accuracy', 'precision', 'recall', 'f1', 'auc']
+EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
 
 
-def get_loss_eval_criteria(config, reduction='mean', reduction_test=None):
+def get_loss_eval_criteria(config, reduction='mean', reduction_val=None):
     '''
     Define train and val loss and evaluation criteria.
-    :param reduction_test: If None, a common `reduction` will be used
-                           for both train and test, otherwise the
-                           specified one for test.
+    :param reduction_val: If None, a common `reduction` will be used
+                          for both train and val losses, otherwise
+                          the specified one for val loss.
     '''
     # Add/update train loss reduction and get criterion
     train_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction}
     loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion,
                                               **train_loss_kwargs)
 
-    # Add/update test loss reduction and get criterion
-    if reduction_test is None:
-        reduction_test = reduction
-    test_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_test}
-    loss_criterion_test = get_loss_criterion(config, criterion=config.loss_criterion,
-                                             **test_loss_kwargs)
+    # Add/update val loss reduction and get criterion
+    if reduction_val is None:
+        reduction_val = reduction
+    val_loss_kwargs = {**config.loss_kwargs, 'reduction': reduction_val}
+    loss_criterion_val = get_loss_criterion(config, criterion=config.loss_criterion,
+                                             **val_loss_kwargs)
 
     eval_criteria = get_eval_criteria(config, config.eval_criteria,
                                       **config.eval_criteria_kwargs)
-    return loss_criterion_train, loss_criterion_test, eval_criteria
+    return loss_criterion_train, loss_criterion_val, eval_criteria
 
 def get_loss_criterion(config, criterion='cross-entropy', **kwargs):
     '''
@@ -51,7 +56,7 @@ def get_eval_criteria(config, criteria, **kwargs):
     is_multilabel = config.model_type == 'classification' and \
                     config.classification_type == 'multilabel'
     if is_multilabel:
-        if not hasattr(kwargs, 'multilabel_reduction'):
+        if not kwargs.get('multilabel_reduction'):
             raise ValueError('Param "multilabel_reduction" must be provided.')
         multilabel_reduction = kwargs['multilabel_reduction']
 
@@ -77,18 +82,23 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
                     Choices: 'sum' | 'mean'
     '''
     # Check for multilabel classification
-    if config.model_type == 'classification' and config.classification_type == 'multilabel':
-        if not hasattr(kwargs, 'multilabel_reduction'):
-            raise ValueError('Param "multilabel_reduction" must be provided.')
+    if config.model_type == 'classification':
+        # TODO: Remove this after extending FocalLoss
+        if criterion == 'focal-loss' and config.classification_type != 'binary':
+            raise ValueError('FocalLoss is currently only supported for binary classification.')
 
-        multilabel_reduction = kwargs.pop('multilabel_reduction')
-        if multilabel_reduction == 'sum':
-            agg_func = torch.sum
-        elif multilabel_reduction == 'mean':
-            agg_func = torch.mean
-        else:
-            raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '
-                             f'must be one of ["sum", "mean"].')
+        elif config.classification_type == 'multilabel':
+            if not kwargs.get('multilabel_reduction'):
+                raise ValueError('Param "multilabel_reduction" must be provided.')
+
+            multilabel_reduction = kwargs.pop('multilabel_reduction')
+            if multilabel_reduction == 'sum':
+                agg_func = torch.sum
+            elif multilabel_reduction == 'mean':
+                agg_func = torch.mean
+            else:
+                raise ValueError(f'Param "multilabel_reduction" ("{multilabel_reduction}") '
+                                 f'must be one of ["sum", "mean"].')
 
     # Get per-label loss
     if criterion == 'mse':
@@ -96,7 +106,8 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
     elif criterion == 'cross-entropy':
         loss_criterion = nn.CrossEntropyLoss(**kwargs)
     elif criterion == 'focal-loss':
-        loss_criterion = FocalLoss(**kwargs)
+        # Remove `reduction` from kwargs since it's not required for FocalLoss
+        loss_criterion = FocalLoss(**{k: v for k, v in kwargs.items() if k != 'reduction'})
     else:
         raise ValueError(f'Param "criterion" ("{criterion}") must be one of {LOSS_CRITERIA}.')
 
@@ -111,7 +122,7 @@ def set_loss_criterion_function(config, criterion='cross-entropy', **kwargs):
     # Multilabel classification
     else:
         return lambda output_hist, y_hist: \
-               agg_func(torch.stack([loss_criterion(output_hist[...,i], y_hist[...,i]) \
+               agg_func(torch.stack([loss_criterion(output_hist, y_hist[...,i]) \
                                      for i in range(y_hist.shape[-1])], dim=0))
 
 def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
@@ -140,8 +151,8 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
 
     # Get per-label eval criterion
     if criterion == 'mse':
-        eval_criterion = get_mse_loss
-    elif criterion in ['accuracy', 'precision', 'recall', 'f1', 'auc']:
+        eval_criterion = partial(get_mse_loss, **kwargs)
+    elif criterion in CLASSIFICATION_EVAL_CRITERIA:
         eval_criterion = partial(get_class_eval_metric, criterion=criterion, **kwargs)
     else:
         raise ValueError(f'Param "criterion" ("{criterion}") must be one of {EVAL_CRITERIA}.')
@@ -156,16 +167,17 @@ def set_eval_criterion_function(config, criterion='accuracy', **kwargs):
 
     # Multilabel classification
     else:
-        return lambda output_hist, y_hist: agg_func([eval_criterion(output_hist[:,i], y_hist[:,i]) \
-                                                     for i in range(y_hist.shape[1])])
+        return lambda output_hist, y_hist: \
+            agg_func([eval_criterion(output_hist, y_hist[...,i]) \
+                      for i in range(y_hist.shape[-1])])
 
 @torch.no_grad()
-def get_mse_loss(output_hist, y_true):
+def get_mse_loss(output_hist, y_true, **kwargs):
     '''
     Compute MSE loss.
     '''
-    assert y_true.shape == y_predicted.shape
-    mse = nn.MSELoss()(y_predicted, y_true).item()
+    assert y_true.shape == output_hist.shape
+    mse = nn.MSELoss(**kwargs)(output_hist, y_true).item()
     return mse
 
 @torch.no_grad()
