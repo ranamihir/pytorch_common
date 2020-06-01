@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     # Application info
     name="pytorch_common",
-    version="1.2.1",
+    version="1.3",
     author="Mihir Rana",
     author_email="mrana@tripadvisor.com",
     description="Repo for common PyTorch code",
