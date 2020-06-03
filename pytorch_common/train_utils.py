@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import os
 import logging
 import dill
@@ -22,8 +21,8 @@ def train_model(model, config, train_loader, val_loader, optimizer,
                 decouple_fn_train=None, decouple_fn_eval=None):
     '''
     Perform the entire model training routine.
-      - `epochs` is deliberately not derived directly from config
-        so as to be able to change it on the fly without modifying config.
+      - `epochs` may be provided on the fly without modifying
+        config; if None, it will be derived directly from config
       - `start_epoch` may be provided if a trained checkpoint is loaded
         into the model and training is to be resumed from that point.
       - `decouple_fn_train` and `decouple_fn_eval` are functions which
@@ -70,7 +69,7 @@ def train_model(model, config, train_loader, val_loader, optimizer,
     for epoch in range(1+start_epoch, 1+start_epoch+epochs):
         try:
             # Train epoch
-            train_losses = train_epoch(
+            train_losses = train_one_epoch(
                 model=model,
                 dataloader=train_loader,
                 device=config.device,
@@ -82,7 +81,7 @@ def train_model(model, config, train_loader, val_loader, optimizer,
             )
 
             # Evaluate on training set
-            _, eval_metrics_train, _, _ = evaluate_epoch(
+            _, eval_metrics_train, _, _ = evaluate_one_epoch(
                 model=model,
                 dataloader=train_loader,
                 device=config.device,
@@ -94,7 +93,7 @@ def train_model(model, config, train_loader, val_loader, optimizer,
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
 
             # Evaluate on val set
-            val_losses, eval_metrics_val, _, _ = evaluate_epoch(
+            val_losses, eval_metrics_val, _, _ = evaluate_one_epoch(
                 model=model,
                 dataloader=val_loader,
                 device=config.device,
@@ -175,31 +174,32 @@ def train_model(model, config, train_loader, val_loader, optimizer,
     }
     return return_dict
 
-def train_epoch(model, dataloader, device, loss_criterion, epoch,
-                optimizer, scheduler=None, decouple_fn=None):
+def train_one_epoch(model, dataloader, device, loss_criterion, epoch,
+                    optimizer, scheduler=None, decouple_fn=None):
     '''
     Perform one training epoch and return the loss per example
     for each iteration.
-    See `perform_one_epoch()` for more details.
+    See `do_one_epoch()` for more details.
     '''
-    return perform_one_epoch('train', model, dataloader, device,
-                             loss_criterion=loss_criterion,
-                             epoch=epoch, optimizer=optimizer,
-                             scheduler=scheduler, decouple_fn=decouple_fn)
+    return do_one_epoch('train', model, dataloader, device,
+                        loss_criterion=loss_criterion,
+                        epoch=epoch, optimizer=optimizer,
+                        scheduler=scheduler,
+                        decouple_fn=decouple_fn)
 
 @torch.no_grad()
-def evaluate_epoch(model, dataloader, device, loss_criterion,
-                   eval_criteria, decouple_fn=None):
+def evaluate_one_epoch(model, dataloader, device, loss_criterion,
+                       eval_criteria, decouple_fn=None):
     '''
     Perform one evaluation epoch and return the loss per example
     for each epoch, all eval criteria, raw model outputs, and
     the true targets.
-    See `perform_one_epoch()` for more details.
+    See `do_one_epoch()` for more details.
     '''
-    return perform_one_epoch('eval', model, dataloader, device,
-                             loss_criterion=loss_criterion,
-                             eval_criteria=eval_criteria,
-                             decouple_fn=decouple_fn)
+    return do_one_epoch('eval', model, dataloader, device,
+                        loss_criterion=loss_criterion,
+                        eval_criteria=eval_criteria,
+                        decouple_fn=decouple_fn)
 
 @torch.no_grad()
 def get_all_predictions(model, dataloader, device, threshold_prob=None, decouple_fn=None):
@@ -207,16 +207,16 @@ def get_all_predictions(model, dataloader, device, threshold_prob=None, decouple
     Make predictions on entire dataset and return raw outputs
     and optionally class predictions and probabilities if it's
     a classification model.
-    See `perform_one_epoch()` for more details.
+    See `do_one_epoch()` for more details.
     '''
-    return perform_one_epoch('test', model, dataloader, device,
-                             threshold_prob=threshold_prob,
-                             decouple_fn=decouple_fn)
+    return do_one_epoch('test', model, dataloader, device,
+                        threshold_prob=threshold_prob,
+                        decouple_fn=decouple_fn)
 
 @timing
-def perform_one_epoch(phase, model, dataloader, device, loss_criterion=None,
-                      epoch=None, optimizer=None, scheduler=None, eval_criteria=None,
-                      threshold_prob=None, decouple_fn=None):
+def do_one_epoch(phase, model, dataloader, device, loss_criterion=None,
+                 epoch=None, optimizer=None, scheduler=None, eval_criteria=None,
+                 threshold_prob=None, decouple_fn=None):
     '''
     Common loop for one training / evaluation / testing epoch on the entire dataset.
       - For training, returns the loss per example for each iteration.
@@ -276,7 +276,7 @@ def perform_one_epoch(phase, model, dataloader, device, loss_criterion=None,
 
     # Enable gradient computation if training to be performed else disable it.
     # Technically not required if this function is called from other supported
-    # functions, e.g. `evaluate_epoch()` (because of decorator), but just being sure.
+    # functions, e.g. `evaluate_one_epoch()` (because of decorator), but just being sure.
     with torch.set_grad_enabled(MODE):
         for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
             # Get inputs for testing
@@ -664,10 +664,10 @@ def validate_checkpoint_type(checkpoint_type, checkpoint_file=None):
 class EarlyStopping(object):
     '''
     Implements early stopping in PyTorch.
-    Reference: https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d
-               with a few improvements.
-    Common metrics (mse, accuracy, etc.) are ineherently supported, so specifying
-    their params is optional.
+    Adapted from https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d
+    with a few improvements.
+    Common metrics (mse, accuracy, etc.) are ineherently
+    supported, so specifying their params is optional.
     '''
     SUPPORTED_CRITERIA = ['mse', 'accuracy', 'precision', 'recall', 'f1', 'auc']
     SUPPORTED_MODES = {'minimize': 0., 'maximize': 1.}

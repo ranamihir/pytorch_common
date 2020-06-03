@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     # Application info
     name="pytorch_common",
-    version="1.3",
+    version="1.3.1",
     author="Mihir Rana",
     author_email="mrana@tripadvisor.com",
     description="Repo for common PyTorch code",
@@ -26,7 +26,7 @@ setup(
 
     # Optional dependencies
     extras_require={
-        "nlp": ["transformers>=2.9.0"] # for NLP related projects
+        "nlp": ["transformers>=2.11.0"] # for NLP related projects
     },
 
     # Add config and sql files to the package
