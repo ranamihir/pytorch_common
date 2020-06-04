@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import logging
 from tqdm import tqdm
 from types import FunctionType
+from typing import Any, List, Dict, Callable, Optional
 
 import torch
 from torch.utils.data import Dataset
@@ -37,7 +40,7 @@ class BasePyTorchDataset(Dataset):
     def __len__(self):
         raise NotImplementedError
 
-    def print(self):
+    def print(self) -> None:
         """
         Print useful summary statistics of the dataset.
         """
@@ -47,7 +50,7 @@ class BasePyTorchDataset(Dataset):
         logging.info(f"Target value counts:\n{value_counts}")
         logging.info("\n"+"-"*40)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         """
         Save the dataset.
         This method only saves the object attributes. If the
@@ -59,7 +62,7 @@ class BasePyTorchDataset(Dataset):
         save_object(self, *args, **kwargs)
 
     @classmethod
-    def load(cls, *args, **kwargs):
+    def load(cls, *args, **kwargs) -> BasePyTorchDataset:
         """
         Load the dataset.
         This method only loads the object attributes. If the
@@ -72,7 +75,7 @@ class BasePyTorchDataset(Dataset):
         return dataset
 
     @classmethod
-    def remove(cls, *args, **kwargs):
+    def remove(cls, *args, **kwargs) -> None:
         """
         Remove the dataset at the given path.
 
@@ -80,14 +83,14 @@ class BasePyTorchDataset(Dataset):
         """
         remove_object(*args, **kwargs)
 
-    def progress_apply(self, data, func, *args, **kwargs):
+    def progress_apply(self, data: pd.DataFrame, func: Callable, *args, **kwargs) -> pd.DataFrame:
         """
         Generic function to `progress_apply` a given row-level
         function `func` on the given `data` (chunk).
         """
         return data.progress_apply(func, *args, **kwargs, axis=1)
 
-    def oversample_class(self, class_to_oversample=None):
+    def oversample_class(self, class_to_oversample: Optional[int] = None) -> pd.DataFrame:
         """
         Oversample the given class.
         `self.oversampling_factor` must be set
@@ -110,7 +113,7 @@ class BasePyTorchDataset(Dataset):
         self.data = self.data.append(self.data.iloc[indices])
         self.shuffle_and_reindex_data()
 
-    def undersample_class(self, class_to_undersample=None):
+    def undersample_class(self, class_to_undersample: Optional[int] = None) -> pd.DataFrame:
         """
         Undersample the given class.
         `self.undersampling_factor` must be set
@@ -133,7 +136,11 @@ class BasePyTorchDataset(Dataset):
         self.data.drop(index=indices, inplace=True)
         self.shuffle_and_reindex_data()
 
-    def _get_class_count(self, class_to_sample=None, minority=True):
+    def _get_class_count(
+        self,
+        class_to_sample: Optional[int] = None,
+        minority: bool = True
+    ) -> List[int]:
         """
         Get the counts of each class.
         Used for under-/over-sampling.
@@ -148,20 +155,19 @@ class BasePyTorchDataset(Dataset):
         class_count = value_counts[class_label]
         return class_label, class_count
 
-    def shuffle_and_reindex_data(self):
+    def shuffle_and_reindex_data(self) -> None:
         """
         Shuffle and reindex data.
         """
         # Shuffle and reindex data
         self.data = self.data.sample(frac=1).reset_index(drop=True)
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         """
         Update `__getstate__` to exclude object
         methods so that it can be pickled.
         """
-        return {k: v for k, v in self.__dict__.items() \
-                if not isinstance(v, FunctionType)}
+        return {k: v for k, v in self.__dict__.items() if not isinstance(v, FunctionType)}
 
 
 class DummyMultiClassDataset(BasePyTorchDataset):
@@ -169,7 +175,7 @@ class DummyMultiClassDataset(BasePyTorchDataset):
     Dummy dataset for generating
     random multi-class style data.
     """
-    def __init__(self, config):
+    def __init__(self, config: BasePyTorchDataset):
         super().__init__()
         self.size = config.size
         self.dim = config.dim
@@ -184,7 +190,7 @@ class DummyMultiClassDataset(BasePyTorchDataset):
     def __len__(self):
         return self.size
 
-    def _get_row(self, index):
+    def _get_row(self, index: int) -> pd.Series:
         """
         Generate data for each row.
         Fix torch random generator seed and
@@ -200,7 +206,7 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
     Dummy dataset for generating
     random multi-label style data.
     """
-    def __init__(self, config):
+    def __init__(self, config: BasePyTorchDataset):
         super().__init__()
         self.size = config.size
         self.dim = config.dim
@@ -215,7 +221,7 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
     def __len__(self):
         return self.size
 
-    def _get_row(self, index):
+    def _get_row(self, index: int) -> pd.Series:
         """
         Generate data for each row.
         Fix torch random generator seed and
@@ -231,7 +237,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
     Dummy dataset for generating
     random regression style data.
     """
-    def __init__(self, config):
+    def __init__(self, config: BasePyTorchDataset):
         super().__init__()
         self.size = config.size
         self.in_dim = config.in_dim
@@ -246,7 +252,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
     def __len__(self):
         return self.size
 
-    def _get_row(self, index):
+    def _get_row(self, index: int) -> pd.Series:
         """
         Generate data for each row.
         Fix torch random generator seed and
@@ -257,7 +263,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
         return pd.Series([x.float(), y.float()])
 
 
-def create_dataframe(size, target_col, row_gen_func):
+def create_dataframe(size: int, target_col: str, row_gen_func: Callable) -> pd.DataFrame:
     """
     Generate a dataframe of length `size` using
     the function `row_gen_func` to generate the

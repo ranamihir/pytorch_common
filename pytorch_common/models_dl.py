@@ -1,22 +1,32 @@
 import logging
 from copy import deepcopy
+from typing import List, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from .additional_configs import BaseModelConfig
+
+
+_model_or_models = Union[nn.Module, List[nn.Module]]
 
 
 class BasePyTorchModel(nn.Module):
     """
     Generic PyTorch Model implementing useful methods.
     """
-    def __init__(self, model_type="classification"):
+    def __init__(self, model_type: Optional[str] = "classification"):
         super().__init__()
 
         self.model_type = model_type
         self.__name__ = self.__class__.__name__ # Set model name
 
-    def initialize_model(self, init_weights=False, models_to_init=None):
+    def initialize_model(
+        self,
+        init_weights: Optional[str] = False,
+        models_to_init: Optional[_model_or_models] = None
+    ) -> None:
         """
         Call this function in the base model class.
         :param init_weights: bool, whether to initialize weights
@@ -30,12 +40,13 @@ class BasePyTorchModel(nn.Module):
         self.print() # Print model architecture
         self.get_trainable_params() # Print number of trainable parameters
         if init_weights: # Initialize weights
-            logging.warning("You have set `init_weights=True`. Make sure your model does not "
-                            "include a pretrained model, otherwise its weights will also be "
-                            "reinitialized.")
+            logging.warning(
+                "You have set `init_weights=True`. Make sure your model does not include "
+                "a pretrained model, otherwise its weights will also be reinitialized."
+            )
             self.initialize_weights(models_to_init)
 
-    def get_trainable_params(self):
+    def get_trainable_params(self) -> Dict[str, int]:
         """
         Print and return the number of trainable parameters of the model.
         """
@@ -45,13 +56,13 @@ class BasePyTorchModel(nn.Module):
                      .format(self.__name__, num_trainable_params, num_params))
         return {"trainable": num_trainable_params, "total": num_params}
 
-    def print(self):
+    def print(self) -> None:
         """
         Print the model architecture.
         """
         logging.info(self)
 
-    def initialize_weights(self, models_to_init=None):
+    def initialize_weights(self, models_to_init: Optional[_model_or_models] = None) -> None:
         """
         If `models_to_init` is provided, it will only
         initialize their weights, otherwise whole model's.
@@ -69,7 +80,7 @@ class BasePyTorchModel(nn.Module):
         for model in models_to_init:
             self._initialize_weights_for_one_model(model)
 
-    def _initialize_weights_for_one_model(self, model):
+    def _initialize_weights_for_one_model(self, model: nn.Module) -> None:
         """
         Initialize weights for all Conv2d, BatchNorm2d, Linear, and Embedding layers.
         # TODO: Improve init schemes / params
@@ -87,7 +98,7 @@ class BasePyTorchModel(nn.Module):
                 nn.init.orthogonal_(m.weight.data)
 
     @torch.no_grad()
-    def predict_proba(self, outputs, threshold=None):
+    def predict_proba(self, outputs: torch.Tensor, threshold: Optional[float] = None) -> torch.Tensor:
         """
         Returns predicted labels and probabilities
         for `model_type = "classification"`.
@@ -98,8 +109,10 @@ class BasePyTorchModel(nn.Module):
         :return probs: Predicted probabilities of each class
         """
         if self.model_type != "classification" and threshold is not None:
-            raise ValueError(f"Param 'threshold' ('{threshold}') can only "
-                             f"be provided for classification models.")
+            raise ValueError(
+                f"Param 'threshold' ('{threshold}') can only "
+                f"be provided for classification models."
+            )
 
         probs = F.softmax(outputs, dim=-1) # Get probabilities of each class
         num_classes = probs.shape[-1]
@@ -123,27 +136,31 @@ class BasePyTorchModel(nn.Module):
             probs = probs[...,1]
         return preds, probs
 
-    def copy(self):
+    def copy(self) -> nn.Module:
         """
         Return a copy of the model.
         """
         return deepcopy(self)
 
-    def freeze_module(self, models_to_freeze=None):
+    def freeze_module(self, models_to_freeze: Optional[_model_or_models] = None) -> None:
         """
         Freeze the given `models_to_freeze`, i.e.,
         all their children are gradient free.
         """
         self._change_frozen_state(models_to_freeze, freeze=True)
 
-    def unfreeze_module(self, models_to_unfreeze=None):
+    def unfreeze_module(self, models_to_unfreeze: Optional[_model_or_models] = None) -> None:
         """
         Unfreeze the given `models_to_unfreeze`, i.e.,
         all their children have gradients.
         """
         self._change_frozen_state(models_to_unfreeze, freeze=False)
 
-    def _change_frozen_state(self, models=None, freeze=True):
+    def _change_frozen_state(
+        self,
+        models: Optional[_model_or_models] = None,
+        freeze: Optional[bool] = True
+    ) -> None:
         """
         Freeze or unfreeze the given `models`, i.e.,
         all their children will / won't have gradients.
@@ -163,7 +180,10 @@ class BasePyTorchModel(nn.Module):
             self._change_frozen_state_for_one_model(model, freeze)
         self.get_trainable_params()
 
-    def _change_frozen_state_for_one_model(self, model=None, freeze=True):
+    def _change_frozen_state_for_one_model(
+        self, model: Optional[nn.Module] = None,
+        freeze: Optional[bool] = True
+    ) -> None:
         """
         Freeze or unfreeze a given `model`, i.e.,
         all their children will / won't have gradients.
@@ -188,8 +208,8 @@ class SingleLayerClassifier(BasePyTorchModel):
     """
     Dummy single-layer multi-class "neural" network.
     """
-    def __init__(self, config):
-        super().__init__(model_type=config.model_type)
+    def __init__(self, config: BaseModelConfig):
+        super().__init__(model_type="classification")
         self.in_dim = config.in_dim
         self.num_classes = config.num_classes
 
@@ -205,8 +225,8 @@ class MultiLayerClassifier(BasePyTorchModel):
     """
     Dummy multi-layer multi-class neural network.
     """
-    def __init__(self, config):
-        super().__init__(model_type=config.model_type)
+    def __init__(self, config: BaseModelConfig):
+        super().__init__(model_type="classification")
         self.in_dim = config.in_dim
         self.h_dim = config.h_dim
         self.num_classes = config.num_classes
@@ -233,8 +253,8 @@ class SingleLayerRegressor(BasePyTorchModel):
     """
     Dummy single-layer "neural" regressor.
     """
-    def __init__(self, config):
-        super().__init__(model_type=config.model_type)
+    def __init__(self, config: BaseModelConfig):
+        super().__init__(model_type="regression")
         self.in_dim = config.in_dim
         self.out_dim = config.out_dim
 
@@ -250,8 +270,8 @@ class MultiLayerRegressor(BasePyTorchModel):
     """
     Dummy multi-layer neural regressor.
     """
-    def __init__(self, config):
-        super().__init__(model_type=config.model_type)
+    def __init__(self, config: BaseModelConfig):
+        super().__init__(model_type="regression")
         self.in_dim = config.in_dim
         self.h_dim = config.h_dim
         self.out_dim = config.out_dim

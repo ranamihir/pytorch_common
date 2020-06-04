@@ -1,9 +1,14 @@
 import os
-from .models_dl import (SingleLayerClassifier, MultiLayerClassifier,
-                        SingleLayerRegressor, MultiLayerRegressor)
+import torch.nn as nn
+from typing import Optional
+
+from .models_dl import (
+    SingleLayerClassifier, MultiLayerClassifier, SingleLayerRegressor, MultiLayerRegressor
+)
+from .additional_configs import BaseModelConfig
 
 
-def create_model(model_name, config=None):
+def create_model(model_name: str, config: Optional[BaseModelConfig] = None) -> nn.Module:
     if model_name == "single_layer_classifier":
         model = SingleLayerClassifier(config)
     elif model_name == "multi_layer_classifier":
@@ -18,7 +23,10 @@ def create_model(model_name, config=None):
         raise RuntimeError(f"Unknown model name {model_name}.")
     return model
 
-def create_transformer_model(model_name, config=None):
+def create_transformer_model(
+    model_name: str,
+    config: Optional[BaseModelConfig] = None
+) -> nn.Module:
     """
     Create a transformer model (e.g. BERT) either using the
     default pretrained model or using the provided config.
@@ -46,7 +54,7 @@ def create_transformer_model(model_name, config=None):
 
     return model
 
-def is_transformer_model(model_name):
+def is_transformer_model(model_name: str) -> bool:
     """
     Check if given `model_name` is a transformer
     model by attempting to load the model config.

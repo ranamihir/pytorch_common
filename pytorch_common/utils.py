@@ -1,3 +1,4 @@
+from __future__ import annotations
 import random
 import numpy as np
 import pandas as pd
@@ -10,15 +11,25 @@ import pickle
 import dill
 from collections import OrderedDict
 import hashlib
+from munch import Munch
+from matplotlib.figure import Figure
+from typing import Any, List, Tuple, Dict, Iterable, Optional, Union
 
 import torch
 import torch.nn as nn
+from torch.optim.optimizer import Optimizer
 
 from tqdm import tqdm
 from dask.callbacks import Callback
 
 
-def make_dirs(parent_dir_path, child_dirs=None):
+_string_dict = Dict[str, Any]
+_config = Union[_string_dict, Munch]
+_tensor_or_tensors = Union[torch.Tensor, Iterable[torch.Tensor]]
+_device = Union[str, torch.device]
+
+
+def make_dirs(parent_dir_path: str, child_dirs: Optional[List[str]] = None) -> None:
     """
     Create the parent and (optionally) all child
     directories within parent directory.
@@ -43,7 +54,7 @@ def make_dirs(parent_dir_path, child_dirs=None):
             dir_path = os.path.join(parent_dir_path, dir_name)
             create_dir_if_not_exists(dir_path)
 
-def remove_dir(dir_path, force=False):
+def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
     """
     Remove a directory at `dir_path`.
     :param force: whether to delete the directory
@@ -57,7 +68,7 @@ def remove_dir(dir_path, force=False):
         else:
             os.rmdir(dir_path)
 
-def human_time_interval(time_seconds):
+def human_time_interval(time_seconds: Union[int, float]) -> str:
     """
     Converts a time interval in seconds to a human-friendly
     representation in hours, minutes, seconds and milliseconds.
@@ -80,7 +91,7 @@ def human_time_interval(time_seconds):
         return f"{seconds}s {milliseconds:03}ms"
     return f"{float_milliseconds:.2f}ms"
 
-def set_seed(seed=0):
+def set_seed(seed: Optional[int] = 0) -> None:
     """
     Fix all random seeds.
     """
@@ -89,7 +100,7 @@ def set_seed(seed=0):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed) # Safe to call even if no GPU available
 
-def print_dataframe(data):
+def print_dataframe(data: pd.DataFrame) -> None:
     """
     Print useful summary statistics of a dataframe.
     """
@@ -98,7 +109,14 @@ def print_dataframe(data):
     logging.info(f"\nColumns:\n{data.columns}\n")
     logging.info(f"\nSummary statistics:\n{data.describe()}\n")
 
-def save_plot(config, fig, plot_name, model_name, config_info_dict, ext="png"):
+def save_plot(
+    config: _config,
+    fig: Figure,
+    plot_name: str,
+    model_name: str,
+    config_info_dict: _string_dict,
+    ext: Optional[str] = "png"
+) -> None:
     """
     Save a high-quality plot created by matplotlib.
     :param plot_name: Plot name, e.g. "accuracy-vs-epochs"
@@ -109,7 +127,12 @@ def save_plot(config, fig, plot_name, model_name, config_info_dict, ext="png"):
     file_name = "-".join([plot_name, unique_name])
     fig.savefig(os.path.join(config.plot_dir, f"{file_name}.{ext}"), dpi=300)
 
-def save_object(obj, primary_path, file_name=None, module="pickle"):
+def save_object(
+    obj: Any,
+    primary_path: str,
+    file_name: Optional[str] = None,
+    module: Optional[str] = "pickle"
+) -> None:
     """
     This is a generic function to save any given
     object using different `module`s, e.g. pickle,
@@ -126,7 +149,7 @@ def save_object(obj, primary_path, file_name=None, module="pickle"):
         save_pickle(obj, file_path, module)
     logging.info("Done.")
 
-def save_pickle(obj, file_path, module="pickle"):
+def save_pickle(obj: Any, file_path: str, module: Optional[str] = "pickle") -> None:
     """
     This is a defensive way to write (pickle/dill).dump,
     allowing for very large files on all platforms.
@@ -139,7 +162,7 @@ def save_pickle(obj, file_path, module="pickle"):
         for idx in range(0, n_bytes, MAX_BYTES):
             f_out.write(bytes_out[idx:idx+MAX_BYTES])
 
-def save_yaml(obj, file_path):
+def save_yaml(obj: Dict, file_path: str) -> None:
     """
     Save a given yaml file.
     """
@@ -147,7 +170,11 @@ def save_yaml(obj, file_path):
     with open(file_path, "w") as f_out:
         yaml.dump(obj, f_out)
 
-def load_object(primary_path, file_name=None, module="pickle"):
+def load_object(
+    primary_path: str,
+    file_name: Optional[str] = None,
+    module: Optional[str] = "pickle"
+) -> Any:
     """
     This is a generic function to load any given
     object using different `module`s, e.g. pickle,
@@ -168,7 +195,7 @@ def load_object(primary_path, file_name=None, module="pickle"):
     else:
         raise FileNotFoundError(f"Could not find '{file_path}'.")
 
-def load_pickle(file_path, module="pickle"):
+def load_pickle(file_path: str, module: Optional[str] = "pickle") -> Any:
     """
     This is a defensive way to write (pickle/dill).load,
     allowing for very large files on all platforms.
@@ -187,7 +214,7 @@ def load_pickle(file_path, module="pickle"):
     obj = pickle_module.loads(bytes_in)
     return obj
 
-def load_yaml(file_path):
+def load_yaml(file_path: str) -> Dict:
     """
     Load a given yaml file.
 
@@ -201,7 +228,7 @@ def load_yaml(file_path):
         obj = yaml.safe_load(f)
     return obj if obj is not None else {}
 
-def remove_object(primary_path, file_name=None):
+def remove_object(primary_path: str, file_name: Optional[str] = None) -> None:
     """
     Remove a given object if it exists.
 
@@ -214,7 +241,7 @@ def remove_object(primary_path, file_name=None):
         os.remove(file_path)
         logging.info("Done.")
 
-def get_file_path(primary_path, file_name=None):
+def get_file_path(primary_path: str, file_name: Optional[str] = None) -> str:
     """
     Generate appropriate full file path:
       - If `file_name` is None, it's assumed that the full
@@ -225,7 +252,7 @@ def get_file_path(primary_path, file_name=None):
     """
     return primary_path if file_name is None else os.path.join(primary_path, file_name)
 
-def get_pickle_module(pickle_module="pickle"):
+def get_pickle_module(pickle_module: Optional[str] = "pickle") -> Union[pickle, dill]:
     """
     Return the correct module for pickling.
     :param pickle_module: must be one of ["pickle", "dill"]
@@ -237,14 +264,14 @@ def get_pickle_module(pickle_module="pickle"):
     raise ValueError(f"Param 'pickle_module' ('{pickle_module}') "
                      f"must be one of ['pickle', 'dill'].")
 
-def delete_model(model):
+def delete_model(model: nn.Module) -> None:
     """
     Delete model and free GPU memory.
     """
     model = None
     torch.cuda.empty_cache()
 
-def get_string_from_dict(config_info_dict=None):
+def get_string_from_dict(config_info_dict: Optional[_string_dict] = None) -> str:
     """
     Generate a (unique) string from a given configuration dictionary.
     E.g.:
@@ -259,7 +286,7 @@ def get_string_from_dict(config_info_dict=None):
         config_info = "-".join([f"{k}_{v}" for k, v in config_info.items()])
     return config_info
 
-def get_unique_config_name(primary_name, config_info_dict=None):
+def get_unique_config_name(primary_name: str, config_info_dict: Optional[_string_dict] = None) -> str:
     """
     Returns a unique name for the current configuration.
 
@@ -287,7 +314,12 @@ def get_unique_config_name(primary_name, config_info_dict=None):
     unique_name = primary_name + unique_id
     return unique_name
 
-def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=None):
+def get_checkpoint_name(
+    checkpoint_type: str,
+    model_name: str,
+    epoch: int,
+    config_info_dict: Optional[_string_dict] = None
+) -> str:
     """
     Returns the appropriate name of checkpoint file
     by generating a unique ID from the config.
@@ -302,7 +334,7 @@ def get_checkpoint_name(checkpoint_type, model_name, epoch, config_info_dict=Non
     checkpoint_name = f"checkpoint-{checkpoint_type}-{unique_name}-epoch_{epoch}.pt"
     return checkpoint_name
 
-def get_model_outputs_only(outputs):
+def get_model_outputs_only(outputs: _tensor_or_tensors) -> _tensor_or_tensors:
     """
     Use this function to get just the
     raw outputs. Useful for many libraries, e.g.
@@ -314,7 +346,11 @@ def get_model_outputs_only(outputs):
         outputs = outputs[0]
     return outputs
 
-def send_model_to_device(model, device, device_ids=None):
+def send_model_to_device(
+    model: nn.Module,
+    device: _device,
+    device_ids: Optional[List[int]] = None
+) -> nn.Module:
     """
     Send a model to specified device.
     Will also parallelize model if required.
@@ -345,7 +381,11 @@ def send_model_to_device(model, device, device_ids=None):
         logging.info("Done.")
     return model
 
-def send_batch_to_device(batch, device, non_blocking=True):
+def send_batch_to_device(
+    batch: Iterable,
+    device: _device,
+    non_blocking: Optional[bool] = True
+) -> Iterable:
     """
     Send batch to given device.
 
@@ -386,7 +426,7 @@ def send_batch_to_device(batch, device, non_blocking=True):
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
-def send_optimizer_to_device(optimizer, device):
+def send_optimizer_to_device(optimizer: Optimizer, device: _device) -> Optimizer:
     """
     Send an optimizer to specified device.
     """
@@ -396,7 +436,7 @@ def send_optimizer_to_device(optimizer, device):
                 state[k] = v.to(device)
     return optimizer
 
-def convert_tensor_to_numpy(batch):
+def convert_tensor_to_numpy(batch: Iterable) -> Iterable:
     """
     Convert torch tensor(s) on any device to numpy array(s).
     Similar to `send_batch_to_device()`, can take a
@@ -411,7 +451,11 @@ def convert_tensor_to_numpy(batch):
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
-def convert_numpy_to_tensor(batch, device=None, non_blocking=True):
+def convert_numpy_to_tensor(
+    batch: Iterable,
+    device: Optional[_device] = None,
+    non_blocking: Optional[bool] = True
+) -> Iterable:
     """
     Convert numpy array(s) to torch tensor(s) and
     optionally sends them to the desired device.
@@ -429,7 +473,7 @@ def convert_numpy_to_tensor(batch, device=None, non_blocking=True):
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
-def compare_tensors_or_arrays(batch_a, batch_b):
+def compare_tensors_or_arrays(batch_a: Iterable, batch_b: Iterable) -> bool:
     """
     Compare the contents of two batches.
     Each batch may be of type `np.ndarray` or
@@ -451,7 +495,10 @@ def compare_tensors_or_arrays(batch_a, batch_b):
         raise TypeError(f"Types of each batch '({type(batch_a)}, {type(batch_b)})' must "
                         f"be `np.ndarray`, `torch.Tensor` or a list/tuple of them.")
 
-def compare_model_parameters(parameters1, parameters2):
+def compare_model_parameters(
+    parameters1: Iterable[torch.Tensor],
+    parameters2: Iterable[torch.Tensor]
+) -> bool:
     """
     Compare two sets of model parameters.
     Useful in unit tests for ensuring consistency
@@ -463,7 +510,10 @@ def compare_model_parameters(parameters1, parameters2):
             return False
     return True
 
-def compare_model_state_dicts(state_dict1, state_dict2):
+def compare_model_state_dicts(
+    state_dict1: OrderedDict[str, _tensor_or_tensors],
+    state_dict2: OrderedDict[str, _tensor_or_tensors]
+) -> bool:
     """
     Compare two sets of model state dicts.
     Useful in unit tests for ensuring
@@ -475,7 +525,7 @@ def compare_model_state_dicts(state_dict1, state_dict2):
             return False
     return True
 
-def is_batch_on_gpu(batch):
+def is_batch_on_gpu(batch: Iterable) -> bool:
     """
     Check if a `batch` is on a GPU.
 
@@ -489,27 +539,29 @@ def is_batch_on_gpu(batch):
     else: # Structure/type of batch unknown
         raise TypeError(f"Type '{type(batch)}' not understood.")
 
-def is_model_on_gpu(model):
+def is_model_on_gpu(model: nn.Module) -> bool:
     """
     Check if a `model` is on a GPU.
     """
     return is_batch_on_gpu(next(model.parameters()))
 
-def is_model_parallelized(model):
+def is_model_parallelized(model: nn.Module) -> bool:
     """
     Check if a `model` is parallelized on multiple GPUs.
     """
     return is_model_on_gpu(model) and isinstance(model, DataParallel)
 
-def get_total_grad_norm(parameters, norm_type=2):
+def get_total_grad_norm(
+    parameters: Iterable[torch.Tensor],
+    norm_type: Optional[Union[int, float]] = 2
+) -> torch.Tensor:
     """
     Get the total `norm_type` norm
     over all parameter gradients.
     """
-    return nn.utils.clip_grad_norm_(parameters, max_norm=np.inf,
-                                    norm_type=norm_type)
+    return nn.utils.clip_grad_norm_(parameters, max_norm=np.inf, norm_type=norm_type)
 
-def get_model_performance_trackers(config):
+def get_model_performance_trackers(config: _config) -> Tuple[ModelTracker, ModelTracker]:
     """
     Initialize loss and eval criteria
     loggers for train and val datasets.
@@ -527,7 +579,7 @@ class ModelTracker(object):
     any evaluation metrics (accuracy, f1, etc.)
     at each epoch.
     """
-    def __init__(self, config, is_train=1):
+    def __init__(self, config: _config, is_train: Optional[bool] = 1):
         self.eval_criteria = config.eval_criteria
         self.is_train = is_train
         if not is_train:
@@ -542,7 +594,7 @@ class ModelTracker(object):
         for eval_criterion in self.eval_criteria:
             self.eval_metrics_hist[eval_criterion] = OrderedDict()
 
-    def add_losses(self, losses, epoch=-1):
+    def add_losses(self, losses: List[float], epoch: Optional[int] = -1) -> None:
         """
         Store the losses at a given epoch.
         :param epoch: If not provided, will store
@@ -553,7 +605,11 @@ class ModelTracker(object):
             losses = [losses]
         self.loss_hist[epoch] = losses
 
-    def get_losses(self, epoch=None, flatten=False):
+    def get_losses(
+        self,
+        epoch: Optional[int] = None,
+        flatten: Optional[bool] = False
+    ) -> Union[List[float], OrderedDict[str, List[float]]]:
         """
         Get the loss history.
         :param epoch: If provided, returns the list
@@ -571,14 +627,14 @@ class ModelTracker(object):
             return self.get_all_losses()
         return self.loss_hist
 
-    def get_all_losses(self):
+    def get_all_losses(self) -> List[float]:
         """
         Get the entire loss history across all
         epochs flattened into one list.
         """
         return np.concatenate(list(self.loss_hist.values())).tolist()
 
-    def add_eval_metrics(self, eval_metrics, epoch=-1):
+    def add_eval_metrics(self, eval_metrics: Dict[str, float], epoch: Optional[int] = -1) -> None:
         """
         Store the eval_metrics at a given epoch.
         :param epoch: If not provided, will store
@@ -588,7 +644,12 @@ class ModelTracker(object):
         for eval_criterion in self.eval_criteria:
             self.eval_metrics_hist[eval_criterion][epoch] = eval_metrics[eval_criterion]
 
-    def get_eval_metrics(self, eval_criterion=None, epoch=None, flatten=False):
+    def get_eval_metrics(
+        self,
+        eval_criterion: Optional[str] = None,
+        epoch: Optional[int] = None,
+        flatten: Optional[bool] = False
+    ) -> Union[float, List[float], OrderedDict[str, Union[float, List[float]]]]:
         """
         Get the evaluation metrics history.
         :param eval_criterion: the criterion whose history
@@ -618,7 +679,10 @@ class ModelTracker(object):
                                 for eval_criterion in self.eval_criteria})
         return self.eval_metrics_hist
 
-    def get_all_eval_metrics(self, eval_criterion=None):
+    def get_all_eval_metrics(
+        self,
+        eval_criterion: Optional[str] = None
+    ) -> Union[List[float], Dict[str, List[float]]]:
         """
         Get the entire eval_metrics history across all
         epochs flattened into one list for each eval_criterion.
@@ -626,17 +690,18 @@ class ModelTracker(object):
                                history for that eval_criterion
                                is returned.
         """
-        def get_eval_metrics_per_criterion(eval_criterion):
+        def get_eval_criterion_metrics(eval_criterion):
             return list(self.eval_metrics_hist[eval_criterion].values())
 
         if eval_criterion is not None:
-            return get_eval_metrics_per_criterion(eval_criterion)
-        eval_metrics_hist = {}
-        for eval_criterion in self.eval_criteria:
-            eval_metrics_hist[eval_criterion] = get_eval_metrics_per_criterion(eval_criterion)
-        return eval_metrics_hist
+            return get_eval_criterion_metrics(eval_criterion)
+        eval_metrics_dict = OrderedDict({
+            eval_criterion: get_eval_criterion_metrics(eval_criterion) \
+            for eval_criterion in self.eval_criteria
+        })
+        return eval_metrics_dict
 
-    def log_epoch_metrics(self, epoch=-1):
+    def log_epoch_metrics(self, epoch: Optional[int] = -1) -> str:
         """
         Log loss and evaluation metrics for a given epoch in the following format:
         "TRAIN Epoch: 1  Average loss: 0.5, ACCURACY: 0.8, PRECISION: 0.7"
@@ -654,7 +719,12 @@ class ModelTracker(object):
         logging.info(result_str)
         return result_str
 
-    def add_metrics(self, losses, eval_metrics, epoch=-1):
+    def add_metrics(
+        self,
+        losses: List[float],
+        eval_metrics: Dict[str, float],
+        epoch: Optional[int] = -1
+    ) -> None:
         """
         Shorthand function to add losses and eval metrics
         at the end of a given epoch.
@@ -662,16 +732,21 @@ class ModelTracker(object):
         self.add_losses(losses, epoch)
         self.add_eval_metrics(eval_metrics, epoch)
 
-    def add_and_log_metrics(self, losses, eval_metrics, epoch=-1):
+    def add_and_log_metrics(
+        self,
+        losses: List[float],
+        eval_metrics: Dict[str, float],
+        epoch: Optional[int] = -1
+    ) -> str:
         """
         Shorthand function to add losses and eval metrics
         at the end of a given epoch, and then print the
         results for that epoch.
         """
         self.add_metrics(losses, eval_metrics, epoch)
-        self.log_epoch_metrics(epoch)
+        return self.log_epoch_metrics(epoch)
 
-    def get_early_stopping_metric(self):
+    def get_early_stopping_metric(self) -> float:
         """
         For validation loggers, returns the `early_stopping_criterion`
         for the last epoch for which history is stored.
@@ -681,7 +756,7 @@ class ModelTracker(object):
         return self.eval_metrics_hist[self.early_stopping_criterion]\
                                      [self._get_correct_epoch(-1, "eval_metrics")]
 
-    def get_eval_metrics_df(self, epoch=None):
+    def get_eval_metrics_df(self, epoch: Optional[int] = None) -> pd.DataFrame:
         """
         Get a DataFrame object of all eval metrics
         for all (or optionally a specific) epoch(s).
@@ -694,7 +769,7 @@ class ModelTracker(object):
             return metrics_df.query("epoch == @epoch")
         return metrics_df
 
-    def set_best_epoch(self, best_epoch=None):
+    def set_best_epoch(self, best_epoch: Optional[int] = None) -> None:
         """
         Add the `best_epoch` attribute to validation
         logger for future evaluation purposes.
@@ -708,7 +783,7 @@ class ModelTracker(object):
                 raise ValueError(f"Best epoch provided ({best_epoch}) must be one of {self.epochs}.")
             self.best_epoch = best_epoch
 
-    def get_overall_best_epoch(self):
+    def get_overall_best_epoch(self) -> int:
         """
         Get the overall best epoch if early stopping is not used.
 
@@ -721,14 +796,14 @@ class ModelTracker(object):
         return best_epoch
 
     @property
-    def _epochs_loss(self):
+    def _epochs_loss(self) -> List[int]:
         """
         List of epochs for which loss history is stored.
         """
         return list(self.loss_hist.keys())
 
     @property
-    def _epochs_eval_metrics(self):
+    def _epochs_eval_metrics(self) -> List[int]:
         """
         List of epochs for which eval metrics history is stored.
         """
@@ -736,7 +811,7 @@ class ModelTracker(object):
         return list(self.eval_metrics_hist[k].keys())
 
     @property
-    def epochs(self):
+    def epochs(self) -> List[int]:
         """
         Returns the total list of epochs for which history is stored.
 
@@ -746,7 +821,7 @@ class ModelTracker(object):
         assert self._epochs_loss == self._epochs_eval_metrics
         return self._epochs_loss
 
-    def _get_correct_epoch(self, epoch, hist_type):
+    def _get_correct_epoch(self, epoch: int, hist_type: str) -> int:
         """
         If epoch = -1, returns the last epoch for
         which history is currently stored, otherwise
@@ -758,7 +833,7 @@ class ModelTracker(object):
             return max(total_epochs) if len(total_epochs) else 0
         return epoch
 
-    def _get_next_epoch(self, epoch, hist_type):
+    def _get_next_epoch(self, epoch: int, hist_type: str) -> int:
         """
         If epoch = -1, returns the next epoch for
         which history is to be stored, otherwise
@@ -780,7 +855,7 @@ class SequencePooler(nn.Module):
     """
     DEFAULT_POOLER_TYPE = "default"
 
-    def __init__(self, model_type="bert"):
+    def __init__(self, model_type: Optional[str] = "bert"):
         """
         :param model_type: Type of `transformers` model.
                            Can be manually specified or extracted
@@ -799,7 +874,7 @@ class SequencePooler(nn.Module):
     def forward(self, x):
         return self.pooler(x)
 
-    def _set_pooler(self, model_type):
+    def _set_pooler(self, model_type: str) -> None:
         """
         Set the appropriate pooler as per the `model_type`.
         """
@@ -861,7 +936,7 @@ class DataParallel(nn.DataParallel):
     methods when it is wrapped in a `module` attribute because
     of nn.DataParallel.
     """
-    def __init__(self, model, **kwargs):
+    def __init__(self, model: nn.Module, **kwargs):
         super().__init__(model, **kwargs)
 
     def __getattr__(self, name):

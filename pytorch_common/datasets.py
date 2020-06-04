@@ -1,7 +1,10 @@
-from .datasets_dl import (DummyMultiClassDataset, DummyMultiLabelDataset, DummyRegressionDataset)
+from .datasets_dl import (
+	BasePyTorchDataset, DummyMultiClassDataset, DummyMultiLabelDataset, DummyRegressionDataset
+)
+from .additional_configs import BaseDatasetConfig
 
 
-def create_dataset(dataset_name, config):
+def create_dataset(dataset_name: str, config: BaseDatasetConfig) -> BasePyTorchDataset:
     if dataset_name == "multi_class_dataset":
         dataset = DummyMultiClassDataset(config)
     elif dataset_name == "multi_label_dataset":

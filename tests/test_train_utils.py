@@ -59,7 +59,7 @@ class TestTrainUtils(unittest.TestCase):
                 kwargs = {"dataset_kwargs": dataset_kwargs, "model_kwargs": model_kwargs}
                 self._test_saving_loading_models(loss_criterion, eval_criterion, **model_kwargs)
                 self._test_train_model(loss_criterion, eval_criterion, **kwargs)
-                self._test_get_all_predictions(loss_criterion, eval_criterion, **kwargs)
+                self._test_get_all_predictions(loss_criterion, eval_criterion, model_type, **kwargs)
 
     def _get_all_combination_kwargs(self):
         """
@@ -138,7 +138,7 @@ class TestTrainUtils(unittest.TestCase):
                                 return_dict["train_logger"], return_dict["val_logger"],
                                 self.config.epochs)
 
-    def _test_get_all_predictions(self, loss_criterion, eval_criterion, **kwargs):
+    def _test_get_all_predictions(self, loss_criterion, eval_criterion, model_type, **kwargs):
         """
         Test the routine of obtaining predictions from a model.
         """
@@ -153,8 +153,10 @@ class TestTrainUtils(unittest.TestCase):
                                         self.config.device, threshold_prob=0.8)
 
         # Ensure shape of predictions is correct
-        for results in [outputs_val, preds_val, probs_val]:
-            self.assertEqual(len(results), len(return_dict["val_loader"].dataset))
+        self.assertEqual(len(outputs_val), len(return_dict["val_loader"].dataset))
+        if model_type == "classification":
+            for results in [preds_val, probs_val]:
+                self.assertEqual(len(results), len(return_dict["val_loader"].dataset))
 
     def _test_error(self, func, args, error=AssertionError):
         """
