@@ -3,13 +3,13 @@ from copy import deepcopy
 
 
 class BaseDatasetConfig(Munch):
-    '''
+    """
     Base configuration class for
     dataset-related settings.
 
     Class attributes can be accessed with both
-    `configobj['key']` and `configobj.key`.
-    '''
+    `configobj["key"]` and `configobj.key`.
+    """
     def __init__(self, dictionary=None):
         if dictionary:
             super().__init__(dictionary)
@@ -21,27 +21,27 @@ class BaseDatasetConfig(Munch):
         pass
 
     def copy(self, deep=True):
-        '''
+        """
         Return a BaseDatasetConfig object with
         same attribute values.
         Useful if different configs are
         required, e.g. for train/val datasets.
-        '''
+        """
         if deep:
             return deepcopy(self)
         return BaseDatasetConfig(self)
 
 
 class BaseModelConfig(Munch):
-    '''
+    """
     Base configuration class for
     model-related settings.
 
     Class attributes can be accessed with both
-    `configobj['key']` and `configobj.key`.
-    '''
+    `configobj["key"]` and `configobj.key`.
+    """
 
-    def __init__(self, dictionary=None, model_type='classification'):
+    def __init__(self, dictionary=None, model_type="classification"):
         if dictionary:
             super().__init__(dictionary)
 
@@ -54,11 +54,11 @@ class BaseModelConfig(Munch):
         pass
 
     def copy(self, deep=True):
-        '''
+        """
         Return a BaseModelConfig object with
         same attribute values.
         Useful if different configs are required.
-        '''
+        """
         if deep:
             return deepcopy(self)
         return BaseModelConfig(self)

@@ -28,26 +28,26 @@ classification_type: binary
 # Loss criterion
 loss_criterion: cross-entropy
 # loss_kwargs: # kwargs for loss criterion
-  # multilabel_reduction: 'mean' # Must be provided for multilabel
+  # multilabel_reduction: "mean" # Must be provided for multilabel
   # alpha: 0.7
   # gamma: 0.2
 
 # Evaluation criteria
 eval_criteria:
-  - 'accuracy'
-  # - 'precision'
-  # - 'recall'
-  # - 'f1'
-  # - 'auc'
-early_stopping_criterion: 'accuracy'
+  - "accuracy"
+  # - "precision"
+  # - "recall"
+  # - "f1"
+  # - "auc"
+early_stopping_criterion: "accuracy"
 # eval_criteria_kwargs: # kwargs for eval_criteria
-#     # multilabel_reduction: 'mean' # Must be provided for multilabel
+#     # multilabel_reduction: "mean" # Must be provided for multilabel
 #     f1:
-#       average: 'macro'
+#       average: "macro"
 #     precision:
-#       average: 'macro'
+#       average: "macro"
 #     recall:
-#       average: 'macro'
+#       average: "macro"
 #     auc:
 #       pos_label: 1
 
@@ -63,7 +63,7 @@ disable_checkpointing: False
 assert_gpu: False
 
 # Training config
-device: 'cuda:0' # Default device
+device: "cuda:0" # Default device
 
 # For parallelizing model.
 # If empty, will only use one GPU
