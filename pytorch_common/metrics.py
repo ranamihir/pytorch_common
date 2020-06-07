@@ -1,13 +1,17 @@
 import numpy as np
 from collections import OrderedDict
 from functools import partial
+from munch import Munch
+from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
 
 import torch
 import torch.nn as nn
+from torch.nn.modules.loss import _Loss
 
 from .utils import convert_tensor_to_numpy
-from sklearn.metrics import (accuracy_score, precision_score, f1_score,
-                             recall_score, roc_curve, auc)
+from sklearn.metrics import (
+    accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
+)
 
 
 REGRESSION_LOSS_CRITERIA = ["mse"]
@@ -19,7 +23,18 @@ CLASSIFICATION_EVAL_CRITERIA = ["accuracy", "precision", "recall", "f1", "auc"]
 EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
 
 
-def get_loss_eval_criteria(config, reduction="mean", reduction_val=None):
+_string_dict = Dict[str, Any]
+_config = Union[_string_dict, Munch]
+_tensor_or_tensors = Union[torch.Tensor, Iterable[torch.Tensor]]
+_loss_or_losses = Union[_Loss, Iterable[_Loss]]
+_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
+
+
+def get_loss_eval_criteria(
+    config: _config,
+    reduction: Optional[str] = "mean",
+    reduction_val: Optional[str] = None
+) -> Tuple[_loss_or_losses, _loss_or_losses, _eval_criterion_or_criteria]:
     """
     Define train and val loss and evaluation criteria.
     :param reduction_val: If None, a common `reduction` will be used
@@ -42,14 +57,18 @@ def get_loss_eval_criteria(config, reduction="mean", reduction_val=None):
                                       **config.eval_criteria_kwargs)
     return loss_criterion_train, loss_criterion_val, eval_criteria
 
-def get_loss_criterion(config, criterion="cross-entropy", **kwargs):
+def get_loss_criterion(
+    config: _config,
+    criterion: Optional[str] = "cross-entropy",
+    **kwargs
+) -> _loss_or_losses:
     """
     Get loss criterion function.
     """
     loss_criterion = set_loss_criterion_function(config, criterion=criterion, **kwargs)
     return loss_criterion
 
-def get_eval_criteria(config, criteria, **kwargs):
+def get_eval_criteria(config: _config, criteria: str, **kwargs) -> _eval_criterion_or_criteria:
     """
     Get a dictionary of eval criterion functions.
     """
@@ -69,7 +88,11 @@ def get_eval_criteria(config, criteria, **kwargs):
         eval_criteria_dict[criterion] = eval_fn
     return eval_criteria_dict
 
-def set_loss_criterion_function(config, criterion="cross-entropy", **kwargs):
+def set_loss_criterion_function(
+    config: _config,
+    criterion: Optional[str] = "cross-entropy",
+    **kwargs
+) -> _loss_or_losses:
     """
     :param kwargs: Misc kwargs for the loss. E.g. -
                    - `dim` for CrossEntropyLoss
@@ -97,8 +120,10 @@ def set_loss_criterion_function(config, criterion="cross-entropy", **kwargs):
             elif multilabel_reduction == "mean":
                 agg_func = torch.mean
             else:
-                raise ValueError(f"Param 'multilabel_reduction' ('{multilabel_reduction}') "
-                                 f"must be one of ['sum', 'mean'].")
+                raise ValueError(
+                    f"Param 'multilabel_reduction' ('{multilabel_reduction}') "
+                    f"must be one of ['sum', 'mean']."
+                )
 
     # Get per-label loss
     if criterion == "mse":
@@ -125,7 +150,11 @@ def set_loss_criterion_function(config, criterion="cross-entropy", **kwargs):
                agg_func(torch.stack([loss_criterion(output_hist, y_hist[...,i]) \
                                      for i in range(y_hist.shape[-1])], dim=0))
 
-def set_eval_criterion_function(config, criterion="accuracy", **kwargs):
+def set_eval_criterion_function(
+    config: _config,
+    criterion: Optional[str] = "accuracy",
+    **kwargs
+) -> _eval_criterion_or_criteria:
     """
     :param kwargs: Misc kwargs for the eval criterion.
                    Mostly used in multiclass settings. E.g. -
@@ -146,8 +175,10 @@ def set_eval_criterion_function(config, criterion="accuracy", **kwargs):
         elif multilabel_reduction == "mean":
             agg_func = np.mean
         else:
-            raise ValueError(f"Param 'multilabel_reduction' ('{multilabel_reduction}') "
-                             f"must be one of ['mean', 'none'].")
+            raise ValueError(
+                f"Param 'multilabel_reduction' ('{multilabel_reduction}') "
+                f"must be one of ['mean', 'none']."
+            )
 
     # Get per-label eval criterion
     if criterion == "mse":
@@ -171,8 +202,7 @@ def set_eval_criterion_function(config, criterion="accuracy", **kwargs):
             agg_func([eval_criterion(output_hist, y_hist[...,i]) \
                       for i in range(y_hist.shape[-1])])
 
-@torch.no_grad()
-def get_mse_loss(output_hist, y_true, **kwargs):
+def get_mse_loss(output_hist: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
     """
     Compute MSE loss.
     """
@@ -180,8 +210,12 @@ def get_mse_loss(output_hist, y_true, **kwargs):
     mse = nn.MSELoss(**kwargs)(output_hist, y_true).item()
     return mse
 
-@torch.no_grad()
-def get_class_eval_metric(output_hist, y_true, criterion="accuracy", **kwargs):
+def get_class_eval_metric(
+    output_hist: torch.Tensor,
+    y_true: torch.Tensor,
+    criterion: Optional[str] = "accuracy",
+    **kwargs
+) -> float:
     """
     Get eval criterion for a single class.
 
@@ -217,12 +251,12 @@ class FocalLoss(nn.Module):
     Code insipration: https://github.com/kuangliu/pytorch-retinanet/blob/master/loss.py
     """
     # TODO: Extend this to multiclass
-    def __init__(self, alpha=0.25, gamma=2):
+    def __init__(self, alpha: Optional[float] = 0.25, gamma: Optional[Union[int, float]] = 2):
         super().__init__()
         self.alpha = alpha
         self.gamma = gamma
 
-    def forward(self, outputs, y):
+    def forward(self, outputs: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         Compute the focal loss between raw logits and binary targets.
         :param outputs: (tensor) binary class probabilities of size (batch_size, 2)

@@ -492,8 +492,10 @@ def compare_tensors_or_arrays(batch_a: Iterable, batch_b: Iterable) -> bool:
     elif isinstance(batch_a, (list, tuple)) and isinstance(batch_b, (list, tuple)):
         return all(compare_tensors_or_arrays(a, b) for a, b in zip(batch_a, batch_b))
     else: # Structure/type of batch unknown
-        raise TypeError(f"Types of each batch '({type(batch_a)}, {type(batch_b)})' must "
-                        f"be `np.ndarray`, `torch.Tensor` or a list/tuple of them.")
+        raise TypeError(
+            f"Types of each batch '({type(batch_a)}, {type(batch_b)})' must "
+            f"be `np.ndarray`, `torch.Tensor` or a list/tuple of them."
+        )
 
 def compare_model_parameters(
     parameters1: Iterable[torch.Tensor],
@@ -780,7 +782,9 @@ class ModelTracker(object):
             self.best_epoch = self.get_overall_best_epoch()
         else:
             if best_epoch not in self.epochs:
-                raise ValueError(f"Best epoch provided ({best_epoch}) must be one of {self.epochs}.")
+                raise ValueError(
+                    f"Best epoch provided ({best_epoch}) must be one of {self.epochs}."
+                )
             self.best_epoch = best_epoch
 
     def get_overall_best_epoch(self) -> int:

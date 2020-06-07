@@ -25,6 +25,7 @@ from .utils import (
 _string_dict = Dict[str, Any]
 _config = Union[_string_dict, Munch]
 _loss_or_losses = Union[_Loss, Iterable[_Loss]]
+_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
 _device = Union[str, torch.device]
 _train_result = List[float]
 _eval_result = Tuple[List[float], Dict[str, float], torch.Tensor, torch.Tensor]
@@ -40,7 +41,7 @@ def train_model(
     optimizer: Optimizer,
     loss_criterion_train: _loss_or_losses,
     loss_criterion_eval: _loss_or_losses,
-    eval_criteria: Dict[str, Callable],
+    eval_criteria: _eval_criterion_or_criteria,
     train_logger: ModelTracker,
     val_logger: ModelTracker,
     epochs: Optional[int] = None,
@@ -232,7 +233,7 @@ def evaluate_epoch(
     dataloader: DataLoader,
     device: _device,
     loss_criterion: _loss_or_losses,
-    eval_criteria: Dict[str, Callable],
+    eval_criteria: _eval_criterion_or_criteria,
     decouple_fn: Optional[Callable] = None
 ) -> _eval_result:
     """
@@ -274,7 +275,7 @@ def perform_one_epoch(
     epoch: Optional[int] = None,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,
-    eval_criteria: Optional[Dict[str, Callable]] = None,
+    eval_criteria: Optional[_eval_criterion_or_criteria] = None,
     threshold_prob: Optional[float] = None,
     decouple_fn: Optional[Callable] = None
 ) -> Union[_train_result, _eval_result, _test_result]:
@@ -644,15 +645,17 @@ def load_model(
 
         # Throw warning if model trained for more epochs
         if max(train_logger.epochs) > epoch_trained:
-            logging.warning(f"The specified epoch was {epoch_trained} but the "
-                            f"model was trained for {max(train_logger.epochs)} "
-                            f"epochs. Ignore this warning if it was intentional.")
+            logging.warning(
+                f"The specified epoch was {epoch_trained} but the model was trained for "
+                f"{max(train_logger.epochs)} epochs. Ignore this warning if it was intentional."
+            )
 
         # Throw warning if best epoch is different
         if val_logger.best_epoch != epoch_trained:
-            logging.warning(f"The specified epoch was {epoch_trained} but the best "
-                            f"epoch based on validation set was {val_logger.best_epoch}."
-                            f" Ignore this warning if it was intentional.")
+            logging.warning(
+                f"The specified epoch was {epoch_trained} but the best epoch based on validation "
+                f"set was {val_logger.best_epoch}. Ignore this warning if it was intentional."
+            )
 
         logging.info("Done.")
 

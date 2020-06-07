@@ -1,11 +1,17 @@
+from __future__ import annotations
 import logging
 import os
 import torch
 from munch import Munch
+from typing import Any, Dict, Optional, Union
 
 import pytorch_common
 from pytorch_common import metrics
 from .utils import load_object, make_dirs, set_seed
+
+
+_string_dict = Dict[str, Any]
+_config = Union[_string_dict, Munch]
 
 
 class Config(Munch):
@@ -15,7 +21,7 @@ class Config(Munch):
     Class attributes can be accessed with both
     `configobj["key"]` and `configobj.key`.
     """
-    def __init__(self, dictionary=None):
+    def __init__(self, dictionary: Optional[_string_dict] = None):
         if dictionary:
             super().__init__(dictionary)
 
@@ -26,7 +32,7 @@ class Config(Munch):
         pass
 
 
-def load_pytorch_common_config(dictionary):
+def load_pytorch_common_config(dictionary: _string_dict) -> Munch:
     """
     Loads the pytorch_common config (if present) and
     updates attributes which are present in the project
@@ -57,7 +63,7 @@ def load_pytorch_common_config(dictionary):
         return Munch(merged_config)
     return Munch(dictionary)
 
-def load_config(config_file="config.yaml"):
+def load_config(config_file: Optional[str] = "config.yaml") -> Config:
     """
     Load pytorch_common config.
     Used in other repositories for loading
@@ -73,7 +79,7 @@ def load_config(config_file="config.yaml"):
     config = Config(dictionary)
     return config
 
-def set_pytorch_config(config):
+def set_pytorch_config(config: _config) -> None:
     """
     Validate and set config for all
     things related to PyTorch / GPUs.
@@ -108,7 +114,7 @@ def set_pytorch_config(config):
             assert config.n_gpu >= 1, ("Usage of GPU is required as per config but either "
                                        "one isn't available or the device is set to CPU.")
 
-def set_additional_dirs(config):
+def set_additional_dirs(config: _config) -> None:
     """
     Update `output_dir`, `plot_dir`, and `checkpoint_dir`
     directory paths to absolute ones and create them.
@@ -123,7 +129,7 @@ def set_additional_dirs(config):
         if config.get(directory):
             set_and_create_dir(config, config.misc_data_dir, directory)
 
-def set_and_create_dir(config, parent_dir, directory):
+def set_and_create_dir(config: _config, parent_dir: str, directory: str) -> None:
     """
     Properly sets the `directory` attribute of `config`,
     assuming `config[directory]` is inside `parent_dir`.
@@ -134,7 +140,7 @@ def set_and_create_dir(config, parent_dir, directory):
     setattr(config, directory, dir_path)
     make_dirs(config[directory])
 
-def set_loss_and_eval_criteria(config):
+def set_loss_and_eval_criteria(config: _config) -> None:
     """
     Create loss and evaluation criteria
     as per their (optionally) provided
@@ -160,7 +166,7 @@ def set_loss_and_eval_criteria(config):
             config.early_stopping_criterion = default_stopping_criterion
     assert config.early_stopping_criterion in config.eval_criteria
 
-def _check_loss_and_eval_criteria(config):
+def _check_loss_and_eval_criteria(config: _config) -> None:
     """
     Ensure that the loss and eval criteria
     provided are consistent with the
@@ -183,7 +189,7 @@ def _check_loss_and_eval_criteria(config):
                                                  f"`model_type=='classification' must be one"
                                                  f" of {EVAL_CRITERIA}.")
 
-def check_and_set_devices(config):
+def check_and_set_devices(config: _config) -> None:
     """
     Check the validity of provided device
     configuration:
@@ -229,7 +235,7 @@ def check_and_set_devices(config):
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
 
-def set_batch_size(config):
+def set_batch_size(config: _config) -> None:
     """
     If batch size per GPU is provided and the model
     is to be parallelized, then compute the corresponding
