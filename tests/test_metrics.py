@@ -6,7 +6,6 @@ from sklearn.metrics import (
 )
 
 import torch
-from torch.nn.modules.loss import _Loss
 
 from pytorch_common.utils import compare_tensors_or_arrays
 from pytorch_common import metrics
