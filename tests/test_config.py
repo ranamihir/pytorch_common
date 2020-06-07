@@ -1,7 +1,8 @@
 import unittest
 import torch
+from typing import Dict, Optional
 
-from pytorch_common.config import load_pytorch_common_config, set_pytorch_config
+from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
 from pytorch_common import utils
 
 
@@ -108,7 +109,7 @@ class TestConfig(unittest.TestCase):
                                             "batch_size_per_gpu": 8})
                 self.assertEqual(config.batch_size, 8*self.n_gpu)
 
-    def _test_config_error(self, dictionary, error=AssertionError):
+    def _test_config_error(self, dictionary: Dict, error=AssertionError):
         """
         Generic code to assert that `error` is raised when
         loading config with an overriding `dictionary`.
@@ -116,7 +117,7 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(error):
             self._load_config(dictionary)
 
-    def _load_config(self, dictionary=None):
+    def _load_config(self, dictionary: Optional[Dict] = None) -> Config:
         """
         Load the default pytorch_common config
         after overriding it with `dictionary`.
@@ -126,7 +127,7 @@ class TestConfig(unittest.TestCase):
         set_pytorch_config(config)
         return config
 
-    def _get_merged_dict(self, dictionary=None):
+    def _get_merged_dict(self, dictionary: Optional[Dict] = None) -> Dict:
         """
         Override default config with
         `dictionary` if provided.

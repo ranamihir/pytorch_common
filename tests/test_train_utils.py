@@ -1,16 +1,26 @@
 import unittest
 import numpy as np
 import itertools
+from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
+
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import SGD
+from torch.nn.modules.loss import _Loss
+from torch.optim.optimizer import Optimizer
 
-from pytorch_common.config import load_pytorch_common_config, set_pytorch_config
+from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
 from pytorch_common.additional_configs import BaseDatasetConfig, BaseModelConfig
 from pytorch_common.datasets import create_dataset
 from pytorch_common.models import create_model
 from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
 from pytorch_common import train_utils, utils
+
+
+_string_dict = Dict[str, Any]
+_loss_or_losses = Union[_Loss, Iterable[_Loss]]
+_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
 
 
 class TestTrainUtils(unittest.TestCase):
@@ -104,7 +114,12 @@ class TestTrainUtils(unittest.TestCase):
         all_kwargs = {"classification": classification_kwargs, "regression": regression_kwargs}
         return all_kwargs
 
-    def _test_saving_loading_models(self, loss_criterion, eval_criterion, **model_kwargs):
+    def _test_saving_loading_models(
+        self,
+        loss_criterion: str,
+        eval_criterion: str,
+        **model_kwargs
+    ) -> None:
         """
         Test saving and loading of models.
         """
@@ -118,12 +133,11 @@ class TestTrainUtils(unittest.TestCase):
         model_state_dict_orig = model.state_dict()
         checkpoint_file = train_utils.save_model(model, optimizer, self.config,
                                                  train_logger, val_logger, 1)
-        return_dict = train_utils.load_model(model, self.config,
-                                             checkpoint_file, optimizer)
+        return_dict = train_utils.load_model(model, self.config, checkpoint_file, optimizer)
         self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig,
                         return_dict["model"].state_dict()))
 
-    def _test_train_model(self, loss_criterion, eval_criterion, **kwargs):
+    def _test_train_model(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
         """
         Test the whole training routine of a model.
         """
@@ -138,7 +152,7 @@ class TestTrainUtils(unittest.TestCase):
                                 return_dict["train_logger"], return_dict["val_logger"],
                                 self.config.epochs)
 
-    def _test_get_all_predictions(self, loss_criterion, eval_criterion, **kwargs):
+    def _test_get_all_predictions(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
         """
         Test the routine of obtaining predictions from a model.
         """
@@ -158,7 +172,7 @@ class TestTrainUtils(unittest.TestCase):
             for results in [preds_val, probs_val]:
                 self.assertEqual(len(results), len(return_dict["val_loader"].dataset))
 
-    def _test_error(self, func, args, error=AssertionError):
+    def _test_error(self, func: Callable, args, error=AssertionError) -> None:
         """
         Generic code to assert that `error`
         is raised when calling a function
@@ -168,7 +182,7 @@ class TestTrainUtils(unittest.TestCase):
             func(args)
 
     @classmethod
-    def _load_config(cls, dictionary=None):
+    def _load_config(cls, dictionary: Optional[Dict] = None) -> Config:
         """
         Load the default pytorch_common config
         after overriding it with `dictionary`.
@@ -179,7 +193,7 @@ class TestTrainUtils(unittest.TestCase):
         cls.config = config
 
     @classmethod
-    def _get_merged_dict(cls, dictionary=None):
+    def _get_merged_dict(cls, dictionary: Optional[Dict] = None) -> Dict:
         """
         Override default config with
         `dictionary` if provided.
@@ -199,7 +213,12 @@ class TestTrainUtils(unittest.TestCase):
             return cls.default_config_dict
         return {**cls.default_config_dict, **dictionary}
 
-    def _get_training_objects(self, loss_criterion, eval_criterion, **kwargs):
+    def _get_training_objects(
+        self,
+        loss_criterion: str,
+        eval_criterion: str,
+        **kwargs
+    ) -> _string_dict:
         """
         Get all objects required for training, like
         model, dataloaders, loggers, optimizer, etc.
@@ -241,7 +260,7 @@ class TestTrainUtils(unittest.TestCase):
         }
         return training_objects
 
-    def _get_dataloaders(self, **kwargs):
+    def _get_dataloaders(self, **kwargs) -> Tuple[DataLoader, DataLoader]:
         """
         Get training and validation dataloaders.
         """
@@ -253,7 +272,7 @@ class TestTrainUtils(unittest.TestCase):
 
         return train_loader, val_loader
 
-    def _get_model(self, **kwargs):
+    def _get_model(self, **kwargs) -> nn.Module:
         """
         Get model.
         """
@@ -263,14 +282,18 @@ class TestTrainUtils(unittest.TestCase):
         model = utils.send_model_to_device(model, self.config.device, self.config.device_ids)
         return model
 
-    def _get_optimizer(self, model):
+    def _get_optimizer(self, model: nn.Module) -> Optimizer:
         """
         Get optimizer.
         """
         optimizer = SGD(model.parameters(), lr=1e-3)
         return optimizer
 
-    def _get_loggers(self, loss_criterion, eval_criterion):
+    def _get_loggers(
+        self,
+        loss_criterion: str,
+        eval_criterion: str
+    ) -> Tuple[utils.ModelTracker, utils.ModelTracker]:
         """
         Get training and validation
         loggers and feed in some dummy

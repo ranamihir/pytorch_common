@@ -1,12 +1,20 @@
 import unittest
 import numpy as np
-import torch
 from munch import Munch
 from sklearn.metrics import (accuracy_score, precision_score, f1_score,
                              recall_score, roc_curve, auc, mean_squared_error)
+from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
+
+import torch
+from torch.nn.modules.loss import _Loss
 
 from pytorch_common.utils import compare_tensors_or_arrays
 from pytorch_common import metrics
+
+
+_string_dict = Dict[str, Any]
+_loss_or_losses = Union[_Loss, Iterable[_Loss]]
+_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
 
 
 class TestMetrics(unittest.TestCase):
@@ -88,7 +96,10 @@ class TestMetrics(unittest.TestCase):
         # Compute all evaluation criteria
         self._test_metrics(predictions, targets, metrics.CLASSIFICATION_EVAL_CRITERIA, true_values)
 
-    def _get_loss_eval_criteria(self, dictionary):
+    def _get_loss_eval_criteria(
+        self,
+        dictionary: Dict
+    ) -> Tuple[_loss_or_losses, _loss_or_losses, _eval_criterion_or_criteria]:
         """
         Load the default config, override it
         with `dictionary`, and get the loss
@@ -97,7 +108,13 @@ class TestMetrics(unittest.TestCase):
         config = Munch(self._get_merged_dict(dictionary))
         return metrics.get_loss_eval_criteria(config)
 
-    def _test_metrics(self, predictions, targets, eval_criteria, true_values):
+    def _test_metrics(
+        self,
+        predictions: np.ndarray,
+        targets: np.ndarray,
+        eval_criteria: List,
+        true_values: _string_dict
+    ) -> None:
         """
         Test that all `eval_criteria` values computed using
         `predictions` and `targets` match the `true_values`.
@@ -119,7 +136,7 @@ class TestMetrics(unittest.TestCase):
         for metric, value in eval_metrics.items():
             np.testing.assert_allclose(value, true_values[metric], atol=1e-3)
 
-    def _test_error(self, func, args, error=AssertionError):
+    def _test_error(self, func: Callable, args, error=AssertionError) -> None:
         """
         Generic code to assert that `error`
         is raised when calling a function
@@ -128,7 +145,7 @@ class TestMetrics(unittest.TestCase):
         with self.assertRaises(error):
             func(args)
 
-    def _get_merged_dict(self, dictionary=None):
+    def _get_merged_dict(self, dictionary: Optional[Dict] = None) -> Dict:
         """
         Override default config with
         `dictionary` if provided.

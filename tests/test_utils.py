@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import os
 import torch
+from typing import List, Tuple, Dict, Callable, Optional, Union
 
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
@@ -14,7 +15,12 @@ class TestUtils(unittest.TestCase):
         Test saving/loading of different
         files (pickle, dill, yaml).
         """
-        def _test_module_file_handling(data, primary_path, file_name=None, module="pickle"):
+        def _test_module_file_handling(
+            data: Union[np.ndarray, Dict],
+            primary_path: str,
+            file_name: Optional[str] = None,
+            module: Optional[str] = "pickle"
+        ) -> None:
             """
             Test saving/loading of a
             file with a given `module`.
@@ -165,7 +171,14 @@ class TestUtils(unittest.TestCase):
             self.assertTrue(utils.compare_tensors_or_arrays(batch_torch, batch_torch_cuda))
             self.assertTrue(utils.is_batch_on_gpu(batch_torch_cuda))
 
-    def _get_batch(self, a, b, c, batch_type, **kwargs):
+    def _get_batch(
+        self,
+        a: List[Union[int, float]],
+        b: List[Union[int, float]],
+        c: List[Union[int, float]],
+        batch_type: Callable,
+        **kwargs
+    ) -> Tuple:
         """
         Construct a numpy/torch batch of shape
         which forces recursion in type conversion.

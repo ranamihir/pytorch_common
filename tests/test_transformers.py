@@ -1,4 +1,5 @@
 import unittest
+import torch.nn as nn
 
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model, is_transformer_model, create_transformer_model
@@ -60,7 +61,7 @@ class TestTransformerModels(unittest.TestCase):
         """
         Test `SequencePooler` setup for different configurations.
         """
-        def get_seq_pooler(model_name):
+        def get_seq_pooler(model_name: str) -> nn.Module:
             """
             Return the `SequencePooler` for `model_name`.
             """
