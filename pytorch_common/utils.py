@@ -11,9 +11,6 @@ import pickle
 import dill
 from collections import OrderedDict
 import hashlib
-from munch import Munch
-from matplotlib.figure import Figure
-from typing import Any, List, Tuple, Dict, Iterable, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -22,11 +19,10 @@ from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 from dask.callbacks import Callback
 
-
-_string_dict = Dict[str, Any]
-_config = Union[_string_dict, Munch]
-_tensor_or_tensors = Union[torch.Tensor, Iterable[torch.Tensor]]
-_device = Union[str, torch.device]
+from .types import (
+    Any, List, Tuple, Dict, Iterable, Optional, Union, _string_dict, _config, _device,
+    _batch, _tensor_or_tensors, _figure
+)
 
 
 def make_dirs(parent_dir_path: str, child_dirs: Optional[List[str]] = None) -> None:
@@ -68,7 +64,7 @@ def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
         else:
             os.rmdir(dir_path)
 
-def human_time_interval(time_seconds: Union[int, float]) -> str:
+def human_time_interval(time_seconds: float) -> str:
     """
     Converts a time interval in seconds to a human-friendly
     representation in hours, minutes, seconds and milliseconds.
@@ -111,7 +107,7 @@ def print_dataframe(data: pd.DataFrame) -> None:
 
 def save_plot(
     config: _config,
-    fig: Figure,
+    fig: _figure,
     plot_name: str,
     model_name: str,
     config_info_dict: _string_dict,
@@ -382,10 +378,10 @@ def send_model_to_device(
     return model
 
 def send_batch_to_device(
-    batch: Iterable,
+    batch: _batch,
     device: _device,
     non_blocking: Optional[bool] = True
-) -> Iterable:
+) -> _batch:
     """
     Send batch to given device.
 
@@ -436,7 +432,7 @@ def send_optimizer_to_device(optimizer: Optimizer, device: _device) -> Optimizer
                 state[k] = v.to(device)
     return optimizer
 
-def convert_tensor_to_numpy(batch: Iterable) -> Iterable:
+def convert_tensor_to_numpy(batch: _batch) -> _batch:
     """
     Convert torch tensor(s) on any device to numpy array(s).
     Similar to `send_batch_to_device()`, can take a
@@ -452,10 +448,10 @@ def convert_tensor_to_numpy(batch: Iterable) -> Iterable:
         return batch
 
 def convert_numpy_to_tensor(
-    batch: Iterable,
+    batch: _batch,
     device: Optional[_device] = None,
     non_blocking: Optional[bool] = True
-) -> Iterable:
+) -> _batch:
     """
     Convert numpy array(s) to torch tensor(s) and
     optionally sends them to the desired device.
@@ -527,7 +523,7 @@ def compare_model_state_dicts(
             return False
     return True
 
-def is_batch_on_gpu(batch: Iterable) -> bool:
+def is_batch_on_gpu(batch: _batch) -> bool:
     """
     Check if a `batch` is on a GPU.
 
@@ -555,7 +551,7 @@ def is_model_parallelized(model: nn.Module) -> bool:
 
 def get_total_grad_norm(
     parameters: Iterable[torch.Tensor],
-    norm_type: Optional[Union[int, float]] = 2
+    norm_type: Optional[float] = 2
 ) -> torch.Tensor:
     """
     Get the total `norm_type` norm

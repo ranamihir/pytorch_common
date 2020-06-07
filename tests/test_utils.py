@@ -2,11 +2,11 @@ import unittest
 import numpy as np
 import os
 import torch
-from typing import List, Tuple, Dict, Callable, Optional, Union
 
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
 from pytorch_common import utils
+from pytorch_common.types import List, Tuple, Dict, Callable, Optional, Union, _batch
 
 
 class TestUtils(unittest.TestCase):
@@ -173,12 +173,12 @@ class TestUtils(unittest.TestCase):
 
     def _get_batch(
         self,
-        a: List[Union[int, float]],
-        b: List[Union[int, float]],
-        c: List[Union[int, float]],
+        a: List[float],
+        b: List[float],
+        c: List[float],
         batch_type: Callable,
         **kwargs
-    ) -> Tuple:
+    ) -> _batch:
         """
         Construct a numpy/torch batch of shape
         which forces recursion in type conversion.

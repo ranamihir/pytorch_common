@@ -1,11 +1,11 @@
 import os
 import torch.nn as nn
-from typing import Optional
 
 from .models_dl import (
     SingleLayerClassifier, MultiLayerClassifier, SingleLayerRegressor, MultiLayerRegressor
 )
 from .additional_configs import BaseModelConfig
+from .types import Optional
 
 
 def create_model(model_name: str, config: Optional[BaseModelConfig] = None) -> nn.Module:

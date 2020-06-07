@@ -5,12 +5,9 @@ import os
 import logging
 import dill
 from itertools import islice
-from munch import Munch
-from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
 
 import torch
 import torch.nn as nn
-from torch.nn.modules.loss import _Loss
 from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer
 
@@ -20,16 +17,10 @@ from .utils import (
     get_model_outputs_only, send_batch_to_device, send_model_to_device,
     send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker
 )
-
-
-_string_dict = Dict[str, Any]
-_config = Union[_string_dict, Munch]
-_loss_or_losses = Union[_Loss, Iterable[_Loss]]
-_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
-_device = Union[str, torch.device]
-_train_result = List[float]
-_eval_result = Tuple[List[float], Dict[str, float], torch.Tensor, torch.Tensor]
-_test_result = Iterable[torch.Tensor]
+from .types import (
+    Callable, Optional, Union, _string_dict, _config, _device, _batch, _loss_or_losses,
+    _eval_criterion_or_criteria, _train_result, _eval_result, _test_result
+)
 
 
 @timing
@@ -425,7 +416,7 @@ def perform_one_epoch(
     else:
         return outputs_hist, preds_hist, probs_hist
 
-def decouple_batch_train(batch) -> Tuple:
+def decouple_batch_train(batch: _batch) -> Tuple[_batch]:
     """
     Separate out batch into inputs and targets
     by assuming they're the first two elements
@@ -440,7 +431,7 @@ def decouple_batch_train(batch) -> Tuple:
     inputs, targets = batch[:2]
     return inputs, targets
 
-def decouple_batch_test(batch):
+def decouple_batch_test(batch: _batch) -> _batch:
     """
     Extract and return just the inputs
     from a batch assuming it's the first

@@ -3,15 +3,14 @@ import logging
 import os
 import torch
 from munch import Munch
-from typing import Any, Dict, Optional, Union
 
 import pytorch_common
-from pytorch_common import metrics
+from .metrics import (
+    CLASSIFICATION_LOSS_CRITERIA, CLASSIFICATION_EVAL_CRITERIA,
+    REGRESSION_LOSS_CRITERIA, REGRESSION_EVAL_CRITERIA
+)
 from .utils import load_object, make_dirs, set_seed
-
-
-_string_dict = Dict[str, Any]
-_config = Union[_string_dict, Munch]
+from .types import Optional, _string_dict
 
 
 class Config(Munch):
@@ -175,11 +174,11 @@ def _check_loss_and_eval_criteria(config: _config) -> None:
     assert config.get("eval_criteria") and isinstance(config.eval_criteria, list)
 
     if config.model_type == "classification":
-        LOSS_CRITERIA = metrics.CLASSIFICATION_LOSS_CRITERIA
-        EVAL_CRITERIA = metrics.CLASSIFICATION_EVAL_CRITERIA
+        LOSS_CRITERIA = CLASSIFICATION_LOSS_CRITERIA
+        EVAL_CRITERIA = CLASSIFICATION_EVAL_CRITERIA
     else:
-        LOSS_CRITERIA = metrics.REGRESSION_LOSS_CRITERIA
-        EVAL_CRITERIA = metrics.REGRESSION_EVAL_CRITERIA
+        LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA
+        EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA
 
     assert config.loss_criterion in LOSS_CRITERIA, (f"Loss criterion ('{config.loss_criterion}') "
                                                     f"for `model_type=='classification' must be one"

@@ -2,8 +2,9 @@ import unittest
 
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
-from pytorch_common.models_dl import (SingleLayerClassifier, MultiLayerClassifier,
-                                      SingleLayerRegressor, MultiLayerRegressor)
+from pytorch_common.models_dl import (
+    SingleLayerClassifier, MultiLayerClassifier, SingleLayerRegressor, MultiLayerRegressor
+)
 
 
 class TestModels(unittest.TestCase):

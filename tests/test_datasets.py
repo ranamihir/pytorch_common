@@ -2,8 +2,9 @@ import unittest
 
 from pytorch_common.additional_configs import BaseDatasetConfig
 from pytorch_common.datasets import create_dataset
-from pytorch_common.datasets_dl import (DummyMultiClassDataset, DummyMultiLabelDataset,
-                                        DummyRegressionDataset)
+from pytorch_common.datasets_dl import (
+    DummyMultiClassDataset, DummyMultiLabelDataset, DummyRegressionDataset
+)
 
 
 class TestModels(unittest.TestCase):

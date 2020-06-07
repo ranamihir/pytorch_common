@@ -1,17 +1,15 @@
 import numpy as np
 from collections import OrderedDict
 from functools import partial
-from munch import Munch
-from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
 
 import torch
 import torch.nn as nn
-from torch.nn.modules.loss import _Loss
 
 from .utils import convert_tensor_to_numpy
 from sklearn.metrics import (
     accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
 )
+from .types import Tuple, Optional, _config, _loss_or_losses, _eval_criterion_or_criteria
 
 
 REGRESSION_LOSS_CRITERIA = ["mse"]
@@ -21,13 +19,6 @@ LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA + CLASSIFICATION_LOSS_CRITERIA
 REGRESSION_EVAL_CRITERIA = ["mse"]
 CLASSIFICATION_EVAL_CRITERIA = ["accuracy", "precision", "recall", "f1", "auc"]
 EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
-
-
-_string_dict = Dict[str, Any]
-_config = Union[_string_dict, Munch]
-_tensor_or_tensors = Union[torch.Tensor, Iterable[torch.Tensor]]
-_loss_or_losses = Union[_Loss, Iterable[_Loss]]
-_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
 
 
 def get_loss_eval_criteria(
@@ -251,7 +242,7 @@ class FocalLoss(nn.Module):
     Code insipration: https://github.com/kuangliu/pytorch-retinanet/blob/master/loss.py
     """
     # TODO: Extend this to multiclass
-    def __init__(self, alpha: Optional[float] = 0.25, gamma: Optional[Union[int, float]] = 2):
+    def __init__(self, alpha: Optional[float] = 0.25, gamma: Optional[float] = 2):
         super().__init__()
         self.alpha = alpha
         self.gamma = gamma

@@ -1,13 +1,11 @@
 import unittest
 import numpy as np
 import itertools
-from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import SGD
-from torch.nn.modules.loss import _Loss
 from torch.optim.optimizer import Optimizer
 
 from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
@@ -16,11 +14,10 @@ from pytorch_common.datasets import create_dataset
 from pytorch_common.models import create_model
 from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
 from pytorch_common import train_utils, utils
-
-
-_string_dict = Dict[str, Any]
-_loss_or_losses = Union[_Loss, Iterable[_Loss]]
-_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
+from pytorch_common.types import (
+    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _string_dict,
+    _loss_or_losses, _eval_criterion_or_criteria
+)
 
 
 class TestTrainUtils(unittest.TestCase):
@@ -145,12 +142,13 @@ class TestTrainUtils(unittest.TestCase):
         return_dict = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
 
         # Train model
-        train_utils.train_model(return_dict["model"], self.config, return_dict["train_loader"],
-                                return_dict["val_loader"], return_dict["optimizer"],
-                                return_dict["loss_criterion_train"],
-                                return_dict["loss_criterion_test"], return_dict["eval_criteria"],
-                                return_dict["train_logger"], return_dict["val_logger"],
-                                self.config.epochs)
+        train_utils.train_model(
+            return_dict["model"], self.config, return_dict["train_loader"],
+            return_dict["val_loader"], return_dict["optimizer"],
+            return_dict["loss_criterion_train"], return_dict["loss_criterion_test"],
+            return_dict["eval_criteria"], return_dict["train_logger"], return_dict["val_logger"],
+            self.config.epochs
+        )
 
     def _test_get_all_predictions(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
         """

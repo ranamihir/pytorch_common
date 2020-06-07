@@ -5,12 +5,12 @@ import pandas as pd
 import logging
 from tqdm import tqdm
 from types import FunctionType
-from typing import Any, List, Dict, Callable, Optional
 
 import torch
 from torch.utils.data import Dataset
 
 from .utils import save_object, load_object, remove_object, print_dataframe
+from .types import Callable, Optional, _string_dict
 
 
 class BasePyTorchDataset(Dataset):
@@ -162,7 +162,7 @@ class BasePyTorchDataset(Dataset):
         # Shuffle and reindex data
         self.data = self.data.sample(frac=1).reset_index(drop=True)
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> _string_dict:
         """
         Update `__getstate__` to exclude object
         methods so that it can be pickled.

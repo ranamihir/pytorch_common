@@ -1,20 +1,19 @@
 import unittest
 import numpy as np
 from munch import Munch
-from sklearn.metrics import (accuracy_score, precision_score, f1_score,
-                             recall_score, roc_curve, auc, mean_squared_error)
-from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
+from sklearn.metrics import (
+    accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc, mean_squared_error
+)
 
 import torch
 from torch.nn.modules.loss import _Loss
 
 from pytorch_common.utils import compare_tensors_or_arrays
 from pytorch_common import metrics
-
-
-_string_dict = Dict[str, Any]
-_loss_or_losses = Union[_Loss, Iterable[_Loss]]
-_eval_criterion_or_criteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
+from pytorch_common.types import (
+    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _string_dict,
+    _loss_or_losses, _eval_criterion_or_criteria
+)
 
 
 class TestMetrics(unittest.TestCase):
@@ -46,9 +45,11 @@ class TestMetrics(unittest.TestCase):
         # eval criteria for multiclass/multilabel classification
         for loss_criterion in metrics.LOSS_CRITERIA:
             for classification_type in ["multiclass", "multilabel"]:
-                dictionary = {"classification_type": classification_type,
-                              "loss_criterion": loss_criterion,
-                              "eval_criteria": metrics.EVAL_CRITERIA}
+                dictionary = {
+                    "classification_type": classification_type,
+                    "loss_criterion": loss_criterion,
+                    "eval_criteria": metrics.EVAL_CRITERIA
+                }
                 if loss_criterion == "focal-loss":
                     # FocalLoss only compatible with binary classification
                     self._test_error(self._get_loss_eval_criteria, dictionary, error=ValueError)

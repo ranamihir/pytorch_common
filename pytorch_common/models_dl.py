@@ -1,15 +1,12 @@
 import logging
 from copy import deepcopy
-from typing import List, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from .additional_configs import BaseModelConfig
-
-
-_model_or_models = Union[nn.Module, List[nn.Module]]
+from .types import Dict, Optional, _model_or_models
 
 
 class BasePyTorchModel(nn.Module):
