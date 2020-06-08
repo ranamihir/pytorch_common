@@ -346,6 +346,10 @@ def perform_one_epoch(
             # Get model outputs
             outputs = get_model_outputs_only(model(inputs))
 
+            # Store variables for logging
+            num_examples_complete = (batch_idx+1) * batch_size
+            percent_batches_complete = 100. * (batch_idx+1) / num_batches
+
             # Store items for testing + print progress
             if phase == "test":
                 outputs = send_batch_to_device(outputs, "cpu")
@@ -359,9 +363,10 @@ def perform_one_epoch(
 
                 # Print progess
                 if batch_idx in batches_to_print:
-                    logging.info("{}/{} ({:.0f}%) complete.".format(
-                        (batch_idx+1) * batch_size, num_examples,
-                        100. * (batch_idx+1) / num_batches))
+                    logging.info(
+                        f"{num_examples_complete}/{num_examples} "
+                        f"({percent_batches_complete:.0f}%) complete."
+                    )
 
             else: # Perform training / evaluation
                 # Compute and store loss
@@ -380,9 +385,10 @@ def perform_one_epoch(
 
                     # Print progess
                     if batch_idx in batches_to_print:
-                        logging.info("Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                            epoch, (batch_idx+1) * batch_size, num_examples,
-                            100. * (batch_idx+1) / num_batches, loss_value))
+                        logging.info(
+                            f"Train Epoch: {epoch} [{num_examples_complete}/{num_examples} "
+                            f"({percent_batches_complete:.0f}%)]\tLoss: {loss_value:.6f}"
+                        )
 
                 else: # Store items for evaluation
                     outputs, targets = send_batch_to_device((outputs, targets), "cpu")

@@ -242,8 +242,10 @@ def set_batch_size(config: _config) -> None:
     """
     if config.get("batch_size_per_gpu"):
         if config.get("batch_size"):
-            raise ValueError(f"Please don't provide both 'batch_size' and "
-                             f"'batch_size_per_gpu' at the same time.")
+            raise ValueError(
+                f"Please don't provide both 'batch_size' ({config.batch_size}) and "
+                f"'batch_size_per_gpu' ({config.batch_size_per_gpu}) at the same time."
+            )
 
         # Set correct batch size according to number of devices
         config.batch_size = config.batch_size_per_gpu # if CPU or only 1 GPU

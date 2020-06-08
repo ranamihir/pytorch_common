@@ -257,8 +257,9 @@ def get_pickle_module(pickle_module: Optional[str] = "pickle") -> Union[pickle, 
         return pickle
     elif pickle_module == "dill":
         return dill
-    raise ValueError(f"Param 'pickle_module' ('{pickle_module}') "
-                     f"must be one of ['pickle', 'dill'].")
+    raise ValueError(
+        f"Param 'pickle_module' ('{pickle_module}') must be one of ['pickle', 'dill']."
+    )
 
 def delete_model(model: nn.Module) -> None:
     """
@@ -282,7 +283,10 @@ def get_string_from_dict(config_info_dict: Optional[_string_dict] = None) -> str
         config_info = "-".join([f"{k}_{v}" for k, v in config_info.items()])
     return config_info
 
-def get_unique_config_name(primary_name: str, config_info_dict: Optional[_string_dict] = None) -> str:
+def get_unique_config_name(
+    primary_name: str,
+    config_info_dict: Optional[_string_dict] = None
+) -> str:
     """
     Returns a unique name for the current configuration.
 
@@ -708,11 +712,13 @@ class ModelTracker(object):
         epoch_eval_metrics = self._get_correct_epoch(epoch, "eval_metrics")
         assert epoch_loss == epoch_eval_metrics
         dataset_type = "TRAIN" if self.is_train else "VAL  "
-        result_str = "\n\033[1m{} Epoch: {}\tAverage loss: {:.4f}, "\
-                     .format(dataset_type, epoch_loss, np.mean(self.loss_hist[epoch_loss]))
-        result_str += ", ".join(["{}: {:.4f}".format(eval_criterion,
-                                 self.eval_metrics_hist[eval_criterion][epoch_loss]) \
-                                 for eval_criterion in self.eval_criteria])
+        mean_loss_epoch =  np.mean(self.get_losses(epoch=epoch_loss))
+        result_str = f"\n\033[1m{dataset_type} Epoch: {epoch_loss}"
+                     f"\tAverage loss: {mean_loss_epoch:.4f}, "
+        result_str += ", ".join([
+            f"{eval_criterion}: {self.get_eval_metrics(eval_criterion, epoch_loss):.4f}" \
+            for eval_criterion in self.eval_criteria
+        ])
         result_str += "\033[0m\n"
         logging.info(result_str)
         return result_str
@@ -751,8 +757,7 @@ class ModelTracker(object):
         """
         if self.is_train:
             raise ValueError("Early stopping must be applied on validation set.")
-        return self.eval_metrics_hist[self.early_stopping_criterion]\
-                                     [self._get_correct_epoch(-1, "eval_metrics")]
+        return self.get_eval_metrics(self.early_stopping_criterion, -1)
 
     def get_eval_metrics_df(self, epoch: Optional[int] = None) -> pd.DataFrame:
         """

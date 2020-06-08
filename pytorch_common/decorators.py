@@ -5,10 +5,6 @@ Useful Decorators
 
 Decorators are a useful way to save some typing and automate common tasks,
 such as timing function execution or debugging dataframe sizes.
-
-Please see this book chapter:
-    <http://chimera.labs.oreilly.com/books/1230000000393/ch09.html>
-on metaprogramming for more information and use cases.
 """
 import logging
 import inspect
