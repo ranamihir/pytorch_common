@@ -25,7 +25,7 @@ from .types import (
 )
 
 
-def make_dirs(parent_dir_path: str, child_dirs: Optional[List[str]] = None) -> None:
+def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] = None) -> None:
     """
     Create the parent and (optionally) all child
     directories within parent directory.
