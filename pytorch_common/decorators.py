@@ -54,8 +54,9 @@ def timing_with_param(*parameter_names):
             logged_param_str = f" {logged_param}" if logged_param else ""
 
             module_name, function_name = func.__module__, func.__qualname__
-            PRINT_FUNC("Function '{}.{}{}' took {}".format(module_name, function_name,
-                                                           logged_param_str, elapsed_human))
+            PRINT_FUNC(
+                f"Function '{module_name}.{function_name}{logged_param_str}' took {elapsed_human}"
+            )
             return result
         return wrapper
     return timing_decorator

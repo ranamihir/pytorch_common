@@ -49,8 +49,10 @@ class BasePyTorchModel(nn.Module):
         """
         num_params = sum(p.numel() for p in self.parameters())
         num_trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        logging.info("Number of trainable/total parameters in {}: {}/{}"\
-                     .format(self.__name__, num_trainable_params, num_params))
+        logging.info(
+            f"Number of trainable/total parameters in {self.__name__}: "
+            f"{num_trainable_params}/{num_params}"
+        )
         return {"trainable": num_trainable_params, "total": num_params}
 
     def print(self) -> None:
@@ -195,7 +197,7 @@ class BasePyTorchModel(nn.Module):
         # Extract model name from class if not present already (for `transformers` models)
         model_name = getattr(model, "__name__", model.__class__.__name__)
 
-        logging.info("{} {}...".format("Freezing" if freeze else "Unfreezing", model_name))
+        logging.info(f"{'Freezing' if freeze else 'Unfreezing'} {model_name}...")
         for param in model.parameters():
             param.requires_grad = not freeze
         logging.info("Done.")
