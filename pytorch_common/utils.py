@@ -713,8 +713,8 @@ class ModelTracker(object):
         assert epoch_loss == epoch_eval_metrics
         dataset_type = "TRAIN" if self.is_train else "VAL  "
         mean_loss_epoch =  np.mean(self.get_losses(epoch=epoch_loss))
-        result_str = f"\n\033[1m{dataset_type} Epoch: {epoch_loss}"
-                     f"\tAverage loss: {mean_loss_epoch:.4f}, "
+        result_str = (f"\n\033[1m{dataset_type} Epoch: {epoch_loss}"
+                      f"\tAverage loss: {mean_loss_epoch:.4f}, ")
         result_str += ", ".join([
             f"{eval_criterion}: {self.get_eval_metrics(eval_criterion, epoch_loss):.4f}" \
             for eval_criterion in self.eval_criteria
