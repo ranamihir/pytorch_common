@@ -56,7 +56,7 @@ def get_loss_criterion(
     """
     Get loss criterion function.
     """
-    loss_criterion = set_loss_criterion_function(config, criterion=criterion, **kwargs)
+    loss_criterion = get_loss_criterion_function(config, criterion=criterion, **kwargs)
     return loss_criterion
 
 def get_eval_criteria(config: _config, criteria: str, **kwargs) -> _eval_criterion_or_criteria:
@@ -75,16 +75,17 @@ def get_eval_criteria(config: _config, criteria: str, **kwargs) -> _eval_criteri
         criterion_kwargs = kwargs.get(criterion, {})
         if is_multilabel:
             criterion_kwargs = {**criterion_kwargs, "multilabel_reduction": multilabel_reduction}
-        eval_fn = set_eval_criterion_function(config, criterion=criterion, **criterion_kwargs)
+        eval_fn = get_eval_criterion_function(config, criterion=criterion, **criterion_kwargs)
         eval_criteria_dict[criterion] = eval_fn
     return eval_criteria_dict
 
-def set_loss_criterion_function(
+def get_loss_criterion_function(
     config: _config,
     criterion: Optional[str] = "cross-entropy",
     **kwargs
 ) -> _loss_or_losses:
     """
+    Get the function for a given loss `criterion`.
     :param kwargs: Misc kwargs for the loss. E.g. -
                    - `dim` for CrossEntropyLoss
                    - `alpha` and `gamma` for FocalLoss.
@@ -141,12 +142,13 @@ def set_loss_criterion_function(
                agg_func(torch.stack([loss_criterion(output_hist, y_hist[...,i]) \
                                      for i in range(y_hist.shape[-1])], dim=0))
 
-def set_eval_criterion_function(
+def get_eval_criterion_function(
     config: _config,
     criterion: Optional[str] = "accuracy",
     **kwargs
 ) -> _eval_criterion_or_criteria:
     """
+    Get the function for a given evaluation `criterion`.
     :param kwargs: Misc kwargs for the eval criterion.
                    Mostly used in multiclass settings. E.g. -
                    - `average` for f1, precision, recall
