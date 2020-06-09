@@ -16,6 +16,7 @@ setup(
     install_requires=[
         "numpy>=1.17.2",
         "pandas>=0.24.0",
+        "matplotlib>=3.2.1",
         "dask[dataframe]==2.3.0",
         "toolz==0.10.0",
         "scikit-learn>=0.22.1",
