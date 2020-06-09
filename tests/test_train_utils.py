@@ -15,8 +15,8 @@ from pytorch_common.models import create_model
 from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
 from pytorch_common import train_utils, utils
 from pytorch_common.types import (
-    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _string_dict,
-    _loss_or_losses, _eval_criterion_or_criteria
+    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _StringDict,
+    _LossOrLosses, _EvalCriterionOrCriteria
 )
 
 
@@ -170,7 +170,7 @@ class TestTrainUtils(unittest.TestCase):
             for results in [preds_val, probs_val]:
                 self.assertEqual(len(results), len(return_dict["val_loader"].dataset))
 
-    def _test_error(self, func: Callable, args, error=AssertionError) -> None:
+    def _test_error(self, func: Callable[[Any], None], args, error=AssertionError) -> None:
         """
         Generic code to assert that `error`
         is raised when calling a function
@@ -216,7 +216,7 @@ class TestTrainUtils(unittest.TestCase):
         loss_criterion: str,
         eval_criterion: str,
         **kwargs
-    ) -> _string_dict:
+    ) -> _StringDict:
         """
         Get all objects required for training, like
         model, dataloaders, loggers, optimizer, etc.

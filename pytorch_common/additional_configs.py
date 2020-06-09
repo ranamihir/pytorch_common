@@ -2,7 +2,7 @@ from __future__ import annotations
 from munch import Munch
 from copy import deepcopy
 
-from .types import Optional, _string_dict
+from .types import Optional, _StringDict
 
 
 class BaseDatasetConfig(Munch):
@@ -13,7 +13,7 @@ class BaseDatasetConfig(Munch):
     Class attributes can be accessed with both
     `configobj["key"]` and `configobj.key`.
     """
-    def __init__(self, dictionary: Optional[_string_dict] = None):
+    def __init__(self, dictionary: Optional[_StringDict] = None):
         if dictionary:
             super().__init__(dictionary)
 
@@ -46,7 +46,7 @@ class BaseModelConfig(Munch):
 
     def __init__(
         self,
-        dictionary: Optional[_string_dict] = None,
+        dictionary: Optional[_StringDict] = None,
         model_type: Optional[str] = "classification"
     ):
         if dictionary:

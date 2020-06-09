@@ -20,8 +20,8 @@ from tqdm import tqdm
 from dask.callbacks import Callback
 
 from .types import (
-    Any, List, Tuple, Dict, Iterable, Optional, Union, _string_dict, _config, _device,
-    _batch, _tensor_or_tensors, _figure
+    Any, List, Tuple, Dict, Iterable, Optional, Union, _StringDict,
+    _Config, _Device, _Batch, _TensorOrTensors, _Figure
 )
 
 
@@ -106,11 +106,11 @@ def print_dataframe(data: pd.DataFrame) -> None:
     logging.info(f"\nSummary statistics:\n{data.describe()}\n")
 
 def save_plot(
-    config: _config,
-    fig: _figure,
+    config: _Config,
+    fig: _Figure,
     plot_name: str,
     model_name: str,
-    config_info_dict: _string_dict,
+    config_info_dict: _StringDict,
     ext: Optional[str] = "png"
 ) -> None:
     """
@@ -268,7 +268,7 @@ def delete_model(model: nn.Module) -> None:
     model = None
     torch.cuda.empty_cache()
 
-def get_string_from_dict(config_info_dict: Optional[_string_dict] = None) -> str:
+def get_string_from_dict(config_info_dict: Optional[_StringDict] = None) -> str:
     """
     Generate a (unique) string from a given configuration dictionary.
     E.g.:
@@ -285,7 +285,7 @@ def get_string_from_dict(config_info_dict: Optional[_string_dict] = None) -> str
 
 def get_unique_config_name(
     primary_name: str,
-    config_info_dict: Optional[_string_dict] = None
+    config_info_dict: Optional[_StringDict] = None
 ) -> str:
     """
     Returns a unique name for the current configuration.
@@ -318,7 +318,7 @@ def get_checkpoint_name(
     checkpoint_type: str,
     model_name: str,
     epoch: int,
-    config_info_dict: Optional[_string_dict] = None
+    config_info_dict: Optional[_StringDict] = None
 ) -> str:
     """
     Returns the appropriate name of checkpoint file
@@ -334,7 +334,7 @@ def get_checkpoint_name(
     checkpoint_name = f"checkpoint-{checkpoint_type}-{unique_name}-epoch_{epoch}.pt"
     return checkpoint_name
 
-def get_model_outputs_only(outputs: _tensor_or_tensors) -> _tensor_or_tensors:
+def get_model_outputs_only(outputs: _TensorOrTensors) -> _TensorOrTensors:
     """
     Use this function to get just the
     raw outputs. Useful for many libraries, e.g.
@@ -348,7 +348,7 @@ def get_model_outputs_only(outputs: _tensor_or_tensors) -> _tensor_or_tensors:
 
 def send_model_to_device(
     model: nn.Module,
-    device: _device,
+    device: _Device,
     device_ids: Optional[List[int]] = None
 ) -> nn.Module:
     """
@@ -382,10 +382,10 @@ def send_model_to_device(
     return model
 
 def send_batch_to_device(
-    batch: _batch,
-    device: _device,
+    batch: _Batch,
+    device: _Device,
     non_blocking: Optional[bool] = True
-) -> _batch:
+) -> _Batch:
     """
     Send batch to given device.
 
@@ -426,7 +426,7 @@ def send_batch_to_device(
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
-def send_optimizer_to_device(optimizer: Optimizer, device: _device) -> Optimizer:
+def send_optimizer_to_device(optimizer: Optimizer, device: _Device) -> Optimizer:
     """
     Send an optimizer to specified device.
     """
@@ -436,7 +436,7 @@ def send_optimizer_to_device(optimizer: Optimizer, device: _device) -> Optimizer
                 state[k] = v.to(device)
     return optimizer
 
-def convert_tensor_to_numpy(batch: _batch) -> _batch:
+def convert_tensor_to_numpy(batch: _Batch) -> _Batch:
     """
     Convert torch tensor(s) on any device to numpy array(s).
     Similar to `send_batch_to_device()`, can take a
@@ -452,10 +452,10 @@ def convert_tensor_to_numpy(batch: _batch) -> _batch:
         return batch
 
 def convert_numpy_to_tensor(
-    batch: _batch,
-    device: Optional[_device] = None,
+    batch: _Batch,
+    device: Optional[_Device] = None,
     non_blocking: Optional[bool] = True
-) -> _batch:
+) -> _Batch:
     """
     Convert numpy array(s) to torch tensor(s) and
     optionally sends them to the desired device.
@@ -513,8 +513,8 @@ def compare_model_parameters(
     return True
 
 def compare_model_state_dicts(
-    state_dict1: OrderedDict[str, _tensor_or_tensors],
-    state_dict2: OrderedDict[str, _tensor_or_tensors]
+    state_dict1: OrderedDict[str, _TensorOrTensors],
+    state_dict2: OrderedDict[str, _TensorOrTensors]
 ) -> bool:
     """
     Compare two sets of model state dicts.
@@ -527,7 +527,7 @@ def compare_model_state_dicts(
             return False
     return True
 
-def is_batch_on_gpu(batch: _batch) -> bool:
+def is_batch_on_gpu(batch: _Batch) -> bool:
     """
     Check if a `batch` is on a GPU.
 
@@ -563,7 +563,7 @@ def get_total_grad_norm(
     """
     return nn.utils.clip_grad_norm_(parameters, max_norm=np.inf, norm_type=norm_type)
 
-def get_model_performance_trackers(config: _config) -> Tuple[ModelTracker, ModelTracker]:
+def get_model_performance_trackers(config: _Config) -> Tuple[ModelTracker, ModelTracker]:
     """
     Initialize loss and eval criteria
     loggers for train and val datasets.
@@ -581,7 +581,7 @@ class ModelTracker(object):
     any evaluation metrics (accuracy, f1, etc.)
     at each epoch.
     """
-    def __init__(self, config: _config, is_train: Optional[bool] = 1):
+    def __init__(self, config: _Config, is_train: Optional[bool] = 1):
         self.eval_criteria = config.eval_criteria
         self.is_train = is_train
         if not is_train:

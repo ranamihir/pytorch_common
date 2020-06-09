@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset
 
 from .utils import save_object, load_object, remove_object, print_dataframe
-from .types import Callable, Optional, _string_dict
+from .types import Callable, Optional, _StringDict
 
 
 class BasePyTorchDataset(Dataset):
@@ -162,7 +162,7 @@ class BasePyTorchDataset(Dataset):
         # Shuffle and reindex data
         self.data = self.data.sample(frac=1).reset_index(drop=True)
 
-    def __getstate__(self) -> _string_dict:
+    def __getstate__(self) -> _StringDict:
         """
         Update `__getstate__` to exclude object
         methods so that it can be pickled.
@@ -263,7 +263,11 @@ class DummyRegressionDataset(BasePyTorchDataset):
         return pd.Series([x.float(), y.float()])
 
 
-def create_dataframe(size: int, target_col: str, row_gen_func: Callable) -> pd.DataFrame:
+def create_dataframe(
+    size: int,
+    target_col: str,
+    row_gen_func: Callable[[int], pd.Series]
+) -> pd.DataFrame:
     """
     Generate a dataframe of length `size` using
     the function `row_gen_func` to generate the

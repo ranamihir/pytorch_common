@@ -18,31 +18,32 @@ from .utils import (
     send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker
 )
 from .types import (
-    Callable, Optional, Union, _string_dict, _config, _device, _batch, _loss_or_losses,
-    _eval_criterion_or_criteria, _train_result, _eval_result, _test_result
+    Tuple, Optional, Union, _StringDict, _Config, _Device, _Batch, _LossOrLosses,
+    _EvalCriterionOrCriteria, _TrainResult, _EvalResult, _TestResult,
+    _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
 )
 
 
 @timing
 def train_model(
     model: nn.Module,
-    config: _config,
+    config: _Config,
     train_loader: DataLoader,
     val_loader: DataLoader,
     optimizer: Optimizer,
-    loss_criterion_train: _loss_or_losses,
-    loss_criterion_eval: _loss_or_losses,
-    eval_criteria: _eval_criterion_or_criteria,
+    loss_criterion_train: _LossOrLosses,
+    loss_criterion_eval: _LossOrLosses,
+    eval_criteria: _EvalCriterionOrCriteria,
     train_logger: ModelTracker,
     val_logger: ModelTracker,
     epochs: Optional[int] = None,
     scheduler: Optional[object] = None,
     early_stopping: Optional[EarlyStopping] = None,
-    config_info_dict: Optional[_string_dict] = None,
+    config_info_dict: Optional[_StringDict] = None,
     start_epoch: Optional[int] = 0,
-    decouple_fn_train: Optional[Callable] = None,
-    decouple_fn_eval: Optional[Callable] = None
-) -> _string_dict:
+    decouple_fn_train: Optional[_DecoupleFnTrain] = None,
+    decouple_fn_eval: Optional[_DecoupleFnTrain] = None
+) -> _StringDict:
     """
     Perform the entire model training routine.
       - `epochs` is deliberately not derived directly from config
@@ -201,13 +202,13 @@ def train_model(
 def train_epoch(
     model: nn.Module,
     dataloader: DataLoader,
-    device: _device,
-    loss_criterion: _loss_or_losses,
+    device: _Device,
+    loss_criterion: _LossOrLosses,
     epoch: int,
     optimizer: Optimizer,
     scheduler: Optional[object] = None,
-    decouple_fn: Optional[Callable] = None
-) -> _train_result:
+    decouple_fn: Optional[_DecoupleFnTrain] = None
+) -> _TrainResult:
     """
     Perform one training epoch and return the loss per example
     for each iteration.
@@ -222,11 +223,11 @@ def train_epoch(
 def evaluate_epoch(
     model: nn.Module,
     dataloader: DataLoader,
-    device: _device,
-    loss_criterion: _loss_or_losses,
-    eval_criteria: _eval_criterion_or_criteria,
-    decouple_fn: Optional[Callable] = None
-) -> _eval_result:
+    device: _Device,
+    loss_criterion: _LossOrLosses,
+    eval_criteria: _EvalCriterionOrCriteria,
+    decouple_fn: Optional[_DecoupleFnTrain] = None
+) -> _EvalResult:
     """
     Perform one evaluation epoch and return the loss per example
     for each epoch, all eval criteria, raw model outputs, and
@@ -242,10 +243,10 @@ def evaluate_epoch(
 def get_all_predictions(
     model: nn.Module,
     dataloader: DataLoader,
-    device: _device,
+    device: _Device,
     threshold_prob: Optional[float] = None,
-    decouple_fn: Optional[Callable] = None
-) -> _test_result:
+    decouple_fn: Optional[_DecoupleFnTest] = None
+) -> _TestResult:
     """
     Make predictions on entire dataset and return raw outputs
     and optionally class predictions and probabilities if it's
@@ -261,15 +262,15 @@ def perform_one_epoch(
     phase: str,
     model: nn.Module,
     dataloader: DataLoader,
-    device: _device,
-    loss_criterion: Optional[_loss_or_losses] = None,
+    device: _Device,
+    loss_criterion: Optional[_LossOrLosses] = None,
     epoch: Optional[int] = None,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,
-    eval_criteria: Optional[_eval_criterion_or_criteria] = None,
+    eval_criteria: Optional[_EvalCriterionOrCriteria] = None,
     threshold_prob: Optional[float] = None,
-    decouple_fn: Optional[Callable] = None
-) -> Union[_train_result, _eval_result, _test_result]:
+    decouple_fn: Optional[_DecoupleFn] = None
+) -> Union[_TrainResult, _EvalResult, _TestResult]:
     """
     Common loop for one training / evaluation / testing epoch on the entire dataset.
       - For training, returns the loss per example for each iteration.
@@ -422,7 +423,7 @@ def perform_one_epoch(
     else:
         return outputs_hist, preds_hist, probs_hist
 
-def decouple_batch_train(batch: _batch) -> Tuple[_batch]:
+def decouple_batch_train(batch: _Batch) -> Tuple[_Batch]:
     """
     Separate out batch into inputs and targets
     by assuming they're the first two elements
@@ -437,7 +438,7 @@ def decouple_batch_train(batch: _batch) -> Tuple[_batch]:
     inputs, targets = batch[:2]
     return inputs, targets
 
-def decouple_batch_test(batch: _batch) -> _batch:
+def decouple_batch_test(batch: _Batch) -> _Batch:
     """
     Extract and return just the inputs
     from a batch assuming it's the first
@@ -472,11 +473,11 @@ def take_scheduler_step(scheduler: object, val_metric: Optional[float] = None) -
 def save_model(
     model: nn.Module,
     optimizer: Optimizer,
-    config: _config,
+    config: _Config,
     train_logger: ModelTracker,
     val_logger: ModelTracker,
     epoch: int,
-    config_info_dict: Optional[_string_dict] = None,
+    config_info_dict: Optional[_StringDict] = None,
     scheduler: Optional[object] = None,
     checkpoint_type: Optional[str] = "state"
 ) -> str:
@@ -534,7 +535,7 @@ def save_model(
 
 def generate_checkpoint_dict(
     optimizer: Optimizer,
-    config: _config,
+    config: _Config,
     train_logger: ModelTracker,
     val_logger: ModelTracker,
     epoch: int,
@@ -566,12 +567,12 @@ def generate_checkpoint_dict(
 
 def load_model(
     model: nn.Module,
-    config: _config,
+    config: _Config,
     checkpoint_file: str,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,
     checkpoint_type: Optional[str] = "state"
-) -> _string_dict:
+) -> _StringDict:
     """
     Load the checkpoint at a given epoch.
     It can load either:
@@ -672,8 +673,8 @@ def load_model(
     return return_dict
 
 def load_optimizer_and_scheduler(
-    checkpoint: _string_dict,
-    device: _device,
+    checkpoint: _StringDict,
+    device: _Device,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None
 ) -> Tuple[Optional[Optimizer], Optional[object]]:
@@ -708,9 +709,9 @@ def load_optimizer_and_scheduler(
     return optimizer, scheduler
 
 def remove_model(
-    config: _config,
+    config: _Config,
     epoch: Optional[int],
-    config_info_dict: Optional[_string_dict] = None,
+    config_info_dict: Optional[_StringDict] = None,
     checkpoint_type: Optional[str] = "state"
 ) -> None:
     """

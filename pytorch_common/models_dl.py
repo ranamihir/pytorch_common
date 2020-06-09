@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .additional_configs import BaseModelConfig
-from .types import Dict, Optional, _model_or_models
+from .types import Dict, Optional, _ModelOrModels
 
 
 class BasePyTorchModel(nn.Module):
@@ -22,7 +22,7 @@ class BasePyTorchModel(nn.Module):
     def initialize_model(
         self,
         init_weights: Optional[str] = False,
-        models_to_init: Optional[_model_or_models] = None
+        models_to_init: Optional[_ModelOrModels] = None
     ) -> None:
         """
         Call this function in the base model class.
@@ -61,7 +61,7 @@ class BasePyTorchModel(nn.Module):
         """
         logging.info(self)
 
-    def initialize_weights(self, models_to_init: Optional[_model_or_models] = None) -> None:
+    def initialize_weights(self, models_to_init: Optional[_ModelOrModels] = None) -> None:
         """
         If `models_to_init` is provided, it will only
         initialize their weights, otherwise whole model's.
@@ -141,14 +141,14 @@ class BasePyTorchModel(nn.Module):
         """
         return deepcopy(self)
 
-    def freeze_module(self, models_to_freeze: Optional[_model_or_models] = None) -> None:
+    def freeze_module(self, models_to_freeze: Optional[_ModelOrModels] = None) -> None:
         """
         Freeze the given `models_to_freeze`, i.e.,
         all their children are gradient free.
         """
         self._change_frozen_state(models_to_freeze, freeze=True)
 
-    def unfreeze_module(self, models_to_unfreeze: Optional[_model_or_models] = None) -> None:
+    def unfreeze_module(self, models_to_unfreeze: Optional[_ModelOrModels] = None) -> None:
         """
         Unfreeze the given `models_to_unfreeze`, i.e.,
         all their children have gradients.
@@ -157,7 +157,7 @@ class BasePyTorchModel(nn.Module):
 
     def _change_frozen_state(
         self,
-        models: Optional[_model_or_models] = None,
+        models: Optional[_ModelOrModels] = None,
         freeze: Optional[bool] = True
     ) -> None:
         """

@@ -10,8 +10,8 @@ import torch
 from pytorch_common.utils import compare_tensors_or_arrays
 from pytorch_common import metrics
 from pytorch_common.types import (
-    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _string_dict,
-    _loss_or_losses, _eval_criterion_or_criteria
+    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _StringDict,
+    _LossOrLosses, _EvalCriterionOrCriteria
 )
 
 
@@ -99,7 +99,7 @@ class TestMetrics(unittest.TestCase):
     def _get_loss_eval_criteria(
         self,
         dictionary: Dict
-    ) -> Tuple[_loss_or_losses, _loss_or_losses, _eval_criterion_or_criteria]:
+    ) -> Tuple[_LossOrLosses, _LossOrLosses, _EvalCriterionOrCriteria]:
         """
         Load the default config, override it
         with `dictionary`, and get the loss
@@ -113,7 +113,7 @@ class TestMetrics(unittest.TestCase):
         predictions: np.ndarray,
         targets: np.ndarray,
         eval_criteria: List,
-        true_values: _string_dict
+        true_values: _StringDict
     ) -> None:
         """
         Test that all `eval_criteria` values computed using
@@ -136,7 +136,7 @@ class TestMetrics(unittest.TestCase):
         for metric, value in eval_metrics.items():
             np.testing.assert_allclose(value, true_values[metric], atol=1e-3)
 
-    def _test_error(self, func: Callable, args, error=AssertionError) -> None:
+    def _test_error(self, func: Callable[[Any], None], args, error=AssertionError) -> None:
         """
         Generic code to assert that `error`
         is raised when calling a function

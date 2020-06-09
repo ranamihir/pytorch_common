@@ -9,7 +9,7 @@ from .utils import convert_tensor_to_numpy
 from sklearn.metrics import (
     accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
 )
-from .types import Tuple, Optional, _config, _loss_or_losses, _eval_criterion_or_criteria
+from .types import Tuple, Optional, _Config, _LossOrLosses, _EvalCriterionOrCriteria
 
 
 REGRESSION_LOSS_CRITERIA = ["mse"]
@@ -22,10 +22,10 @@ EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
 
 
 def get_loss_eval_criteria(
-    config: _config,
+    config: _Config,
     reduction: Optional[str] = "mean",
     reduction_val: Optional[str] = None
-) -> Tuple[_loss_or_losses, _loss_or_losses, _eval_criterion_or_criteria]:
+) -> Tuple[_LossOrLosses, _LossOrLosses, _EvalCriterionOrCriteria]:
     """
     Define train and val loss and evaluation criteria.
     :param reduction_val: If None, a common `reduction` will be used
@@ -49,17 +49,17 @@ def get_loss_eval_criteria(
     return loss_criterion_train, loss_criterion_val, eval_criteria
 
 def get_loss_criterion(
-    config: _config,
+    config: _Config,
     criterion: Optional[str] = "cross-entropy",
     **kwargs
-) -> _loss_or_losses:
+) -> _LossOrLosses:
     """
     Get loss criterion function.
     """
     loss_criterion = get_loss_criterion_function(config, criterion=criterion, **kwargs)
     return loss_criterion
 
-def get_eval_criteria(config: _config, criteria: str, **kwargs) -> _eval_criterion_or_criteria:
+def get_eval_criteria(config: _Config, criteria: str, **kwargs) -> _EvalCriterionOrCriteria:
     """
     Get a dictionary of eval criterion functions.
     """
@@ -80,10 +80,10 @@ def get_eval_criteria(config: _config, criteria: str, **kwargs) -> _eval_criteri
     return eval_criteria_dict
 
 def get_loss_criterion_function(
-    config: _config,
+    config: _Config,
     criterion: Optional[str] = "cross-entropy",
     **kwargs
-) -> _loss_or_losses:
+) -> _LossOrLosses:
     """
     Get the function for a given loss `criterion`.
     :param kwargs: Misc kwargs for the loss. E.g. -
@@ -143,10 +143,10 @@ def get_loss_criterion_function(
                                      for i in range(y_hist.shape[-1])], dim=0))
 
 def get_eval_criterion_function(
-    config: _config,
+    config: _Config,
     criterion: Optional[str] = "accuracy",
     **kwargs
-) -> _eval_criterion_or_criteria:
+) -> _EvalCriterionOrCriteria:
     """
     Get the function for a given evaluation `criterion`.
     :param kwargs: Misc kwargs for the eval criterion.

@@ -6,7 +6,7 @@ import torch
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
 from pytorch_common import utils
-from pytorch_common.types import List, Tuple, Dict, Callable, Optional, Union, _batch
+from pytorch_common.types import List, Tuple, Dict, Callable, Optional, Union, _Batch
 
 
 class TestUtils(unittest.TestCase):
@@ -176,9 +176,9 @@ class TestUtils(unittest.TestCase):
         a: List[float],
         b: List[float],
         c: List[float],
-        batch_type: Callable,
+        batch_type: Callable[[], Union[np.ndarray, torch.Tensor]],
         **kwargs
-    ) -> _batch:
+    ) -> _Batch:
         """
         Construct a numpy/torch batch of shape
         which forces recursion in type conversion.
