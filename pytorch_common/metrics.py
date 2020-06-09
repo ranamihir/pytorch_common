@@ -174,8 +174,8 @@ def get_eval_criterion_function(
             )
 
     # Get per-label eval criterion
-    if criterion == "mse":
-        eval_criterion = partial(get_mse_loss, **kwargs)
+    if criterion in REGRESSION_EVAL_CRITERIA:
+        eval_criterion = partial(get_regression_eval_metric, criterion=criterion, **kwargs)
     elif criterion in CLASSIFICATION_EVAL_CRITERIA:
         eval_criterion = partial(get_class_eval_metric, criterion=criterion, **kwargs)
     else:
@@ -194,6 +194,22 @@ def get_eval_criterion_function(
         return lambda output_hist, y_hist: \
             agg_func([eval_criterion(output_hist, y_hist[...,i]) \
                       for i in range(y_hist.shape[-1])])
+
+def get_regression_eval_metric(
+    output_hist: torch.Tensor,
+    y_true: torch.Tensor,
+    criterion: Optional[str] = "mse",
+    **kwargs
+) -> float:
+    """
+    Get the regression eval metric.
+    """
+    assert y_true.shape == output_hist.shape
+
+    criterion_fn_dict = {
+        "mse": get_mse_loss
+    }
+    return criterion_fn_dict[criterion](output_hist, y_true, **kwargs)
 
 def get_mse_loss(output_hist: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
     """
@@ -233,8 +249,7 @@ def get_class_eval_metric(
         "recall": recall_score,
         "f1": f1_score
     }
-    criterion_fn = partial(criterion_fn_dict[criterion], **kwargs)
-    return criterion_fn(y_true, y_predicted.astype(int))
+    return criterion_fn_dict[criterion](y_true, y_predicted.astype(int), **kwargs)
 
 
 class FocalLoss(nn.Module):
