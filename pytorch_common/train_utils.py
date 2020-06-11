@@ -18,9 +18,9 @@ from .utils import (
     send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker
 )
 from .types import (
-    Tuple, Optional, Union, _StringDict, _Config, _Device, _Batch, _LossOrLosses,
-    _EvalCriterionOrCriteria, _TrainResult, _EvalResult, _TestResult,
-    _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
+    Tuple, Optional, Union, _StringDict, _Config, _Device, _Batch,
+    _LossOrLosses, _EvalCriterionOrCriteria, _TrainResult, _EvalResult,
+    _TestResult, _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
 )
 
 
@@ -148,9 +148,9 @@ def train_model(
                 # Replace model checkpoint if required
                 if not config.disable_checkpointing:
                     logging.info("Replacing current best model checkpoint...")
-                    best_checkpoint_file = save_model(model, optimizer, config,
-                                                      train_logger, val_logger, epoch,
-                                                      config_info_dict, scheduler)
+                    best_checkpoint_file = save_model(model, config, epoch, train_logger,
+                                                      val_logger, optimizer, scheduler,
+                                                      config_info_dict)
                     remove_model(config, best_epoch, config_info_dict)
                     best_epoch = epoch
                     logging.info("Done.")
@@ -170,20 +170,20 @@ def train_model(
     # Save the model checkpoints
     if not config.disable_checkpointing:
         logging.info("Dumping model and results...")
-        save_model(model, optimizer, config, train_logger,
-                   val_logger, stop_epoch, config_info_dict, scheduler)
+        save_model(model, config, stop_epoch, train_logger, val_logger,
+                   optimizer, scheduler, config_info_dict)
 
         # Save current and best models
-        save_model(model.copy(), optimizer, config, train_logger, val_logger,
-                   stop_epoch, config_info_dict, scheduler, checkpoint_type="model")
+        save_model(model.copy(), config, stop_epoch, train_logger, val_logger,
+                   optimizer, scheduler, config_info_dict, checkpoint_type="model")
         if best_checkpoint_file != "":
             checkpoint = load_model(model.copy(), config, best_checkpoint_file,
                                     optimizer, scheduler)
             best_model = checkpoint["model"]
             optimizer, scheduler = checkpoint["optimizer"], checkpoint["scheduler"]
             checkpoint = None # Free up memory
-            save_model(best_model, optimizer, config, train_logger, val_logger,
-                       best_epoch, config_info_dict, scheduler, checkpoint_type="model")
+            save_model(best_model, config, best_epoch, train_logger, val_logger,
+                       optimizer, scheduler, config_info_dict, checkpoint_type="model")
         logging.info("Done.")
 
     return_dict = {
@@ -472,13 +472,13 @@ def take_scheduler_step(scheduler: object, val_metric: Optional[float] = None) -
 
 def save_model(
     model: nn.Module,
-    optimizer: Optimizer,
     config: _Config,
-    train_logger: ModelTracker,
-    val_logger: ModelTracker,
     epoch: int,
-    config_info_dict: Optional[_StringDict] = None,
+    train_logger: Optional[ModelTracker] = None,
+    val_logger: Optional[ModelTracker] = None,
+    optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,
+    config_info_dict: Optional[_StringDict] = None,
     checkpoint_type: Optional[str] = "state"
 ) -> str:
     """
@@ -489,11 +489,11 @@ def save_model(
         if the model code is changed.
       - or just its state dict.
     Additionally, it saves the following variables:
-        - Optimizer and scheduler (if provided) state dicts
-        - Epoch number
-        - History of train and validation
-          losses and eval metrics so far
         - Current training config
+        - Epoch number
+        - History of train and validation losses
+          and eval metrics so far (if provided)
+        - Optimizer and scheduler state dicts (if provided)
 
     :param checkpoint_type: Type of checkpoint to load
                             Choices = "state" | "model"
@@ -508,8 +508,8 @@ def save_model(
     logging.info(f"Saving {checkpoint_type} checkpoint '{checkpoint_path}'...")
 
     # Generate appropriate checkpoint dictionary
-    checkpoint = generate_checkpoint_dict(optimizer, config, train_logger,
-                                          val_logger, epoch, scheduler)
+    checkpoint = generate_checkpoint_dict(config, epoch, train_logger,
+                                          val_logger, optimizer, scheduler)
 
     # Save model in appropriate way
     if checkpoint_type == "state":
@@ -534,34 +534,35 @@ def save_model(
     return checkpoint_file
 
 def generate_checkpoint_dict(
-    optimizer: Optimizer,
     config: _Config,
-    train_logger: ModelTracker,
-    val_logger: ModelTracker,
     epoch: int,
+    train_logger: Optional[ModelTracker] = None,
+    val_logger: Optional[ModelTracker] = None,
+    optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None
-) -> Dict[str, Union[Optimizer, object]]:
+) -> Dict[str, Union[_Config, int, ModelTracker, Dict]]:
     """
     Generate a dictionary for storing a checkpoint.
     Helper function for `save_model()`.
     It saves the following variables:
-        - Optimizer and scheduler (if provided) state dicts
-        - Epoch number
-        - History of train and validation
-          losses and eval metrics so far
         - Current training config
+        - Epoch number
+        - History of train and validation losses
+          and eval metrics so far (if provided)
+        - Optimizer and scheduler state dicts (if provided)
     """
     checkpoint = {
-        "train_logger": train_logger,
-        "val_logger": val_logger,
         "config": config, # Good practice to store config too
-        "epoch": epoch,
-        "optimizer": optimizer.state_dict()
+        "epoch": epoch
     }
 
-    # Save scheduler if provided
-    if scheduler is not None:
-        checkpoint["scheduler"] = scheduler.state_dict()
+    # Save items if provided
+    for name, obj in zip(
+        ("train_logger", "val_logger", "optimizer", "scheduler"),
+        (train_logger, val_logger, optimizer, scheduler)
+    ):
+        if obj is not None:
+            checkpoint[name] = obj if name in ["train_logger", "val_logger"] else obj.state_dict()
 
     return checkpoint
 
@@ -622,16 +623,8 @@ def load_model(
             assert model is None
             model = checkpoint["model"]
 
-        # Load train / val loggers
-        train_logger = checkpoint["train_logger"]
-        val_logger = checkpoint["val_logger"]
-
         # Load config
         config = checkpoint["config"]
-
-        # Load optimizer and scheduler state dicts
-        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device,
-                                                            optimizer, scheduler)
 
         # Extract last trained epoch from checkpoint file
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split("-epoch_")[-1])
@@ -641,19 +634,26 @@ def load_model(
             (f"Mismatch between epoch specified in checkpoint path ('{epoch_trained}'), "
              f"epoch specified at saving time ('{checkpoint['epoch']}').")
 
+        # Load train / val loggers if provided
+        train_logger, val_logger = checkpoint.get("train_logger"), checkpoint.get("val_logger")
+
         # Throw warning if model trained for more epochs
-        if max(train_logger.epochs) > epoch_trained:
+        if train_logger is not None and max(train_logger.epochs) > epoch_trained:
             logging.warning(
                 f"The specified epoch was {epoch_trained} but the model was trained for "
                 f"{max(train_logger.epochs)} epochs. Ignore this warning if it was intentional."
             )
 
         # Throw warning if best epoch is different
-        if val_logger.best_epoch != epoch_trained:
+        if val_logger is not None and val_logger.best_epoch != epoch_trained:
             logging.warning(
                 f"The specified epoch was {epoch_trained} but the best epoch based on validation "
                 f"set was {val_logger.best_epoch}. Ignore this warning if it was intentional."
             )
+
+        # Load optimizer and scheduler state dicts if provided
+        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device,
+                                                            optimizer, scheduler)
 
         logging.info("Done.")
 
@@ -663,10 +663,10 @@ def load_model(
     # Prepare dict to be returned
     return_dict = {
         "model": model,
-        "train_logger": train_logger,
-        "val_logger": val_logger,
         "config": config,
         "epoch": epoch_trained,
+        "train_logger": train_logger,
+        "val_logger": val_logger,
         "optimizer": optimizer,
         "scheduler": scheduler
     }
@@ -683,7 +683,10 @@ def load_optimizer_and_scheduler(
     and scheduler, if they're provided.
     Helper function for `load_model()`.
     """
-    def load_state_dict(obj, key="optimizer"):
+    def load_state_dict(
+        obj: Union[Optimizer, object],
+        key: str = "optimizer"
+    ) -> Union[Optional[Optimizer], Optional[object]]:
         """
         Properly load state dict of optimizer/scheduler.
         """

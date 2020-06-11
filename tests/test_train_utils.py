@@ -7,6 +7,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import SGD
 from torch.optim.optimizer import Optimizer
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
 from pytorch_common.additional_configs import BaseDatasetConfig, BaseModelConfig
@@ -64,7 +65,8 @@ class TestTrainUtils(unittest.TestCase):
             eval_criterion = "accuracy" if model_type == "classification" else "mse"
             for dataset_kwargs, model_kwargs in all_kwargs[model_type]:
                 kwargs = {"dataset_kwargs": dataset_kwargs, "model_kwargs": model_kwargs}
-                self._test_saving_loading_models(loss_criterion, eval_criterion, **model_kwargs)
+                self._test_partial_saving_loading_model(loss_criterion, eval_criterion, **model_kwargs)
+                self._test_full_saving_loading_model(loss_criterion, eval_criterion, **model_kwargs)
                 self._test_train_model(loss_criterion, eval_criterion, **kwargs)
                 self._test_get_all_predictions(loss_criterion, eval_criterion, **kwargs)
 
@@ -111,26 +113,49 @@ class TestTrainUtils(unittest.TestCase):
         all_kwargs = {"classification": classification_kwargs, "regression": regression_kwargs}
         return all_kwargs
 
-    def _test_saving_loading_models(
+    def _test_partial_saving_loading_model(
         self,
         loss_criterion: str,
         eval_criterion: str,
         **model_kwargs
     ) -> None:
         """
-        Test saving and loading of models.
+        Test saving and loading of just the model.
+        """
+        # Get required training objects
+        model = self._get_model(**model_kwargs)
+
+        # Ensure that original model state dict matches the
+        # one obtained from saving and then loading the model
+        model_state_dict_orig = model.state_dict()
+        checkpoint_file = train_utils.save_model(model, self.config, 1)
+        return_dict = train_utils.load_model(model, self.config, checkpoint_file)
+        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig,
+                        return_dict["model"].state_dict()))
+
+    def _test_full_saving_loading_model(
+        self,
+        loss_criterion: str,
+        eval_criterion: str,
+        **model_kwargs
+    ) -> None:
+        """
+        Test saving and loading of model alongwith
+        other objects, e.g. optimizer, scheduler, etc.
         """
         # Get required training objects
         model = self._get_model(**model_kwargs)
         optimizer = self._get_optimizer(model)
+        scheduler = self._get_scheduler(optimizer)
         train_logger, val_logger = self._get_loggers(loss_criterion, eval_criterion)
 
         # Ensure that original model state dict matches the
         # one obtained from saving and then loading the model
         model_state_dict_orig = model.state_dict()
-        checkpoint_file = train_utils.save_model(model, optimizer, self.config,
-                                                 train_logger, val_logger, 1)
-        return_dict = train_utils.load_model(model, self.config, checkpoint_file, optimizer)
+        checkpoint_file = train_utils.save_model(model, self.config, 1, train_logger,
+                                                 val_logger, optimizer, scheduler)
+        return_dict = train_utils.load_model(model, self.config, checkpoint_file,
+                                             optimizer, scheduler)
         self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig,
                         return_dict["model"].state_dict()))
 
@@ -147,7 +172,7 @@ class TestTrainUtils(unittest.TestCase):
             return_dict["val_loader"], return_dict["optimizer"],
             return_dict["loss_criterion_train"], return_dict["loss_criterion_test"],
             return_dict["eval_criteria"], return_dict["train_logger"], return_dict["val_logger"],
-            self.config.epochs
+            self.config.epochs, return_dict["scheduler"]
         )
 
     def _test_get_all_predictions(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
@@ -234,6 +259,9 @@ class TestTrainUtils(unittest.TestCase):
         # Get optimizer
         optimizer = self._get_optimizer(model)
 
+        # Get scheduler
+        scheduler = self._get_scheduler(optimizer)
+
         # Get training/validation loggers
         train_logger, val_logger = self._get_loggers(loss_criterion, eval_criterion)
 
@@ -252,6 +280,7 @@ class TestTrainUtils(unittest.TestCase):
             "train_logger": train_logger,
             "val_logger": val_logger,
             "optimizer": optimizer,
+            "scheduler": scheduler,
             "loss_criterion_train": loss_criterion_train,
             "loss_criterion_test": loss_criterion_test,
             "eval_criteria": eval_criteria
@@ -286,6 +315,13 @@ class TestTrainUtils(unittest.TestCase):
         """
         optimizer = SGD(model.parameters(), lr=1e-3)
         return optimizer
+
+    def _get_scheduler(self, optimizer: Optimizer) -> object:
+        """
+        Get scheduler.
+        """
+        scheduler = ReduceLROnPlateau(optimizer)
+        return scheduler
 
     def _get_loggers(
         self,
