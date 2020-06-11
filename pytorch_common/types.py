@@ -14,9 +14,9 @@ _Batch = Iterable
 _Figure = Figure
 
 _TensorOrTensors = Union[torch.Tensor, Iterable[torch.Tensor]]
-_ModelOrModels = Union[nn.Module, List[nn.Module]]
+_ModelOrModels = Union[nn.Module, Iterable[nn.Module]]
 _LossOrLosses = Union[_Loss, Iterable[_Loss]]
-_EvalCriterionOrCriteria = Union[Dict[str, Callable], Dict[str, List[Callable]]]
+_EvalCriterionOrCriteria = Union[Dict[str, Callable], Dict[str, Iterable[Callable]]]
 
 _TrainResult = List[float]
 _EvalResult = Tuple[List[float], Dict[str, float], torch.Tensor, torch.Tensor]
