@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import logging
 import dill
+from collections import OrderedDict
 from itertools import islice
 
 import torch
@@ -19,8 +20,8 @@ from .utils import (
 )
 from .types import (
     Tuple, Optional, Union, _StringDict, _Config, _Device, _Batch,
-    _LossOrLosses, _EvalCriterionOrCriteria, _TrainResult, _EvalResult,
-    _TestResult, _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
+    _TensorOrTensors, _LossOrLosses, _EvalCriterionOrCriteria, _TrainResult,
+    _EvalResult, _TestResult, _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
 )
 
 
@@ -540,7 +541,7 @@ def generate_checkpoint_dict(
     val_logger: Optional[ModelTracker] = None,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None
-) -> Dict[str, Union[_Config, int, ModelTracker, Dict]]:
+) -> Dict[str, Union[_Config, int, ModelTracker, OrderedDict[str, _TensorOrTensors]]]:
     """
     Generate a dictionary for storing a checkpoint.
     Helper function for `save_model()`.
