@@ -237,7 +237,16 @@ def check_and_set_devices(config: _Config) -> None:
 
 def set_all_batch_sizes(config: _Config) -> None:
     """
-
+    Properly set train/eval/test batch sizes.
+    The setting should be such that:
+      - either only `batch_size_per_gpu` is provided,
+        in which case the same batch size will be
+        propagated to all dataloaders
+      - or separate values may be provided for each of
+        `train_batch_size_per_gpu`, `eval_batch_size_per_gpu`,
+        and `test_batch_size_per_gpu`
+    The per-GPU batch sizes for each mode will then be converted
+    to the total batch size depending on number of devices.
     """
     def set_mode_batch_size(mode: str, batch_size_per_gpu: int) -> None:
         """
@@ -252,7 +261,6 @@ def set_all_batch_sizes(config: _Config) -> None:
         setattr(config, f"{mode}_batch_size", batch_size)
 
     batch_size = config.get("batch_size")
-    batch_size_per_gpu = config.get("batch_size_per_gpu")
     if batch_size is not None:
         raise ValueError(
             f"Param 'batch_size' ({batch_size}) is now deprecated. Please either provide "
@@ -262,6 +270,8 @@ def set_all_batch_sizes(config: _Config) -> None:
         )
 
     SUPPORTED_MODES = ["train", "eval", "test"]
+    batch_size_per_gpu = config.get("batch_size_per_gpu")
+
     for mode in SUPPORTED_MODES:
         mode_batch_size_str = f"{mode}_batch_size_per_gpu"
         mode_batch_size_per_gpu = config.get(mode_batch_size_str)
@@ -270,7 +280,7 @@ def set_all_batch_sizes(config: _Config) -> None:
                 raise ValueError(
                     f"One of 'batch_size_per_gpu'  or '{mode_batch_size_str}' must be provided."
                 )
-            batch_size_to_set = mode_batch_size_per_gpu
+            batch_size_to_set = mode_batch_size_per_gpu # Specific to each mode
         else:
             if mode_batch_size_per_gpu is not None:
                 raise ValueError(
@@ -278,7 +288,7 @@ def set_all_batch_sizes(config: _Config) -> None:
                     f"'{mode_batch_size_str}' ({mode_batch_size_per_gpu}) "
                     f"must be provided."
                 )
-            batch_size_to_set = batch_size_per_gpu
+            batch_size_to_set = batch_size_per_gpu # Common for all modes
 
         # Set per-GPU and total batch size for mode
         set_mode_batch_size(mode, batch_size_to_set)
