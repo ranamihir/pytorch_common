@@ -54,7 +54,7 @@ def get_loss_criterion(
     **kwargs
 ) -> _LossOrLosses:
     """
-    Get loss criterion function.
+    Get the loss criterion function.
     """
     loss_criterion = get_loss_criterion_function(config, criterion=criterion, **kwargs)
     return loss_criterion
@@ -86,14 +86,14 @@ def get_loss_criterion_function(
 ) -> _LossOrLosses:
     """
     Get the function for a given loss `criterion`.
-    :param kwargs: Misc kwargs for the loss. E.g. -
+    :param kwargs: Misc kwargs for the loss. E.g.:
                    - `dim` for CrossEntropyLoss
                    - `alpha` and `gamma` for FocalLoss.
                    If it's a multilabel setting,
                    `multilabel_reduction` must be provided:
-                    Type of multilabel_reduction to be
+                    Type of multilabel reduction to be
                     performed on the list of losses for
-                    each class. (default="sum").
+                    each class.
                     Choices: "sum" | "mean"
     """
     # Check for multilabel classification
@@ -157,7 +157,7 @@ def get_eval_criterion_function(
                    `multilabel_reduction` must be provided:
                     Type of multilabel_reduction to be
                     performed on the list of metric values
-                    for each class. (default="sum").
+                    for each class.
                     Choices: "sum" | "mean"
     """
     # Check for multilabel classification
@@ -231,7 +231,7 @@ def get_class_eval_metric(
     As required, get:
       - class with max probability (for discrete metrics like accuracy etc.)
       - probs for y=1 (for computing AUC)
-    and return the metric value for the given class
+    and return the metric value for the given class.
     """
     y_predicted = output_hist[:,1] if criterion == "auc" else output_hist.max(dim=-1)[1]
     y_true, y_predicted = convert_tensor_to_numpy((y_true, y_predicted))
@@ -254,7 +254,7 @@ def get_class_eval_metric(
 
 class FocalLoss(nn.Module):
     """
-    Implements the focal loss for binary classification (ignores regression).
+    Implement the focal loss for binary classification (ignores regression).
     Paper: https://arxiv.org/pdf/1708.02002.pdf
     Code insipration: https://github.com/kuangliu/pytorch-retinanet/blob/master/loss.py
     """

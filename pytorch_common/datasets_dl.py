@@ -40,7 +40,7 @@ class BasePyTorchDataset(Dataset):
     def __len__(self):
         raise NotImplementedError
 
-    def print(self) -> None:
+    def print_dataset(self) -> None:
         """
         Print useful summary statistics of the dataset.
         """
@@ -93,8 +93,8 @@ class BasePyTorchDataset(Dataset):
     def oversample_class(self, class_to_oversample: Optional[int] = None) -> pd.DataFrame:
         """
         Oversample the given class.
-        `self.oversampling_factor` must be set
-        to use this method.
+        `self.oversampling_factor` must
+        be set to use this method.
         The final count of the class will be
         (original count) * `oversampling_factor`.
         :param class_to_oversample: Class (label) to oversample.
@@ -116,8 +116,8 @@ class BasePyTorchDataset(Dataset):
     def undersample_class(self, class_to_undersample: Optional[int] = None) -> pd.DataFrame:
         """
         Undersample the given class.
-        `self.undersampling_factor` must be set
-        to use this method.
+        `self.undersampling_factor` must
+        be set to use this method.
         The final count of the class will be
         (original count) / `undersampling_factor`.
         :param class_to_undersample: Class (label) to undersample.
@@ -140,7 +140,7 @@ class BasePyTorchDataset(Dataset):
         self,
         class_to_sample: Optional[int] = None,
         minority: bool = True
-    ) -> List[int]:
+    ) -> Tuple[int]:
         """
         Get the counts of each class.
         Used for under-/over-sampling.

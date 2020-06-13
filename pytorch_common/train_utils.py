@@ -15,7 +15,7 @@ from torch.optim.optimizer import Optimizer
 from pytorch_common import timing
 from .additional_configs import BaseDatasetConfig, BaseModelConfig
 from .utils import (
-    get_model_outputs_only, send_batch_to_device, send_model_to_device,
+    get_file_path, get_model_outputs_only, send_batch_to_device, send_model_to_device,
     send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker
 )
 from .types import (
@@ -283,7 +283,7 @@ def perform_one_epoch(
     :param phase: Type of pass to perform over data
                   Choices = "train" | "eval" | "test"
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
-                      after each batch iteration (e.g. CyclicLR), otherwise None
+                      after each batch step/iteration (e.g. CyclicLR), otherwise None
 
     If `phase=="train"`, params `optimizer` and `epoch` must be provided.
     If `phase=="eval"`, param `eval_criteria` must be provided.
@@ -505,7 +505,7 @@ def save_model(
     validate_checkpoint_type(checkpoint_type)
 
     checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
+    checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     logging.info(f"Saving {checkpoint_type} checkpoint '{checkpoint_path}'...")
 
     # Generate appropriate checkpoint dictionary
@@ -583,11 +583,12 @@ def load_model(
         Note: Input model should be pre-defined in this case.
               This routine only updates its state.
     Additionally, it loads the following variables:
-        - Optimizer and scheduler (if provided) state dicts
+        - Current training config
         - Epoch number
         - History of train and validation
           losses and eval metrics so far
-        - Current training config
+        - Optimizer and scheduler (if provided) state dicts
+
     Note: Input optimizer and scheduler should be pre-defined
           if their states are to be updated.
 
@@ -603,7 +604,7 @@ def load_model(
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type, checkpoint_file)
 
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
+    checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
         logging.info(f"Loading {checkpoint_type} checkpoint '{checkpoint_path}'...")
 
@@ -681,7 +682,7 @@ def load_optimizer_and_scheduler(
 ) -> Tuple[Optional[Optimizer], Optional[object]]:
     """
     Load the state dict of a given optimizer
-    and scheduler, if they're provided.
+    and scheduler (if they're provided).
     Helper function for `load_model()`.
     """
     def load_state_dict(
@@ -735,7 +736,7 @@ def remove_model(
     validate_checkpoint_type(checkpoint_type)
 
     checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
-    checkpoint_path = os.path.join(config.checkpoint_dir, checkpoint_file)
+    checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
         logging.info(f"Removing {checkpoint_type} checkpoint '{checkpoint_path}'...")
         remove_object(checkpoint_path)
@@ -746,8 +747,9 @@ def validate_checkpoint_type(
     checkpoint_file: Optional[str] = None
 ) -> None:
     """
-    Check that the passed `checkpoint_type` is valid and matches that
-    obtained from `checkpoint_file`, if provided.
+    Check that the passed `checkpoint_type`
+    is valid and matches that obtained from
+    `checkpoint_file`, if provided.
     """
     ALLOWED_CHECKPOINT_TYPES = ["state", "model"]
     assert checkpoint_type in ALLOWED_CHECKPOINT_TYPES, \
@@ -769,7 +771,8 @@ class EarlyStopping(object):
     Implements early stopping in PyTorch.
     Reference: https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d
                with a few improvements.
-    Common metrics (mse, accuracy, etc.) are ineherently supported, so specifying
+    Common metrics (mse, accuracy, etc.) are
+    ineherently supported, so specifying
     their params is optional.
     """
     SUPPORTED_CRITERIA = ["mse", "accuracy", "precision", "recall", "f1", "auc"]
@@ -794,10 +797,10 @@ class EarlyStopping(object):
         best_val_tol: Optional[float] = None
     ):
         """
-        :param criterion: name of early stopping criterion
+        :param criterion: Name of early stopping criterion
                           If criterion is supported ineherently, you may choose to
                           not provide any of the other params and use the default ones.
-        :param mode: whether to "maximize" or "minimize" the `criterion`
+        :param mode: Whether to "maximize" or "minimize" the `criterion`
         :param min_delta: Minimum difference in metric required to prevent early stopping
         :param patience: No. of epochs (or steps) over which to monitor early stopping
         :param best_val: Best possible value of metric (if any)

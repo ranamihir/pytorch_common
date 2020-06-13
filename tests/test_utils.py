@@ -43,7 +43,7 @@ class TestUtils(unittest.TestCase):
                 self.assertFalse(os.path.isfile(primary_path))
             else:
                 utils.remove_object(primary_path, file_name)
-                self.assertFalse(os.path.isfile(os.path.join(primary_path, file_name)))
+                self.assertFalse(os.path.isfile(utils.get_file_path(primary_path, file_name)))
 
         # Initialize dummy directory and data
         primary_path = "dummy_dir"

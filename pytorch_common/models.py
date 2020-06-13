@@ -1,6 +1,6 @@
-import os
 import torch.nn as nn
 
+from .utils import get_file_path
 from .models_dl import (
     SingleLayerClassifier, MultiLayerClassifier, SingleLayerRegressor, MultiLayerRegressor
 )
@@ -9,6 +9,10 @@ from .types import Optional
 
 
 def create_model(model_name: str, config: Optional[BaseModelConfig] = None) -> nn.Module:
+    """
+    Create and return the appropriate
+    model from the provided config.
+    """
     if model_name == "single_layer_classifier":
         model = SingleLayerClassifier(config)
     elif model_name == "multi_layer_classifier":
@@ -41,11 +45,11 @@ def create_transformer_model(
 
     if config is not None and hasattr(config, "output_dir"): # Load trained model from config
         kwargs = {
-            "pretrained_model_name_or_path": os.path.join(config.output_dir,
-                                                          config.model_name_or_path),
+            "pretrained_model_name_or_path": get_file_path(config.output_dir,
+                                                           config.model_name_or_path),
             "from_tf": False,
-            "config": config_class.from_pretrained(os.path.join(config.output_dir,
-                                                                config.model_config_path))
+            "config": config_class.from_pretrained(get_file_path(config.output_dir,
+                                                                 config.model_config_path))
         }
         model = model_class.from_pretrained(**kwargs)
 

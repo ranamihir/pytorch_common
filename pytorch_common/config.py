@@ -9,7 +9,7 @@ from .metrics import (
     CLASSIFICATION_LOSS_CRITERIA, CLASSIFICATION_EVAL_CRITERIA,
     REGRESSION_LOSS_CRITERIA, REGRESSION_EVAL_CRITERIA
 )
-from .utils import load_object, make_dirs, set_seed
+from .utils import get_file_path, make_dirs, set_seed, load_object
 from .types import Optional, _StringDict, _Config
 
 
@@ -33,11 +33,11 @@ class Config(Munch):
 
 def load_pytorch_common_config(dictionary: _StringDict) -> Munch:
     """
-    Loads the pytorch_common config (if present) and
-    updates attributes which are present in the project
-    specific `dictionary`, and returns that dictionary.
+    Load the pytorch_common config (if present) and
+    update attributes which are present in the project
+    specific `dictionary`, and return that dictionary.
     """
-    # Load pytorch_common config if required
+    # Load `pytorch_common` config if required
     if dictionary.get("load_pytorch_common_config"):
         logging.info("Loading default pytorch_common config...")
         pytorch_common_config = load_config()
@@ -52,8 +52,9 @@ def load_pytorch_common_config(dictionary: _StringDict) -> Munch:
 
         # Throw warning if both scheduler configs enabled (not common)
         if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
-            logging.warning("Scheduler is configured to take a step "
-                            "both after every step and every epoch.")
+            logging.warning(
+                "Scheduler is configured to take a step both after every step and every epoch."
+            )
 
         # Throw warning if checkpointing is disabled
         if merged_config.disable_checkpointing:
@@ -71,7 +72,7 @@ def load_config(config_file: Optional[str] = "config.yaml") -> Config:
     """
     # Create and initialize the runner
     packagedir = pytorch_common.__path__[0]
-    configdir = os.path.join(packagedir, "configs")
+    configdir = get_file_path(packagedir, "configs")
 
     # Load pytorch_common config
     dictionary = load_object(configdir, config_file, module="yaml")
@@ -84,7 +85,8 @@ def set_pytorch_config(config: _Config) -> None:
     things related to PyTorch / GPUs.
     """
     if config.get("load_pytorch_common_config"):
-        set_additional_dirs(config) # Set and create additional required directories
+        # Set and create additional required directories
+        set_additional_dirs(config)
 
         # Set and validate loss and eval criteria
         set_loss_and_eval_criteria(config)
@@ -120,7 +122,7 @@ def set_additional_dirs(config: _Config) -> None:
     """
     if config.get("misc_data_dir"):
         set_and_create_dir(config, config.packagedir, "misc_data_dir")
-    else: # Point misc_data_dir to transientdir by default
+    else: # Point `misc_data_dir` to `transientdir` by default
         config["misc_data_dir"] = config.transientdir
         setattr(config, "misc_data_dir", config.transientdir)
 
@@ -132,9 +134,9 @@ def set_and_create_dir(config: _Config, parent_dir: str, directory: str) -> None
     """
     Properly sets the `directory` attribute of `config`,
     assuming `config[directory]` is inside `parent_dir`.
-    And creates the directory if it doesn't already exist.
+    Also creates the directory if it doesn't already exist.
     """
-    dir_path = os.path.expanduser(os.path.join(parent_dir, config[directory]))
+    dir_path = os.path.expanduser(get_file_path(parent_dir, config[directory]))
     config[directory] = dir_path
     setattr(config, directory, dir_path)
     make_dirs(config[directory])
@@ -155,8 +157,8 @@ def set_loss_and_eval_criteria(config: _Config) -> None:
     # Check for evaluation criteria
     _check_loss_and_eval_criteria(config)
 
-    # If early stopping not used, the criterion is still
-    # defined just for getting the "best" epoch
+    # If early stopping not used, the criterion is
+    # still defined just for getting the "best" epoch
     if config.use_early_stopping:
         assert config.early_stopping_criterion is not None
     else:
@@ -190,8 +192,7 @@ def _check_loss_and_eval_criteria(config: _Config) -> None:
 
 def check_and_set_devices(config: _Config) -> None:
     """
-    Check the validity of provided device
-    configuration:
+    Check the validity of provided device configuration:
       - Properly set fields like `device`,
         `device_ids`, and `n_gpu`.
       - Set torch backend benchmarks
@@ -236,9 +237,9 @@ def check_and_set_devices(config: _Config) -> None:
 
 def set_batch_size(config: _Config) -> None:
     """
-    If batch size per GPU is provided and the model
-    is to be parallelized, then compute the corresponding
-    total batch size.
+    If batch size per GPU is provided and the
+    model is to be parallelized, then compute the
+    corresponding total batch size.
     """
     if config.get("batch_size_per_gpu"):
         if config.get("batch_size"):

@@ -25,7 +25,7 @@ class BasePyTorchModel(nn.Module):
         models_to_init: Optional[_ModelOrModels] = None
     ) -> None:
         """
-        Call this function in the base model class.
+        Call this function in the child model class.
         :param init_weights: bool, whether to initialize weights
         :param models_to_init: See `initialize_weights()`
 
@@ -34,7 +34,7 @@ class BasePyTorchModel(nn.Module):
                   calling this function, otherwise the pretrained
                   model will also be reinitialized.
         """
-        self.print() # Print model architecture
+        self.print_model() # Print model architecture
         self.get_trainable_params() # Print number of trainable parameters
         if init_weights: # Initialize weights
             logging.warning(
@@ -55,7 +55,7 @@ class BasePyTorchModel(nn.Module):
         )
         return {"trainable": num_trainable_params, "total": num_params}
 
-    def print(self) -> None:
+    def print_model(self) -> None:
         """
         Print the model architecture.
         """
@@ -81,7 +81,8 @@ class BasePyTorchModel(nn.Module):
 
     def _initialize_weights_for_one_model(self, model: nn.Module) -> None:
         """
-        Initialize weights for all Conv2d, BatchNorm2d, Linear, and Embedding layers.
+        Initialize weights for all Conv2d, BatchNorm2d,
+        Linear, and Embedding layers.
         # TODO: Improve init schemes / params
         """
         for m in model.modules():
@@ -97,7 +98,11 @@ class BasePyTorchModel(nn.Module):
                 nn.init.orthogonal_(m.weight.data)
 
     @torch.no_grad()
-    def predict_proba(self, outputs: torch.Tensor, threshold: Optional[float] = None) -> torch.Tensor:
+    def predict_proba(
+        self,
+        outputs: torch.Tensor,
+        threshold: Optional[float] = None
+    ) -> torch.Tensor:
         """
         Returns predicted labels and probabilities
         for `model_type = "classification"`.
@@ -116,6 +121,7 @@ class BasePyTorchModel(nn.Module):
         probs = F.softmax(outputs, dim=-1) # Get probabilities of each class
         num_classes = probs.shape[-1]
 
+        # Get predictions based on provided threshold
         if threshold is not None:
             device = probs.device
             pos_tensor = torch.as_tensor(1, device=device)
@@ -167,7 +173,7 @@ class BasePyTorchModel(nn.Module):
                        Can take the following values:
                        - None, will alter self
                        - list or object of type
-                       - nn.Module/BasePyTorchModel,
+                         nn.Module/BasePyTorchModel,
                          will alter their state
         :freeze: Whether to freeze or unfreeze (bool)
         """
@@ -177,21 +183,22 @@ class BasePyTorchModel(nn.Module):
             models = [models]
         for model in models:
             self._change_frozen_state_for_one_model(model, freeze)
-        self.get_trainable_params()
+        self.get_trainable_params() # Re-print number of trainable parameters
 
     def _change_frozen_state_for_one_model(
-        self, model: Optional[nn.Module] = None,
+        self,
+        model: Optional[nn.Module] = None,
         freeze: Optional[bool] = True
     ) -> None:
         """
         Freeze or unfreeze a given `model`, i.e.,
-        all their children will / won't have gradients.
+        all its children will / won't have gradients.
         :param model: Model / module to freeze / unfreeze
                       Can take the following values:
                       - None, will alter self
-                      - list or object of type
-                      - nn.Module/BasePyTorchModel,
-                        will alter their state
+                      - object of type nn.Module /
+                        BasePyTorchModel, will
+                        alter its state
         :freeze: Whether to freeze or unfreeze (bool)
         """
         # Extract model name from class if not present already (for `transformers` models)
@@ -216,7 +223,7 @@ class SingleLayerClassifier(BasePyTorchModel):
 
         self.initialize_model(init_weights=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         return self.fc(x)
 
 
@@ -244,7 +251,7 @@ class MultiLayerClassifier(BasePyTorchModel):
 
         self.initialize_model(init_weights=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         return self.classifier(self.trunk(x))
 
 
@@ -261,7 +268,7 @@ class SingleLayerRegressor(BasePyTorchModel):
 
         self.initialize_model(init_weights=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         return self.fc(x)
 
 
@@ -289,5 +296,5 @@ class MultiLayerRegressor(BasePyTorchModel):
 
         self.initialize_model(init_weights=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         return self.head(self.trunk(x))

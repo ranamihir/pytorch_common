@@ -30,7 +30,7 @@ def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] 
     Create the parent and (optionally) all child
     directories within parent directory.
     """
-    def create_dir_if_not_exists(dir_path):
+    def create_dir_if_not_exists(dir_path: str) -> None:
         """
         Create a directory at `dir_path`
         if it doesn't exist already.
@@ -47,7 +47,7 @@ def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] 
             child_dirs = [child_dirs]
         assert isinstance(child_dirs, list)
         for dir_name in child_dirs:
-            dir_path = os.path.join(parent_dir_path, dir_name)
+            dir_path = get_file_path(parent_dir_path, dir_name)
             create_dir_if_not_exists(dir_path)
 
 def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
@@ -110,7 +110,7 @@ def save_plot(
     fig: _Figure,
     plot_name: str,
     model_name: str,
-    config_info_dict: _StringDict,
+    config_info_dict: Optional[_StringDict] = None,
     ext: Optional[str] = "png"
 ) -> None:
     """
@@ -121,7 +121,7 @@ def save_plot(
     assert ext in ["png", "jpeg", "eps", "pdf"]
     unique_name = get_unique_config_name(model_name, config_info_dict)
     file_name = "-".join([plot_name, unique_name])
-    fig.savefig(os.path.join(config.plot_dir, f"{file_name}.{ext}"), dpi=300)
+    fig.savefig(get_file_path(config.plot_dir, f"{file_name}.{ext}"), dpi=300)
 
 def save_object(
     obj: Any,
@@ -160,7 +160,7 @@ def save_pickle(obj: Any, file_path: str, module: Optional[str] = "pickle") -> N
 
 def save_yaml(obj: Dict, file_path: str) -> None:
     """
-    Save a given yaml file.
+    Save a given dictionary as a yaml file.
     """
     assert isinstance(obj, dict), "Only `dict` objects can be stored as YAML files."
     with open(file_path, "w") as f_out:
@@ -288,7 +288,7 @@ def get_unique_config_name(
     config_info_dict: Optional[_StringDict] = None
 ) -> str:
     """
-    Returns a unique name for the current configuration.
+    Return a unique name for the current configuration.
 
     The name will comprise the `primary_name` followed by a
     hash value uniquely generated from the `config_info_dict`.
@@ -336,10 +336,10 @@ def get_checkpoint_name(
 
 def get_model_outputs_only(outputs: _TensorOrTensors) -> _TensorOrTensors:
     """
-    Use this function to get just the
-    raw outputs. Useful for many libraries, e.g.
-    `transformers` and `allennlp` that return a
-    tuple from the model, comprising loss,
+    Use this function to get just the raw
+    outputs. Useful for many libraries, e.g.
+    `transformers` and `allennlp` that return
+    a tuple from the model, comprising loss,
     attention matrices, etc. too.
     """
     if isinstance(outputs, tuple):
@@ -355,16 +355,16 @@ def send_model_to_device(
     Send a model to specified device.
     Will also parallelize model if required.
 
-    Note 1: `model.to()` is an inplace operation, so it will move the
-             original model to the desired device. If the original model
-             is to be retained on the original device, and a copy is
-             to be moved to the desired device(s) and returned, make
-             sure to set `inplace=False`.
-    Note 2: `model.to()` doesn't work as desired if model is
-             parallelized (model is still wrapped inside `module`);
-             therefore must do `model.module.to()`
+    Note: `model.to()` is an inplace operation, so it will move the
+          original model to the desired device. If the original model
+          is to be retained on the original device, and a copy is
+          to be moved to the desired device(s) and returned, make
+          sure to set `model.copy()` to this function.
     """
     logging.info(f"Setting default device for model to {device}...")
+    # Note: `model.to()` doesn't work as desired if model is
+    # parallelized (model is still wrapped inside
+    # `module`); therefore must do `model.module.to()`
     model = model.module.to(device) if hasattr(model, "module") else model.to(device)
     logging.info("Done.")
 
@@ -654,20 +654,20 @@ class ModelTracker(object):
     ) -> Union[float, List[float], OrderedDict[str, Union[float, List[float]]]]:
         """
         Get the evaluation metrics history.
-        :param eval_criterion: the criterion whose history
+        :param eval_criterion: The criterion whose history
                                is to be returned.
-        :param epoch: the epoch for which the history
+        :param epoch: The epoch for which the history
                       is to be returned.
         - If both params are provided, the value at that epoch
           is returned.
         - If only eval_criterion is provided:
-            - If flatten=False, a dictionary of values at each
-              epoch is returned
-            - If flatten=True, the values across all epochs
-              are flattened into a single list
-        - If only epoch is provided, a dictionary of values
+            - If `flatten=False`, a dictionary of values
+              at each epoch is returned
+            - If `flatten=True`, the values across all
+              epochs are flattened into a single list
+        - If only `epoch` is provided, a dictionary of values
           for each criterion at that epoch is returned.
-        If epoch=-1, returns list of losses at last epoch.
+        If `epoch=-1`, returns list of losses at last epoch.
         """
         epoch = self._get_correct_epoch(epoch, "eval_metrics")
         if eval_criterion is not None:
@@ -705,7 +705,8 @@ class ModelTracker(object):
 
     def log_epoch_metrics(self, epoch: Optional[int] = -1) -> str:
         """
-        Log loss and evaluation metrics for a given epoch in the following format:
+        Log loss and evaluation metrics for a
+        given epoch in the following format:
         "TRAIN Epoch: 1  Average loss: 0.5, ACCURACY: 0.8, PRECISION: 0.7"
         """
         epoch_loss = self._get_correct_epoch(epoch, "loss")
@@ -730,8 +731,9 @@ class ModelTracker(object):
         epoch: Optional[int] = -1
     ) -> None:
         """
-        Shorthand function to add losses and eval metrics
-        at the end of a given epoch.
+        Shorthand function to add losses
+        and eval metrics at the end of
+        a given epoch.
         """
         self.add_losses(losses, epoch)
         self.add_eval_metrics(eval_metrics, epoch)
@@ -743,8 +745,9 @@ class ModelTracker(object):
         epoch: Optional[int] = -1
     ) -> str:
         """
-        Shorthand function to add losses and eval metrics
-        at the end of a given epoch, and then print the
+        Shorthand function to add losses
+        and eval metrics at the end of a
+        given epoch, and then print the
         results for that epoch.
         """
         self.add_metrics(losses, eval_metrics, epoch)
@@ -752,8 +755,9 @@ class ModelTracker(object):
 
     def get_early_stopping_metric(self) -> float:
         """
-        For validation loggers, returns the `early_stopping_criterion`
-        for the last epoch for which history is stored.
+        For validation loggers, returns the
+        `early_stopping_criterion` for the
+        last epoch for which history is stored.
         """
         if self.is_train:
             raise ValueError("Early stopping must be applied on validation set.")
@@ -828,7 +832,7 @@ class ModelTracker(object):
 
     def _get_correct_epoch(self, epoch: int, hist_type: str) -> int:
         """
-        If epoch = -1, returns the last epoch for
+        If `epoch=-1`, returns the last epoch for
         which history is currently stored, otherwise
         the epoch itself.
         """
@@ -840,7 +844,7 @@ class ModelTracker(object):
 
     def _get_next_epoch(self, epoch: int, hist_type: str) -> int:
         """
-        If epoch = -1, returns the next epoch for
+        If `epoch=-1`, returns the next epoch for
         which history is to be stored, otherwise
         the epoch itself.
         """
@@ -897,8 +901,10 @@ class SequencePooler(nn.Module):
             self.model_type = model_type
             self.pooler = self.POOLER_MAPPING[self.model_type]
         else:
-            logging.warning(f"No supported sequence pooler was found for model of "\
-                            f"type '{model_type}'. Using the default one.")
+            logging.warning(
+                f"No supported sequence pooler was found for model of "
+                f"type '{model_type}'. Using the default one."
+            )
             self.model_type = self.DEFAULT_POOLER_TYPE
             self.pooler = self._default_pooler
 
@@ -935,11 +941,11 @@ class SequencePooler(nn.Module):
 
 class DataParallel(nn.DataParallel):
     """
-    Custom DataParallel class inherited from nn.DataParallel.
+    Custom DataParallel class inherited from `nn.DataParallel`.
 
     Purpose is to allow direct access to model attributes and
     methods when it is wrapped in a `module` attribute because
-    of nn.DataParallel.
+    of `nn.DataParallel`.
     """
     def __init__(self, model: nn.Module, **kwargs):
         super().__init__(model, **kwargs)
@@ -989,5 +995,5 @@ class GELU(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         return 0.5 * x * (1 + torch.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
