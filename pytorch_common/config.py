@@ -95,7 +95,7 @@ def set_pytorch_config(config: _Config) -> None:
         check_and_set_devices(config)
 
         # Compute correct batch size if per GPU one available
-        set_batch_size(config)
+        set_all_batch_sizes(config)
 
         # Fix seed
         set_seed(config.seed)
@@ -187,7 +187,7 @@ def _check_loss_and_eval_criteria(config: _Config) -> None:
                                                     f" of {LOSS_CRITERIA}.")
     for eval_criterion in config.eval_criteria:
         assert eval_criterion in EVAL_CRITERIA, (f"Eval criterion ('{eval_criterion}') for "
-                                                 f"`model_type=='classification' must be one"
+                                                 f"`model_type=='classification'` must be one"
                                                  f" of {EVAL_CRITERIA}.")
 
 def check_and_set_devices(config: _Config) -> None:
@@ -235,20 +235,50 @@ def check_and_set_devices(config: _Config) -> None:
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
 
-def set_batch_size(config: _Config) -> None:
+def set_all_batch_sizes(config: _Config) -> None:
     """
-    If batch size per GPU is provided and the
-    model is to be parallelized, then compute the
-    corresponding total batch size.
+
     """
-    if config.get("batch_size_per_gpu"):
-        if config.get("batch_size"):
-            raise ValueError(
-                f"Please don't provide both 'batch_size' ({config.batch_size}) and "
-                f"'batch_size_per_gpu' ({config.batch_size_per_gpu}) at the same time."
-            )
+    def set_mode_batch_size(mode: str, batch_size_per_gpu: int) -> None:
+        """
+        Set per-GPU and total batch size for a
+        given `mode` based on the `batch_size_per_gpu`
+        and number of GPUs available.
+        """
+        setattr(config, f"{mode}_batch_size_per_gpu", batch_size_per_gpu)
 
         # Set correct batch size according to number of devices
-        config.batch_size = config.batch_size_per_gpu # if CPU or only 1 GPU
-        if config.n_gpu > 1:
-            config.batch_size *= config.n_gpu
+        batch_size = max(1, config.n_gpu) * batch_size_per_gpu
+        setattr(config, f"{mode}_batch_size", batch_size)
+
+    batch_size = config.get("batch_size")
+    batch_size_per_gpu = config.get("batch_size_per_gpu")
+    if batch_size is not None:
+        raise ValueError(
+            f"Param 'batch_size' ({batch_size}) is now deprecated. Please either provide "
+             "'batch_size_per_gpu' for per-GPU batch size, or 'train_batch_size_per_gpu', "
+             "'eval_batch_size_per_gpu', and 'test_batch_size_per_gpu' if different per-GPU "
+             "batch sizes are to be provided for each mode."
+        )
+
+    SUPPORTED_MODES = ["train", "eval", "test"]
+    for mode in SUPPORTED_MODES:
+        mode_batch_size_str = f"{mode}_batch_size_per_gpu"
+        mode_batch_size_per_gpu = config.get(mode_batch_size_str)
+        if batch_size_per_gpu is None:
+            if mode_batch_size_per_gpu is None:
+                raise ValueError(
+                    f"One of 'batch_size_per_gpu'  or '{mode_batch_size_str}' must be provided."
+                )
+            batch_size_to_set = mode_batch_size_per_gpu
+        else:
+            if mode_batch_size_per_gpu is not None:
+                raise ValueError(
+                    f"Only one of 'batch_size_per_gpu' ({batch_size_per_gpu}) or "
+                    f"'{mode_batch_size_str}' ({mode_batch_size_per_gpu}) "
+                    f"must be provided."
+                )
+            batch_size_to_set = batch_size_per_gpu
+
+        # Set per-GPU and total batch size for mode
+        set_mode_batch_size(mode, batch_size_to_set)

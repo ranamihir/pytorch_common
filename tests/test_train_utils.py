@@ -229,6 +229,7 @@ class TestTrainUtils(unittest.TestCase):
             "packagedir": "dummy_package_dir",
             "misc_data_dir": "dummy_misc_data_dir",
             "device": cls.default_device,
+            "batch_size_per_gpu": 5,
             "epochs": 1
         }
 
