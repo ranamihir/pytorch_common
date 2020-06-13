@@ -229,7 +229,9 @@ class TestTrainUtils(unittest.TestCase):
             "packagedir": "dummy_package_dir",
             "misc_data_dir": "dummy_misc_data_dir",
             "device": cls.default_device,
-            "batch_size_per_gpu": 5,
+            "train_batch_size_per_gpu": 5,
+            "eval_batch_size_per_gpu": 5,
+            "test_batch_size_per_gpu": 5,
             "epochs": 1
         }
 
@@ -295,9 +297,10 @@ class TestTrainUtils(unittest.TestCase):
         dataset_name = kwargs.pop("dataset_name")
         dataset_config = BaseDatasetConfig(kwargs)
         dataset = create_dataset(dataset_name, dataset_config)
-        train_loader = DataLoader(dataset, shuffle=True, batch_size=kwargs["size"])
-        val_loader = DataLoader(dataset, shuffle=False, batch_size=kwargs["size"])
-
+        train_loader = DataLoader(dataset, shuffle=True,
+                                  batch_size=self.config.train_batch_size_per_gpu)
+        val_loader = DataLoader(dataset, shuffle=False,
+                                batch_size=self.config.eval_batch_size_per_gpu)
         return train_loader, val_loader
 
     def _get_model(self, **kwargs) -> nn.Module:
