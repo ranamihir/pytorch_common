@@ -13,7 +13,6 @@ from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer
 
 from pytorch_common import timing
-from .additional_configs import BaseDatasetConfig, BaseModelConfig
 from .utils import (
     get_file_path, get_model_outputs_only, send_batch_to_device, send_model_to_device,
     send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker

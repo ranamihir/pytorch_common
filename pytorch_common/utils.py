@@ -473,7 +473,7 @@ def convert_numpy_to_tensor(
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
-def compare_tensors_or_arrays(batch_a: Iterable, batch_b: Iterable) -> bool:
+def compare_tensors_or_arrays(batch_a: _Batch, batch_b: _Batch) -> bool:
     """
     Compare the contents of two batches.
     Each batch may be of type `np.ndarray` or
