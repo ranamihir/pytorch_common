@@ -96,9 +96,9 @@ class BasePyTorchDataset(Dataset):
         undersampling_factor: Optional[float] = None,
         class_to_sample: Optional[Union[float, str]] = None,
         column: Optional[str] = None
-    ) -> pd.DataFrame:
+    ) -> None:
         """
-        Under-/Over-sample a given class.
+        Generic function for under-/over-sampling a given class.
         :param oversampling_factor: Factor by which to oversample
                                     the given class.
                                     The final count of the class will be
@@ -137,7 +137,7 @@ class BasePyTorchDataset(Dataset):
         oversampling_factor: float,
         class_to_sample: Optional[Union[float, str]] = None,
         column: Optional[str] = None
-    ) -> pd.DataFrame:
+    ) -> None:
         """
         Oversample a given class.
         :param oversampling_factor: Factor by which to oversample
@@ -166,7 +166,7 @@ class BasePyTorchDataset(Dataset):
         undersampling_factor: float,
         class_to_sample: Optional[Union[float, str]] = None,
         column: Optional[str] = None
-    ) -> pd.DataFrame:
+    ) -> None:
         """
         Undersample a given class.
         :param undersampling_factor: Factor by which to undersample
@@ -195,7 +195,7 @@ class BasePyTorchDataset(Dataset):
         class_to_sample: Optional[Union[float, str]] = None,
         column: Optional[str] = None,
         minority: bool = True
-    ) -> Tuple[int]:
+    ) -> Tuple[Union[float, str], int, List[int]]:
         """
         Get the label, counts, and indices of each class.
         Used for under-/over-sampling.
