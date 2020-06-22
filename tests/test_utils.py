@@ -65,6 +65,23 @@ class TestUtils(unittest.TestCase):
             utils.remove_dir(primary_path)
             self.assertFalse(os.path.isdir(primary_path))
 
+    def test_get_string_from_dict(self):
+        """
+        Test correct generation of string
+        from config dictionary.
+        """
+        # Test output for empty inputs
+        self.assertEqual(utils.get_string_from_dict(), "")
+        self.assertEqual(utils.get_string_from_dict({}), "")
+
+        # Test output
+        dictionary = {"size": 100, "lr": 1e-3}
+        self.assertEqual(utils.get_string_from_dict(dictionary), "lr_0.001-size_100")
+
+        # Test same output regardless of order
+        dictionary = {"lr": 1e-3, "size": 100}
+        self.assertEqual(utils.get_string_from_dict(dictionary), "lr_0.001-size_100")
+
     def test_send_model_to_device(self):
         """
         Test sending of model to different devices.

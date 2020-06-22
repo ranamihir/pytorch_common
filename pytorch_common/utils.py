@@ -271,16 +271,20 @@ def delete_model(model: nn.Module) -> None:
 def get_string_from_dict(config_info_dict: Optional[_StringDict] = None) -> str:
     """
     Generate a (unique) string from a given configuration dictionary.
+    The dictionary will always be sorted by key first so that if
+    the order of items is changed but the dictionary is essentially
+    still the same, the string returned remains unchanged.
     E.g.:
-    >>> config_info_dict = {"size": 100, "lr": 1e-3}
-    >>> get_string_from_dict(config_info_dict)
-    "size_100-lr_0.001"
+    >>> get_string_from_dict({"size": 100, "lr": 1e-3})
+    "lr_0.001-size_100"
+    >>> get_string_from_dict({"lr": 1e-3, "size": 100}) # Same
+    "lr_0.001-size_100"
     """
     config_info = ""
-    if isinstance(config_info_dict, dict) and len(config_info_dict):
+    if isinstance(config_info_dict, dict):
+        config_info_dict = OrderedDict(sorted(config_info_dict.items())) # Sort to be order-agnostic
         clean = lambda k: str(k).replace("-", "_").lower()
-        config_info = {clean(k): clean(v) for k, v in config_info_dict.items()}
-        config_info = "-".join([f"{k}_{v}" for k, v in config_info.items()])
+        config_info = "-".join([f"{clean(k)}_{clean(v)}" for k, v in config_info_dict.items()])
     return config_info
 
 def get_unique_config_name(
