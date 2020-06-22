@@ -221,9 +221,11 @@ class BasePyTorchDataset(Dataset):
         if column is None:
             column = self.target_col
 
-        # Get all class counts after converting column to string
+        # Convert column to string
         str_column = self.data[column].astype(str)
-        value_counts = self.data[column].astype(str).value_counts(sort=True, ascending=False)
+
+        # Get all class counts
+        value_counts = str_column.value_counts(sort=True, ascending=False)
 
         # If class not specified, take majority/minority class by default
         if class_to_sample is None:
@@ -233,7 +235,7 @@ class BasePyTorchDataset(Dataset):
         class_count = value_counts[class_label]
 
         # Get class indices
-        class_indices = self.data[self.data[column].astype(str) == class_label].index.tolist()
+        class_indices = self.data[str_column == class_label].index.tolist()
 
         return {"label": class_label, "count": class_count, "indices": class_indices}
 
