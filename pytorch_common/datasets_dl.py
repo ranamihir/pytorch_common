@@ -90,7 +90,11 @@ class BasePyTorchDataset(Dataset):
         """
         return data.progress_apply(func, *args, **kwargs, axis=1)
 
-    def oversample_class(self, class_to_oversample: Optional[int] = None) -> pd.DataFrame:
+    def oversample_class(
+        self,
+        class_to_oversample: Optional[int] = None,
+        column: Optional[str] = None
+    ) -> pd.DataFrame:
         """
         Oversample the given class.
         `self.oversampling_factor` must
@@ -100,12 +104,14 @@ class BasePyTorchDataset(Dataset):
         :param class_to_oversample: Class (label) to oversample.
                                     Oversamples minority class
                                     by default.
+        :param column: Column on which to perform oversampling.
+                       Defaults to `self.target_col` if None provided.
         """
         # Get appropriate class label and count
-        class_label, class_count = self._get_class_count(class_to_oversample, minority=True)
+        class_label, class_count, class_indices = self._get_class_info(class_to_oversample,
+                                                                       column, minority=True)
 
         # Randomly sample indices to oversample
-        class_indices = self.data[self.data[self.target_col] == class_label].index.tolist()
         num_to_oversample = np.floor(class_count * (self.oversampling_factor-1)).astype(int)
         indices = np.random.choice(class_indices, size=num_to_oversample, replace=True)
 
@@ -113,7 +119,11 @@ class BasePyTorchDataset(Dataset):
         self.data = self.data.append(self.data.iloc[indices])
         self.shuffle_and_reindex_data()
 
-    def undersample_class(self, class_to_undersample: Optional[int] = None) -> pd.DataFrame:
+    def undersample_class(
+        self,
+        class_to_undersample: Optional[int] = None,
+        column: Optional[str] = None
+    ) -> pd.DataFrame:
         """
         Undersample the given class.
         `self.undersampling_factor` must
@@ -123,12 +133,14 @@ class BasePyTorchDataset(Dataset):
         :param class_to_undersample: Class (label) to undersample.
                                      Undersamples majority class
                                      by default.
+        :param column: Column on which to perform undersampling.
+                       Defaults to `self.target_col` if None provided.
         """
         # Get appropriate class label and count
-        class_label, class_count = self._get_class_count(class_to_undersample, minority=False)
+        class_label, class_count, class_indices = self._get_class_info(class_to_undersample,
+                                                                       column, minority=False)
 
         # Randomly sample indices to undersample
-        class_indices = self.data[self.data[self.target_col] == class_label].index.tolist()
         num_to_remove = np.floor(class_count*(1 - 1/self.undersampling_factor)).astype(int)
         indices = np.random.choice(class_indices, size=num_to_remove, replace=False)
 
@@ -136,24 +148,37 @@ class BasePyTorchDataset(Dataset):
         self.data.drop(index=indices, inplace=True)
         self.shuffle_and_reindex_data()
 
-    def _get_class_count(
+    def _get_class_info(
         self,
         class_to_sample: Optional[int] = None,
+        column: Optional[str] = None,
         minority: bool = True
     ) -> Tuple[int]:
         """
-        Get the counts of each class.
+        Get the label, counts, and indices of each class.
         Used for under-/over-sampling.
+        :param class_to_sample: Class (label) to over-/under-sample.
+                                Samples majority class by default.
+        :param column: Column on which to perform sampling.
+                       Defaults to `self.target_col` if None provided.
         """
+        # Default to `target_col`
+        if column is None:
+            column = self.target_col
+
         # Get all class counts
-        value_counts = self.data[self.target_col].value_counts(sort=True, ascending=False)
+        value_counts = self.data[column].value_counts(sort=True, ascending=False)
 
         # If class not specified, take majority/minority class by default
         class_label = class_to_sample
         if class_label is None:
             class_label = value_counts.index.tolist()[-1 if minority else 0]
         class_count = value_counts[class_label]
-        return class_label, class_count
+
+        # Get class indices
+        class_indices = self.data[self.data[column] == class_label].index.tolist()
+
+        return class_label, class_count, class_indices
 
     def shuffle_and_reindex_data(self) -> None:
         """
