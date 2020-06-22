@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset
 
 from .utils import save_object, load_object, remove_object, print_dataframe
-from .types import Callable, Optional, _StringDict
+from .types import Callable, Optional, Union, _StringDict
 
 
 class BasePyTorchDataset(Dataset):
@@ -90,29 +90,71 @@ class BasePyTorchDataset(Dataset):
         """
         return data.progress_apply(func, *args, **kwargs, axis=1)
 
-    def oversample_class(
+    def sample_class(
         self,
-        class_to_oversample: Optional[int] = None,
+        oversampling_factor: Optional[float] = None,
+        undersampling_factor: Optional[float] = None,
+        class_to_sample: Optional[Union[float, str]] = None,
         column: Optional[str] = None
     ) -> pd.DataFrame:
         """
-        Oversample the given class.
-        `self.oversampling_factor` must
-        be set to use this method.
-        The final count of the class will be
-        (original count) * `oversampling_factor`.
-        :param class_to_oversample: Class (label) to oversample.
-                                    Oversamples minority class
-                                    by default.
+        Under-/Over-sample a given class.
+        :param oversampling_factor: Factor by which to oversample
+                                    the given class.
+                                    The final count of the class will be
+                                    (original count) * `oversampling_factor`.
+        :param undersampling_factor: Factor by which to undersample
+                                     the given class.
+                                     The final count of the class will be
+                                     (original count) / `undersampling_factor`.
+        :param class_to_sample: Class (label) to sample.
+                                Oversamples minority class and undersamples
+                                majority class by default.
+        :param column: Column on which to perform sampling.
+                       Defaults to `self.target_col` if None provided.
+
+        Note: At a time, only one of `oversampling_factor` or `undersampling_factor` may be provided.
+        """
+        ERROR_MSG = "One of `oversampling_factor` or `undersampling_factor` must be provided."
+
+        kwargs = {"class_to_sample": class_to_sample, "column": column}
+        if oversampling_factor is not None:
+            assert undersampling_factor is None, ERROR_MSG
+            sampling_function = self.oversample_class
+            kwargs["oversampling_factor"] = oversampling_factor
+        elif undersampling_factor is not None:
+            assert oversampling_factor is None, ERROR_MSG
+            sampling_function = self.undersample_class
+            kwargs["undersampling_factor"] = undersampling_factor
+        else:
+            raise ValueError(ERROR_MSG)
+
+        # Perform sampling
+        sampling_function(**kwargs)
+
+    def oversample_class(
+        self,
+        oversampling_factor: float,
+        class_to_sample: Optional[Union[float, str]] = None,
+        column: Optional[str] = None
+    ) -> pd.DataFrame:
+        """
+        Oversample a given class.
+        :param oversampling_factor: Factor by which to oversample
+                                    the given class.
+                                    The final count of the class will be
+                                    (original count) * `oversampling_factor`.
+        :param class_to_sample: Class (label) to oversample.
+                                Oversamples minority class by default.
         :param column: Column on which to perform oversampling.
                        Defaults to `self.target_col` if None provided.
         """
-        # Get appropriate class label and count
-        class_label, class_count, class_indices = self._get_class_info(class_to_oversample,
-                                                                       column, minority=True)
+        # Get appropriate class count and indices
+        class_info = self._get_class_info(class_to_sample, column, minority=True)
+        class_count, class_indices = class_info["count"], class_info["indices"]
 
         # Randomly sample indices to oversample
-        num_to_oversample = np.floor(class_count * (self.oversampling_factor-1)).astype(int)
+        num_to_oversample = np.floor(class_count * (oversampling_factor-1)).astype(int)
         indices = np.random.choice(class_indices, size=num_to_oversample, replace=True)
 
         # Append oversampled rows at the bottom and shuffle data
@@ -121,27 +163,27 @@ class BasePyTorchDataset(Dataset):
 
     def undersample_class(
         self,
-        class_to_undersample: Optional[int] = None,
+        undersampling_factor: float,
+        class_to_sample: Optional[Union[float, str]] = None,
         column: Optional[str] = None
     ) -> pd.DataFrame:
         """
-        Undersample the given class.
-        `self.undersampling_factor` must
-        be set to use this method.
-        The final count of the class will be
-        (original count) / `undersampling_factor`.
-        :param class_to_undersample: Class (label) to undersample.
-                                     Undersamples majority class
-                                     by default.
+        Undersample a given class.
+        :param undersampling_factor: Factor by which to undersample
+                                     the given class.
+                                     The final count of the class will be
+                                     (original count) / `undersampling_factor`.
+        :param class_to_sample: Class (label) to undersample.
+                                Undersamples majority class by default.
         :param column: Column on which to perform undersampling.
                        Defaults to `self.target_col` if None provided.
         """
-        # Get appropriate class label and count
-        class_label, class_count, class_indices = self._get_class_info(class_to_undersample,
-                                                                       column, minority=False)
+        # Get appropriate class count and indices
+        class_info = self._get_class_info(class_to_sample, column, minority=False)
+        class_count, class_indices = class_info["count"], class_info["indices"]
 
         # Randomly sample indices to undersample
-        num_to_remove = np.floor(class_count*(1 - 1/self.undersampling_factor)).astype(int)
+        num_to_remove = np.floor(class_count*(1 - 1/undersampling_factor)).astype(int)
         indices = np.random.choice(class_indices, size=num_to_remove, replace=False)
 
         # Remove undersampled rows and shuffle data
@@ -150,7 +192,7 @@ class BasePyTorchDataset(Dataset):
 
     def _get_class_info(
         self,
-        class_to_sample: Optional[int] = None,
+        class_to_sample: Optional[Union[float, str]] = None,
         column: Optional[str] = None,
         minority: bool = True
     ) -> Tuple[int]:
@@ -161,24 +203,39 @@ class BasePyTorchDataset(Dataset):
                                 Samples majority class by default.
         :param column: Column on which to perform sampling.
                        Defaults to `self.target_col` if None provided.
+        :param minority: Whether to sample the minority or majority class.
+                         Only used if param `class_to_sample` is not provided.
         """
+        # Note: Do NOT have a mixed dtype `column` with the same
+        #       value appearing as both a string and a non-string.
+        #       E.g. 1 and "1".
+        #       Sampling `column` is always converted to string first before
+        #       computing value counts or comparing values, because pandas
+        #       performs incorrect inferring of datatypes at times.
+        #       See: https://stackoverflow.com/questions/59991390/pandas-value-counts-returning-
+        #            multiple-lines-for-the-same-value
+        #       If they're the same, the value counts of unique classes,
+        #       and hence the sampling itself, will be done incorrectly.
+
         # Default to `target_col`
         if column is None:
             column = self.target_col
 
-        # Get all class counts
-        value_counts = self.data[column].value_counts(sort=True, ascending=False)
+        # Get all class counts after converting column to string
+        str_column = self.data[column].astype(str)
+        value_counts = self.data[column].astype(str).value_counts(sort=True, ascending=False)
 
         # If class not specified, take majority/minority class by default
-        class_label = class_to_sample
-        if class_label is None:
+        if class_to_sample is None:
             class_label = value_counts.index.tolist()[-1 if minority else 0]
+        else:
+            class_label = str(class_to_sample) # Convert to string
         class_count = value_counts[class_label]
 
         # Get class indices
-        class_indices = self.data[self.data[column] == class_label].index.tolist()
+        class_indices = self.data[self.data[column].astype(str) == class_label].index.tolist()
 
-        return class_label, class_count, class_indices
+        return {"label": class_label, "count": class_count, "indices": class_indices}
 
     def shuffle_and_reindex_data(self) -> None:
         """
@@ -221,9 +278,10 @@ class DummyMultiClassDataset(BasePyTorchDataset):
         Fix torch random generator seed and
         numpy random state for reproducibility.
         """
-        x = torch.rand(self.dim, generator=torch.Generator().manual_seed(index))
-        y = torch.as_tensor(np.random.RandomState(index).choice(range(self.num_classes)))
-        return pd.Series([x.float(), y.long()])
+        x = create_feature_from_index(index, self.dim)
+        y = torch.as_tensor(np.random.RandomState(index).choice(range(self.num_classes)),
+                            dtype=torch.long)
+        return pd.Series([x, y])
 
 
 class DummyMultiLabelDataset(BasePyTorchDataset):
@@ -252,9 +310,10 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
         Fix torch random generator seed and
         numpy random state for reproducibility.
         """
-        x = torch.rand(self.dim, generator=torch.Generator().manual_seed(index))
-        y = torch.as_tensor(np.random.RandomState(index).choice([0,1], size=self.num_classes))
-        return pd.Series([x.float(), y.long()])
+        x = create_feature_from_index(index, self.dim)
+        y = torch.as_tensor(np.random.RandomState(index).choice([0,1], size=self.num_classes),
+                            dtype=torch.long)
+        return pd.Series([x, y])
 
 
 class DummyRegressionDataset(BasePyTorchDataset):
@@ -283,9 +342,9 @@ class DummyRegressionDataset(BasePyTorchDataset):
         Fix torch random generator seed and
         numpy random state for reproducibility.
         """
-        x = torch.rand(self.in_dim, generator=torch.Generator().manual_seed(index))
-        y = torch.as_tensor(np.random.RandomState(index).randn(self.out_dim))
-        return pd.Series([x.float(), y.float()])
+        x = create_feature_from_index(index, self.in_dim)
+        y = torch.as_tensor(np.random.RandomState(index).randn(self.out_dim), dtype=torch.float)
+        return pd.Series([x, y])
 
 
 def create_dataframe(
@@ -302,3 +361,15 @@ def create_dataframe(
     data = pd.DataFrame(columns=columns, index=range(size))
     data[columns] = data.index.to_series().apply(row_gen_func)
     return data
+
+def create_feature_from_index(
+    index: int,
+    dim: int,
+    dtype: Optional[torch.dtype] = torch.float32
+) -> torch.Tensor:
+    """
+    Fix the torch random generator seed based on
+    `index` and return a randomly sampled value
+    of appropriate dtype to ensure reproducibility.
+    """
+    return torch.rand(dim, generator=torch.Generator().manual_seed(index), dtype=dtype)

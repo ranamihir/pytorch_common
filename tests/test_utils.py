@@ -82,6 +82,23 @@ class TestUtils(unittest.TestCase):
         dictionary = {"lr": 1e-3, "size": 100}
         self.assertEqual(utils.get_string_from_dict(dictionary), "lr_0.001-size_100")
 
+    def test_get_string_from_dict(self):
+        """
+        Test correct generation of unique
+        string from config dictionary.
+        """
+        primary_name = "dummy"
+
+        # Test unique string
+        dictionary = {"size": 100, "lr": 1e-3}
+        unique_str1 = utils.get_unique_config_name(primary_name, dictionary)
+        self.assertTrue(unique_str1.startswith("dummy-"))
+
+        # Test same string regardless of order
+        dictionary = {"lr": 1e-3, "size": 100}
+        unique_str2 = utils.get_unique_config_name(primary_name, dictionary)
+        self.assertEqual(unique_str1, unique_str2)
+
     def test_send_model_to_device(self):
         """
         Test sending of model to different devices.
