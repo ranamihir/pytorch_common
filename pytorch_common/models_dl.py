@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .utils import get_trainable_params
 from .additional_configs import BaseModelConfig
 from .types import Dict, Optional, _ModelOrModels
 
@@ -45,15 +46,12 @@ class BasePyTorchModel(nn.Module):
 
     def get_trainable_params(self) -> Dict[str, int]:
         """
-        Print and return the number of trainable parameters of the model.
+        Print and return the number of trainable
+        and total parameters of the model.
+
+        See `utils.get_trainable_params()` for implementation.
         """
-        num_params = sum(p.numel() for p in self.parameters())
-        num_trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        logging.info(
-            f"Number of trainable/total parameters in {self.__name__}: "
-            f"{num_trainable_params}/{num_params}"
-        )
-        return {"trainable": num_trainable_params, "total": num_params}
+        return get_trainable_params(self)
 
     def print_model(self) -> None:
         """

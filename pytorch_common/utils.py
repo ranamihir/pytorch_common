@@ -338,6 +338,20 @@ def get_checkpoint_name(
     checkpoint_name = f"checkpoint-{checkpoint_type}-{unique_name}-epoch_{epoch}.pt"
     return checkpoint_name
 
+def get_trainable_params(model: nn.Module) -> Dict[str, int]:
+    """
+    Print and return the number of trainable
+    and total parameters of a model.
+    """
+    num_params = sum(p.numel() for p in model.parameters())
+    num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    model_name = getattr(model, "__name__", model.__class__.__name__)
+    logging.info(
+        f"Number of trainable/total parameters in {model_name}: "
+        f"{num_trainable_params}/{num_params}"
+    )
+    return {"trainable": num_trainable_params, "total": num_params}
+
 def get_model_outputs_only(outputs: _TensorOrTensors) -> _TensorOrTensors:
     """
     Use this function to get just the raw
