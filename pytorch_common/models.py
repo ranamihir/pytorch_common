@@ -62,10 +62,11 @@ def is_transformer_model(model_name: str) -> bool:
     """
     Check if given `model_name` is a transformer
     model by attempting to load the model config.
+    Returns False if `transformers` is not installed.
     """
-    # Import here because it's an optional dependency
-    from transformers import AutoConfig
     try:
+        # Import here because it's an optional dependency
+        from transformers import AutoConfig
         config = AutoConfig.from_pretrained(model_name)
         return True
     except OSError:

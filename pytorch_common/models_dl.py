@@ -67,7 +67,7 @@ class BasePyTorchModel(nn.Module):
                                Can take the following values:
                                - None, will initialize self
                                - list or object of type
-                                 nn.Module/BasePyTorchModel,
+                                 `nn.Module`/`BasePyTorchModel`,
                                  will initialize their weights
         """
         if models_to_init is None:
@@ -171,7 +171,7 @@ class BasePyTorchModel(nn.Module):
                        Can take the following values:
                        - None, will alter self
                        - list or object of type
-                         nn.Module/BasePyTorchModel,
+                         `nn.Module`/`BasePyTorchModel`,
                          will alter their state
         :freeze: Whether to freeze or unfreeze (bool)
         """
@@ -194,8 +194,8 @@ class BasePyTorchModel(nn.Module):
         :param model: Model / module to freeze / unfreeze
                       Can take the following values:
                       - None, will alter self
-                      - object of type nn.Module /
-                        BasePyTorchModel, will
+                      - object of type `nn.Module` /
+                        `BasePyTorchModel`, will
                         alter its state
         :freeze: Whether to freeze or unfreeze (bool)
         """

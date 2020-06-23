@@ -210,7 +210,7 @@ class TestUtils(unittest.TestCase):
         a: List[float],
         b: List[float],
         c: List[float],
-        batch_type: Callable[[], Union[np.ndarray, torch.Tensor]],
+        batch_type: Callable[List[float], Union[np.ndarray, torch.Tensor]],
         **kwargs
     ) -> _Batch:
         """

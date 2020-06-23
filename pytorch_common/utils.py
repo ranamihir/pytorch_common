@@ -458,7 +458,7 @@ def convert_tensor_to_numpy(batch: _Batch) -> _Batch:
     """
     Convert torch tensor(s) on any device to numpy array(s).
     Similar to `send_batch_to_device()`, can take a
-    torch.Tensor or a tuple/list of them as input.
+    `torch.Tensor` or a tuple/list of them as input.
     """
     if torch.is_tensor(batch):
         return batch.to("cpu").detach().numpy()
@@ -550,7 +550,7 @@ def is_batch_on_gpu(batch: _Batch) -> bool:
     Check if a `batch` is on a GPU.
 
     Similar to `send_batch_to_device()`, can take a
-    torch.Tensor or a tuple/list of them as input.
+    `torch.Tensor` or a tuple/list of them as input.
     """
     if torch.is_tensor(batch):
         return batch.is_cuda
@@ -973,8 +973,8 @@ class DataParallel(nn.DataParallel):
         Return model's own attribute if available, otherwise
         fallback to attribute of parent class.
 
-        Solves the issue that when nn.DataParallel is applied,
-        methods and attributes defined in BasePyTorchModel
+        Solves the issue that when `nn.DataParallel` is applied,
+        methods and attributes defined in `BasePyTorchModel`
         like `predict()` can only be accessed with
         `self.module.predict()` instead of `self.predict()`.
         """

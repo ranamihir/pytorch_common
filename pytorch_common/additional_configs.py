@@ -25,7 +25,7 @@ class BaseDatasetConfig(Munch):
 
     def copy(self, deep: Optional[bool] = True) -> BaseDatasetConfig:
         """
-        Return a BaseDatasetConfig object with
+        Return a `BaseDatasetConfig` object with
         same attribute values.
         Useful if different configs are
         required, e.g. for train/val datasets.
@@ -62,7 +62,7 @@ class BaseModelConfig(Munch):
 
     def copy(self, deep: Optional[bool] = True) -> BaseModelConfig:
         """
-        Return a BaseModelConfig object with
+        Return a `BaseModelConfig` object with
         same attribute values.
         Useful if different configs are required.
         """
