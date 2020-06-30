@@ -18,7 +18,7 @@ from .utils import (
     send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker
 )
 from .types import (
-    Tuple, Optional, Union, _StringDict, _Config, _Device, _Batch,
+    List, Tuple, Optional, Union, _StringDict, _Config, _Device, _Batch,
     _TensorOrTensors, _LossOrLosses, _EvalCriterionOrCriteria, _TrainResult,
     _EvalResult, _TestResult, _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
 )
@@ -90,7 +90,8 @@ def train_model(
         epochs = config.epochs
 
     best_epoch, stop_epoch = 0, start_epoch
-    best_checkpoint_file, best_model = "", None
+    best_checkpoint_file = ""
+    best_model: Optional[nn.Module] = None
     for epoch in range(1+start_epoch, 1+start_epoch+epochs):
         try:
             # Train epoch
@@ -326,7 +327,11 @@ def perform_one_epoch(
     batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
     # Store all required items to be returned
-    loss_hist, targets_hist, outputs_hist, preds_hist, probs_hist = [], [], [], [], []
+    loss_hist: List[float] = []
+    targets_hist: List[torch.Tensor] = []
+    outputs_hist: List[torch.Tensor] = []
+    preds_hist: List[torch.Tensor] = []
+    probs_hist: List[torch.Tensor] = []
 
     # Enable gradient computation if training to be performed else disable it.
     # Technically not required if this function is called from other supported
@@ -810,7 +815,7 @@ class EarlyStopping(object):
         self._init_params(mode=mode, min_delta=min_delta, patience=patience,
                           best_val=best_val, best_val_tol=best_val_tol)
         self._validate_params()
-        self.best = None
+        self.best: Optional[float] = None
         self.num_bad_epochs = 0
 
         if self.patience == 0:

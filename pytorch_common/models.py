@@ -41,20 +41,18 @@ def create_transformer_model(
     # Import here because it's an optional dependency
     from transformers import AutoConfig, AutoModel
 
-    model_class, config_class = AutoModel, AutoConfig
-
     if config is not None and hasattr(config, "output_dir"): # Load trained model from config
         kwargs = {
             "pretrained_model_name_or_path": get_file_path(config.output_dir,
                                                            config.model_name_or_path),
             "from_tf": False,
-            "config": config_class.from_pretrained(get_file_path(config.output_dir,
-                                                                 config.model_config_path))
+            "config": AutoConfig.from_pretrained(get_file_path(config.output_dir,
+                                                               config.model_config_path))
         }
-        model = model_class.from_pretrained(**kwargs)
+        model = AutoModel.from_pretrained(**kwargs)
 
     else: # Load default pre-trained model
-        model = model_class.from_pretrained(model_name)
+        model = AutoModel.from_pretrained(model_name)
 
     return model
 

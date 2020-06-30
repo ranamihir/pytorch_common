@@ -70,7 +70,7 @@ def get_eval_criteria(config: _Config, criteria: str, **kwargs) -> _EvalCriterio
             raise ValueError("Param 'multilabel_reduction' must be provided.")
         multilabel_reduction = kwargs["multilabel_reduction"]
 
-    eval_criteria_dict = OrderedDict()
+    eval_criteria_dict: _EvalCriterionOrCriteria = OrderedDict()
     for criterion in criteria:
         criterion_kwargs = kwargs.get(criterion, {})
         if is_multilabel:
