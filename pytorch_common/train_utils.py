@@ -18,8 +18,8 @@ from .utils import (
     send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker
 )
 from .types import (
-    List, Tuple, Optional, Union, _StringDict, _Config, _Device, _Batch,
-    _TensorOrTensors, _LossOrLosses, _EvalCriterionOrCriteria, _TrainResult,
+    List, Tuple, Dict, Optional, Union, _StringDict, _Config, _Device,
+    _Batch, _Loss, _TensorOrTensors, _EvalCriterionOrCriteria, _TrainResult,
     _EvalResult, _TestResult, _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
 )
 
@@ -31,8 +31,8 @@ def train_model(
     train_loader: DataLoader,
     val_loader: DataLoader,
     optimizer: Optimizer,
-    loss_criterion_train: _LossOrLosses,
-    loss_criterion_eval: _LossOrLosses,
+    loss_criterion_train: _Loss,
+    loss_criterion_eval: _Loss,
     eval_criteria: _EvalCriterionOrCriteria,
     train_logger: ModelTracker,
     val_logger: ModelTracker,
@@ -204,7 +204,7 @@ def train_epoch(
     model: nn.Module,
     dataloader: DataLoader,
     device: _Device,
-    loss_criterion: _LossOrLosses,
+    loss_criterion: _Loss,
     epoch: int,
     optimizer: Optimizer,
     scheduler: Optional[object] = None,
@@ -225,7 +225,7 @@ def evaluate_epoch(
     model: nn.Module,
     dataloader: DataLoader,
     device: _Device,
-    loss_criterion: _LossOrLosses,
+    loss_criterion: _Loss,
     eval_criteria: _EvalCriterionOrCriteria,
     decouple_fn: Optional[_DecoupleFnTrain] = None
 ) -> _EvalResult:
@@ -264,7 +264,7 @@ def perform_one_epoch(
     model: nn.Module,
     dataloader: DataLoader,
     device: _Device,
-    loss_criterion: Optional[_LossOrLosses] = None,
+    loss_criterion: Optional[_Loss] = None,
     epoch: Optional[int] = None,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,

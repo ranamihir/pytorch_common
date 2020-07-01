@@ -586,8 +586,8 @@ def get_model_performance_trackers(config: _Config) -> Tuple[ModelTracker, Model
     Initialize loss and eval criteria
     loggers for train and val datasets.
     """
-    train_logger = ModelTracker(config, is_train=1)
-    val_logger = ModelTracker(config, is_train=0)
+    train_logger = ModelTracker(config, is_train=True)
+    val_logger = ModelTracker(config, is_train=False)
     return train_logger, val_logger
 
 
@@ -599,7 +599,7 @@ class ModelTracker(object):
     any evaluation metrics (accuracy, f1, etc.)
     at each epoch.
     """
-    def __init__(self, config: _Config, is_train: Optional[bool] = 1):
+    def __init__(self, config: _Config, is_train: Optional[bool] = True):
         self.eval_criteria = config.eval_criteria
         self.is_train = is_train
         if not is_train:
@@ -790,7 +790,7 @@ class ModelTracker(object):
         metrics_df.insert(loc=0, column="epoch", value=metrics_df.index)
         metrics_df.reset_index(drop=True, inplace=True)
         if epoch is not None:
-            epoch = self._get_correct_epoch(epoch)
+            epoch = self._get_correct_epoch(epoch, "loss")
             return metrics_df.query("epoch == @epoch")
         return metrics_df
 

@@ -9,7 +9,7 @@ from .utils import convert_tensor_to_numpy
 from sklearn.metrics import (
     accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
 )
-from .types import Tuple, Optional, _Config, _LossOrLosses, _EvalCriterionOrCriteria
+from .types import Tuple, Callable, Optional, Union, _Config, _Loss, _EvalCriterionOrCriteria
 
 
 REGRESSION_LOSS_CRITERIA = ["mse"]
@@ -25,7 +25,7 @@ def get_loss_eval_criteria(
     config: _Config,
     reduction: Optional[str] = "mean",
     reduction_val: Optional[str] = None
-) -> Tuple[_LossOrLosses, _LossOrLosses, _EvalCriterionOrCriteria]:
+) -> Tuple[_Loss, _Loss, _EvalCriterionOrCriteria]:
     """
     Define train and val loss and evaluation criteria.
     :param reduction_val: If None, a common `reduction` will be used
@@ -52,7 +52,7 @@ def get_loss_criterion(
     config: _Config,
     criterion: Optional[str] = "cross-entropy",
     **kwargs
-) -> _LossOrLosses:
+) -> _Loss:
     """
     Get the loss criterion function.
     """
@@ -83,7 +83,7 @@ def get_loss_criterion_function(
     config: _Config,
     criterion: Optional[str] = "cross-entropy",
     **kwargs
-) -> _LossOrLosses:
+) -> _Loss:
     """
     Get the function for a given loss `criterion`.
     :param kwargs: Misc kwargs for the loss. E.g.:
@@ -146,7 +146,7 @@ def get_eval_criterion_function(
     config: _Config,
     criterion: Optional[str] = "accuracy",
     **kwargs
-) -> _EvalCriterionOrCriteria:
+) -> Callable[[torch.Tensor, torch.Tensor], Union[float, torch.Tensor]]:
     """
     Get the function for a given evaluation `criterion`.
     :param kwargs: Misc kwargs for the eval criterion.

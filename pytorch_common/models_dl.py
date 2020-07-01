@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from .utils import get_trainable_params
 from .additional_configs import BaseModelConfig
-from .types import Dict, Optional, _ModelOrModels
+from .types import Tuple, Dict, Optional, _ModelOrModels
 
 
 class BasePyTorchModel(nn.Module):
@@ -22,7 +22,7 @@ class BasePyTorchModel(nn.Module):
 
     def initialize_model(
         self,
-        init_weights: Optional[str] = False,
+        init_weights: Optional[bool] = False,
         models_to_init: Optional[_ModelOrModels] = None
     ) -> None:
         """
@@ -100,7 +100,7 @@ class BasePyTorchModel(nn.Module):
         self,
         outputs: torch.Tensor,
         threshold: Optional[float] = None
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns predicted labels and probabilities
         for `model_type = "classification"`.

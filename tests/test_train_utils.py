@@ -16,8 +16,8 @@ from pytorch_common.models import create_model
 from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
 from pytorch_common import train_utils, utils
 from pytorch_common.types import (
-    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _StringDict,
-    _LossOrLosses, _EvalCriterionOrCriteria
+    Any, List, Tuple, Dict, Callable, Iterable, Optional,
+    Union, _StringDict, _EvalCriterionOrCriteria
 )
 
 

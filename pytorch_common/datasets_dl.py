@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset
 
 from .utils import save_object, load_object, remove_object, print_dataframe
-from .types import Callable, Optional, Union, _StringDict
+from .types import List, Tuple, Callable, Optional, Union, _StringDict
 
 
 class BasePyTorchDataset(Dataset):
@@ -32,6 +32,7 @@ class BasePyTorchDataset(Dataset):
         super().__init__()
         self.__name__ = self.__class__.__name__ # Set dataset name
         self.target_col = "target"
+        self.data = pd.DataFrame() # Create empty dataframe
         tqdm.pandas() # Enable tqdm
 
     def __getitem__(self, index):

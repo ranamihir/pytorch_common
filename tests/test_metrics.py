@@ -10,8 +10,8 @@ import torch
 from pytorch_common.utils import compare_tensors_or_arrays
 from pytorch_common import metrics
 from pytorch_common.types import (
-    Any, List, Tuple, Dict, Callable, Iterable, Optional, Union, _StringDict,
-    _LossOrLosses, _EvalCriterionOrCriteria
+    Any, List, Tuple, Dict, Callable, Iterable, Optional,
+    Union, _StringDict, _Loss, _EvalCriterionOrCriteria
 )
 
 
@@ -99,7 +99,7 @@ class TestMetrics(unittest.TestCase):
     def _get_loss_eval_criteria(
         self,
         dictionary: Dict
-    ) -> Tuple[_LossOrLosses, _LossOrLosses, _EvalCriterionOrCriteria]:
+    ) -> Tuple[_Loss, _Loss, _EvalCriterionOrCriteria]:
         """
         Load the default config, override it
         with `dictionary`, and get the loss
