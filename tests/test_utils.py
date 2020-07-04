@@ -211,7 +211,7 @@ class TestUtils(unittest.TestCase):
         b: List[float],
         c: List[float],
         batch_type: Callable[[List[float]], Union[np.ndarray, torch.Tensor]],
-        **kwargs
+        **kwargs,
     ) -> _Batch:
         """
         Construct a numpy/torch batch of shape
