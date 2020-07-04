@@ -6,9 +6,7 @@ import torch
 import torch.nn as nn
 
 from .utils import convert_tensor_to_numpy
-from sklearn.metrics import (
-    accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
-)
+from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
 from .types import Tuple, Callable, Optional, Union, _Config, _Loss, _EvalCriterionOrCriteria
 
 
@@ -22,9 +20,7 @@ EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
 
 
 def get_loss_eval_criteria(
-    config: _Config,
-    reduction: Optional[str] = "mean",
-    reduction_val: Optional[str] = None
+    config: _Config, reduction: Optional[str] = "mean", reduction_val: Optional[str] = None
 ) -> Tuple[_Loss, _Loss, _EvalCriterionOrCriteria]:
     """
     Define train and val loss and evaluation criteria.
@@ -34,37 +30,31 @@ def get_loss_eval_criteria(
     """
     # Add/update train loss reduction and get criterion
     train_loss_kwargs = {**config.loss_kwargs, "reduction": reduction}
-    loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion,
-                                              **train_loss_kwargs)
+    loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, **train_loss_kwargs)
 
     # Add/update val loss reduction and get criterion
     if reduction_val is None:
         reduction_val = reduction
     val_loss_kwargs = {**config.loss_kwargs, "reduction": reduction_val}
-    loss_criterion_val = get_loss_criterion(config, criterion=config.loss_criterion,
-                                             **val_loss_kwargs)
+    loss_criterion_val = get_loss_criterion(config, criterion=config.loss_criterion, **val_loss_kwargs)
 
-    eval_criteria = get_eval_criteria(config, config.eval_criteria,
-                                      **config.eval_criteria_kwargs)
+    eval_criteria = get_eval_criteria(config, config.eval_criteria, **config.eval_criteria_kwargs)
     return loss_criterion_train, loss_criterion_val, eval_criteria
 
-def get_loss_criterion(
-    config: _Config,
-    criterion: Optional[str] = "cross-entropy",
-    **kwargs
-) -> _Loss:
+
+def get_loss_criterion(config: _Config, criterion: Optional[str] = "cross-entropy", **kwargs) -> _Loss:
     """
     Get the loss criterion function.
     """
     loss_criterion = get_loss_criterion_function(config, criterion=criterion, **kwargs)
     return loss_criterion
 
+
 def get_eval_criteria(config: _Config, criteria: str, **kwargs) -> _EvalCriterionOrCriteria:
     """
     Get a dictionary of eval criterion functions.
     """
-    is_multilabel = config.model_type == "classification" and \
-                    config.classification_type == "multilabel"
+    is_multilabel = config.model_type == "classification" and config.classification_type == "multilabel"
     if is_multilabel:
         if not kwargs.get("multilabel_reduction"):
             raise ValueError("Param 'multilabel_reduction' must be provided.")
@@ -79,11 +69,8 @@ def get_eval_criteria(config: _Config, criteria: str, **kwargs) -> _EvalCriterio
         eval_criteria_dict[criterion] = eval_fn
     return eval_criteria_dict
 
-def get_loss_criterion_function(
-    config: _Config,
-    criterion: Optional[str] = "cross-entropy",
-    **kwargs
-) -> _Loss:
+
+def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cross-entropy", **kwargs) -> _Loss:
     """
     Get the function for a given loss `criterion`.
     :param kwargs: Misc kwargs for the loss. E.g.:
@@ -113,8 +100,7 @@ def get_loss_criterion_function(
                 agg_func = torch.mean
             else:
                 raise ValueError(
-                    f"Param 'multilabel_reduction' ('{multilabel_reduction}') "
-                    f"must be one of ['sum', 'mean']."
+                    f"Param 'multilabel_reduction' ('{multilabel_reduction}') " f"must be one of ['sum', 'mean']."
                 )
 
     # Get per-label loss
@@ -138,14 +124,13 @@ def get_loss_criterion_function(
 
     # Multilabel classification
     else:
-        return lambda output_hist, y_hist: \
-               agg_func(torch.stack([loss_criterion(output_hist, y_hist[...,i]) \
-                                     for i in range(y_hist.shape[-1])], dim=0))
+        return lambda output_hist, y_hist: agg_func(
+            torch.stack([loss_criterion(output_hist, y_hist[..., i]) for i in range(y_hist.shape[-1])], dim=0,)
+        )
+
 
 def get_eval_criterion_function(
-    config: _Config,
-    criterion: Optional[str] = "accuracy",
-    **kwargs
+    config: _Config, criterion: Optional[str] = "accuracy", **kwargs
 ) -> Callable[[torch.Tensor, torch.Tensor], Union[float, torch.Tensor]]:
     """
     Get the function for a given evaluation `criterion`.
@@ -169,8 +154,7 @@ def get_eval_criterion_function(
             agg_func = np.mean
         else:
             raise ValueError(
-                f"Param 'multilabel_reduction' ('{multilabel_reduction}') "
-                f"must be one of ['mean', 'none']."
+                f"Param 'multilabel_reduction' ('{multilabel_reduction}') " f"must be one of ['mean', 'none']."
             )
 
     # Get per-label eval criterion
@@ -191,25 +175,22 @@ def get_eval_criterion_function(
 
     # Multilabel classification
     else:
-        return lambda output_hist, y_hist: \
-            agg_func([eval_criterion(output_hist, y_hist[...,i]) \
-                      for i in range(y_hist.shape[-1])])
+        return lambda output_hist, y_hist: agg_func(
+            [eval_criterion(output_hist, y_hist[..., i]) for i in range(y_hist.shape[-1])]
+        )
+
 
 def get_regression_eval_metric(
-    output_hist: torch.Tensor,
-    y_true: torch.Tensor,
-    criterion: Optional[str] = "mse",
-    **kwargs
+    output_hist: torch.Tensor, y_true: torch.Tensor, criterion: Optional[str] = "mse", **kwargs
 ) -> float:
     """
     Get the regression eval metric.
     """
     assert y_true.shape == output_hist.shape
 
-    criterion_fn_dict = {
-        "mse": get_mse_loss
-    }
+    criterion_fn_dict = {"mse": get_mse_loss}
     return criterion_fn_dict[criterion](output_hist, y_true, **kwargs)
+
 
 def get_mse_loss(output_hist: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
     """
@@ -219,11 +200,9 @@ def get_mse_loss(output_hist: torch.Tensor, y_true: torch.Tensor, **kwargs) -> f
     mse = nn.MSELoss(**kwargs)(output_hist, y_true).item()
     return mse
 
+
 def get_class_eval_metric(
-    output_hist: torch.Tensor,
-    y_true: torch.Tensor,
-    criterion: Optional[str] = "accuracy",
-    **kwargs
+    output_hist: torch.Tensor, y_true: torch.Tensor, criterion: Optional[str] = "accuracy", **kwargs
 ) -> float:
     """
     Get eval criterion for a single class.
@@ -233,7 +212,7 @@ def get_class_eval_metric(
       - probs for y=1 (for computing AUC)
     and return the metric value for the given class.
     """
-    y_predicted = output_hist[:,1] if criterion == "auc" else output_hist.max(dim=-1)[1]
+    y_predicted = output_hist[:, 1] if criterion == "auc" else output_hist.max(dim=-1)[1]
     y_true, y_predicted = convert_tensor_to_numpy((y_true, y_predicted))
     assert y_true.shape == y_predicted.shape
     y_true = y_true.astype(int)
@@ -247,7 +226,7 @@ def get_class_eval_metric(
         "accuracy": accuracy_score,
         "precision": precision_score,
         "recall": recall_score,
-        "f1": f1_score
+        "f1": f1_score,
     }
     return criterion_fn_dict[criterion](y_true, y_predicted.astype(int), **kwargs)
 
@@ -258,6 +237,7 @@ class FocalLoss(nn.Module):
     Paper: https://arxiv.org/pdf/1708.02002.pdf
     Code insipration: https://github.com/kuangliu/pytorch-retinanet/blob/master/loss.py
     """
+
     # TODO: Extend this to multiclass
     def __init__(self, alpha: Optional[float] = 0.25, gamma: Optional[float] = 2):
         super().__init__()
@@ -272,19 +252,19 @@ class FocalLoss(nn.Module):
 
         :return (tensor) loss = FocalLoss(outputs, y)
         """
-        probs1 = torch.sigmoid(outputs[:,1])
+        probs1 = torch.sigmoid(outputs[:, 1])
         targets = y.float()
 
         # alpha balancing weights = alpha if y = 1 else (1-alpha)
         w_alpha = torch.ones_like(targets, device=targets.device) * self.alpha
-        w_alpha = torch.where(torch.eq(targets, 1.), w_alpha, 1. - w_alpha)
+        w_alpha = torch.where(torch.eq(targets, 1.0), w_alpha, 1.0 - w_alpha)
 
         # focal weights = (1-p)^gamma if y = 1 else p^gamma
-        w_focal = torch.where(torch.eq(targets, 1.), 1. - probs1, probs1)
+        w_focal = torch.where(torch.eq(targets, 1.0), 1.0 - probs1, probs1)
         w_focal = torch.pow(w_focal, self.gamma)
 
         # Focal loss = w_alpha * w_focal * BCELoss
-        bce_loss = - (targets * probs1.log() + (1. - targets) * (1. - probs1).log())
+        bce_loss = -(targets * probs1.log() + (1.0 - targets) * (1.0 - probs1).log())
         focal_loss = w_alpha * w_focal * bce_loss
 
         return focal_loss.mean()

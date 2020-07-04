@@ -4,7 +4,10 @@ from pytorch_common.utils import get_trainable_params
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
 from pytorch_common.models_dl import (
-    SingleLayerClassifier, MultiLayerClassifier, SingleLayerRegressor, MultiLayerRegressor
+    SingleLayerClassifier,
+    MultiLayerClassifier,
+    SingleLayerRegressor,
+    MultiLayerRegressor,
 )
 
 
@@ -14,12 +17,7 @@ class TestModels(unittest.TestCase):
         """
         Set up model config with default hyperparameters.
         """
-        cls.default_config_dict = {
-            "in_dim": 8,
-            "h_dim": 4,
-            "num_layers": 2,
-            "num_classes": 2
-        }
+        cls.default_config_dict = {"in_dim": 8, "h_dim": 4, "num_layers": 2, "num_classes": 2}
         cls.default_config = BaseModelConfig(cls.default_config_dict)
 
     def test_create_model(self):
@@ -50,36 +48,37 @@ class TestModels(unittest.TestCase):
         Test computation of trainable and
         total parameters of a model.
         """
-        model = create_model("multi_layer_classifier", self.default_config) # Create model
+        model = create_model("multi_layer_classifier", self.default_config)  # Create model
 
-        self._test_model_parameters(model, 66, 66) # Full model
-        self._test_model_parameters(model.trunk[0], 36, 36) # First layer
-        self._test_model_parameters(model.trunk[1], 20, 20) # Second layer
-        self._test_model_parameters(model.classifier, 10, 10) # Classifier
+        self._test_model_parameters(model, 66, 66)  # Full model
+        self._test_model_parameters(model.trunk[0], 36, 36)  # First layer
+        self._test_model_parameters(model.trunk[1], 20, 20)  # Second layer
+        self._test_model_parameters(model.classifier, 10, 10)  # Classifier
 
     def test_freeze_unfreeze_module(self):
         """
         Test freezing and unfreezing of
         parts of or the entirety of a model.
         """
-        model = create_model("multi_layer_classifier", self.default_config) # Create model
-        total = model.get_trainable_params()["total"] # Get total model parameters
+        model = create_model("multi_layer_classifier", self.default_config)  # Create model
+        total = model.get_trainable_params()["total"]  # Get total model parameters
 
-        self._test_model_parameters(model, total, total) # Full model
+        self._test_model_parameters(model, total, total)  # Full model
 
-        model.freeze_module(model.trunk[0]) # Freeze first layer
-        trainable = sum([get_trainable_params(m)["total"] \
-                         for m in [model.trunk[1], model.classifier]]) # All except first layer
+        model.freeze_module(model.trunk[0])  # Freeze first layer
+        trainable = sum(
+            [get_trainable_params(m)["total"] for m in [model.trunk[1], model.classifier]]
+        )  # All except first layer
         self._test_model_parameters(model, trainable, total)
 
-        model.freeze_module() # Freeze full model
+        model.freeze_module()  # Freeze full model
         self._test_model_parameters(model, 0, total)
 
-        model.unfreeze_module(model.trunk[1]) # Unfreeze second layer
+        model.unfreeze_module(model.trunk[1])  # Unfreeze second layer
         trainable = get_trainable_params(model.trunk[1])["total"]
         self._test_model_parameters(model, trainable, total)
 
-        model.unfreeze_module() # Unfreeze full model
+        model.unfreeze_module()  # Unfreeze full model
         self._test_model_parameters(model, total, total)
 
     def _test_model_parameters(self, model, trainable_params, total_params):

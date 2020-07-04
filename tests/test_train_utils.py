@@ -16,8 +16,16 @@ from pytorch_common.models import create_model
 from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
 from pytorch_common import train_utils, utils
 from pytorch_common.types import (
-    Any, List, Tuple, Dict, Callable, Iterable, Optional,
-    Union, _StringDict, _EvalCriterionOrCriteria
+    Any,
+    List,
+    Tuple,
+    Dict,
+    Callable,
+    Iterable,
+    Optional,
+    Union,
+    _StringDict,
+    _EvalCriterionOrCriteria,
 )
 
 
@@ -59,7 +67,7 @@ class TestTrainUtils(unittest.TestCase):
         all_kwargs = self._get_all_combination_kwargs()
 
         for model_type in all_kwargs.keys():
-            self._load_config(self.default_config_dict) # Reload default config
+            self._load_config(self.default_config_dict)  # Reload default config
             self.config.model_type = model_type
             loss_criterion = "cross-entropy" if model_type == "classification" else "mse"
             eval_criterion = "accuracy" if model_type == "classification" else "mse"
@@ -80,45 +88,51 @@ class TestTrainUtils(unittest.TestCase):
 
         # Define classification kwargs
         classification_dataset_kwargs = [
-            {"dataset_name": "multi_class_dataset", "size": size, "dim": in_dim,
-             "num_classes": num_classes},
-            {"dataset_name": "multi_label_dataset", "size": size, "dim": in_dim,
-             "num_classes": num_classes, "multilabel_reduction": "mean"}
+            {"dataset_name": "multi_class_dataset", "size": size, "dim": in_dim, "num_classes": num_classes,},
+            {
+                "dataset_name": "multi_label_dataset",
+                "size": size,
+                "dim": in_dim,
+                "num_classes": num_classes,
+                "multilabel_reduction": "mean",
+            },
         ]
 
         classification_model_kwargs = [
             {"model_name": "single_layer_classifier", "in_dim": in_dim, "num_classes": num_classes},
-            {"model_name": "multi_layer_classifier", "in_dim": in_dim, "num_classes": num_classes,
-             "h_dim": h_dim, "num_layers": num_layers}
+            {
+                "model_name": "multi_layer_classifier",
+                "in_dim": in_dim,
+                "num_classes": num_classes,
+                "h_dim": h_dim,
+                "num_layers": num_layers,
+            },
         ]
 
-        classification_kwargs = list(itertools.product(classification_dataset_kwargs,
-                                                       classification_model_kwargs))
+        classification_kwargs = list(itertools.product(classification_dataset_kwargs, classification_model_kwargs))
 
         # Define regression kwargs
         regression_dataset_kwargs = [
-            {"dataset_name": "regression_dataset", "size": size,
-             "in_dim": in_dim, "out_dim": out_dim}
+            {"dataset_name": "regression_dataset", "size": size, "in_dim": in_dim, "out_dim": out_dim,}
         ]
 
         regression_model_kwargs = [
             {"model_name": "single_layer_regressor", "in_dim": in_dim, "out_dim": out_dim},
-            {"model_name": "multi_layer_regressor", "in_dim": in_dim, "out_dim": out_dim,
-             "h_dim": h_dim, "num_layers": num_layers}
+            {
+                "model_name": "multi_layer_regressor",
+                "in_dim": in_dim,
+                "out_dim": out_dim,
+                "h_dim": h_dim,
+                "num_layers": num_layers,
+            },
         ]
 
-        regression_kwargs = list(itertools.product(regression_dataset_kwargs,
-                                                   regression_model_kwargs))
+        regression_kwargs = list(itertools.product(regression_dataset_kwargs, regression_model_kwargs))
 
         all_kwargs = {"classification": classification_kwargs, "regression": regression_kwargs}
         return all_kwargs
 
-    def _test_partial_saving_loading_model(
-        self,
-        loss_criterion: str,
-        eval_criterion: str,
-        **model_kwargs
-    ) -> None:
+    def _test_partial_saving_loading_model(self, loss_criterion: str, eval_criterion: str, **model_kwargs) -> None:
         """
         Test saving and loading of just the model.
         """
@@ -130,15 +144,9 @@ class TestTrainUtils(unittest.TestCase):
         model_state_dict_orig = model.state_dict()
         checkpoint_file = train_utils.save_model(model, self.config, 1)
         return_dict = train_utils.load_model(model, self.config, checkpoint_file)
-        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig,
-                        return_dict["model"].state_dict()))
+        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig, return_dict["model"].state_dict()))
 
-    def _test_full_saving_loading_model(
-        self,
-        loss_criterion: str,
-        eval_criterion: str,
-        **model_kwargs
-    ) -> None:
+    def _test_full_saving_loading_model(self, loss_criterion: str, eval_criterion: str, **model_kwargs) -> None:
         """
         Test saving and loading of model alongwith
         other objects, e.g. optimizer, scheduler, etc.
@@ -152,12 +160,9 @@ class TestTrainUtils(unittest.TestCase):
         # Ensure that original model state dict matches the
         # one obtained from saving and then loading the model
         model_state_dict_orig = model.state_dict()
-        checkpoint_file = train_utils.save_model(model, self.config, 1, train_logger,
-                                                 val_logger, optimizer, scheduler)
-        return_dict = train_utils.load_model(model, self.config, checkpoint_file,
-                                             optimizer, scheduler)
-        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig,
-                        return_dict["model"].state_dict()))
+        checkpoint_file = train_utils.save_model(model, self.config, 1, train_logger, val_logger, optimizer, scheduler)
+        return_dict = train_utils.load_model(model, self.config, checkpoint_file, optimizer, scheduler)
+        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig, return_dict["model"].state_dict()))
 
     def _test_train_model(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
         """
@@ -168,11 +173,18 @@ class TestTrainUtils(unittest.TestCase):
 
         # Train model
         train_utils.train_model(
-            return_dict["model"], self.config, return_dict["train_loader"],
-            return_dict["val_loader"], return_dict["optimizer"],
-            return_dict["loss_criterion_train"], return_dict["loss_criterion_test"],
-            return_dict["eval_criteria"], return_dict["train_logger"], return_dict["val_logger"],
-            self.config.epochs, return_dict["scheduler"]
+            return_dict["model"],
+            self.config,
+            return_dict["train_loader"],
+            return_dict["val_loader"],
+            return_dict["optimizer"],
+            return_dict["loss_criterion_train"],
+            return_dict["loss_criterion_test"],
+            return_dict["eval_criteria"],
+            return_dict["train_logger"],
+            return_dict["val_logger"],
+            self.config.epochs,
+            return_dict["scheduler"],
         )
 
     def _test_get_all_predictions(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
@@ -183,11 +195,12 @@ class TestTrainUtils(unittest.TestCase):
         return_dict = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
 
         # Get all predictions
-        outputs_val, preds_val, probs_val = \
-            train_utils.get_all_predictions(return_dict["model"], return_dict["val_loader"],
-                                            self.config.device)
-        train_utils.get_all_predictions(return_dict["model"], return_dict["val_loader"],
-                                        self.config.device, threshold_prob=0.8)
+        outputs_val, preds_val, probs_val = train_utils.get_all_predictions(
+            return_dict["model"], return_dict["val_loader"], self.config.device
+        )
+        train_utils.get_all_predictions(
+            return_dict["model"], return_dict["val_loader"], self.config.device, threshold_prob=0.8
+        )
 
         # Ensure shape of predictions is correct
         self.assertEqual(len(outputs_val), len(return_dict["val_loader"].dataset))
@@ -232,19 +245,14 @@ class TestTrainUtils(unittest.TestCase):
             "train_batch_size_per_gpu": 5,
             "eval_batch_size_per_gpu": 5,
             "test_batch_size_per_gpu": 5,
-            "epochs": 1
+            "epochs": 1,
         }
 
         if dictionary is None:
             return cls.default_config_dict
         return {**cls.default_config_dict, **dictionary}
 
-    def _get_training_objects(
-        self,
-        loss_criterion: str,
-        eval_criterion: str,
-        **kwargs
-    ) -> _StringDict:
+    def _get_training_objects(self, loss_criterion: str, eval_criterion: str, **kwargs) -> _StringDict:
         """
         Get all objects required for training, like
         model, dataloaders, loggers, optimizer, etc.
@@ -273,8 +281,9 @@ class TestTrainUtils(unittest.TestCase):
             self.config.classification_type = "multilabel"
             self.config.loss_kwargs["multilabel_reduction"] = multilabel_reduction
             self.config.eval_criteria_kwargs["multilabel_reduction"] = multilabel_reduction
-        loss_criterion_train, loss_criterion_test, eval_criteria = \
-            get_loss_eval_criteria(self.config, reduction="mean")
+        loss_criterion_train, loss_criterion_test, eval_criteria = get_loss_eval_criteria(
+            self.config, reduction="mean"
+        )
 
         training_objects = {
             "train_loader": train_loader,
@@ -286,7 +295,7 @@ class TestTrainUtils(unittest.TestCase):
             "scheduler": scheduler,
             "loss_criterion_train": loss_criterion_train,
             "loss_criterion_test": loss_criterion_test,
-            "eval_criteria": eval_criteria
+            "eval_criteria": eval_criteria,
         }
         return training_objects
 
@@ -297,10 +306,8 @@ class TestTrainUtils(unittest.TestCase):
         dataset_name = kwargs.pop("dataset_name")
         dataset_config = BaseDatasetConfig(kwargs)
         dataset = create_dataset(dataset_name, dataset_config)
-        train_loader = DataLoader(dataset, shuffle=True,
-                                  batch_size=self.config.train_batch_size_per_gpu)
-        val_loader = DataLoader(dataset, shuffle=False,
-                                batch_size=self.config.eval_batch_size_per_gpu)
+        train_loader = DataLoader(dataset, shuffle=True, batch_size=self.config.train_batch_size_per_gpu)
+        val_loader = DataLoader(dataset, shuffle=False, batch_size=self.config.eval_batch_size_per_gpu)
         return train_loader, val_loader
 
     def _get_model(self, **kwargs) -> nn.Module:
@@ -327,11 +334,7 @@ class TestTrainUtils(unittest.TestCase):
         scheduler = ReduceLROnPlateau(optimizer)
         return scheduler
 
-    def _get_loggers(
-        self,
-        loss_criterion: str,
-        eval_criterion: str
-    ) -> Tuple[utils.ModelTracker, utils.ModelTracker]:
+    def _get_loggers(self, loss_criterion: str, eval_criterion: str) -> Tuple[utils.ModelTracker, utils.ModelTracker]:
         """
         Get training and validation
         loggers and feed in some dummy
@@ -342,8 +345,9 @@ class TestTrainUtils(unittest.TestCase):
         self.config.early_stopping_criterion = eval_criterion
         train_logger, val_logger = utils.get_model_performance_trackers(self.config)
         train_logger.add_metrics(np.random.randn(10), {eval_criterion: np.random.randn(10)})
-        val_logger.add_metrics(np.random.randn(self.config.epochs),
-                               {eval_criterion: np.random.randn(self.config.epochs)})
+        val_logger.add_metrics(
+            np.random.randn(self.config.epochs), {eval_criterion: np.random.randn(self.config.epochs)},
+        )
         val_logger.set_best_epoch(1)
 
         return train_logger, val_logger

@@ -14,13 +14,34 @@ from torch.optim.optimizer import Optimizer
 
 from pytorch_common import timing
 from .utils import (
-    get_file_path, get_model_outputs_only, send_batch_to_device, send_model_to_device,
-    send_optimizer_to_device, remove_object, get_checkpoint_name, ModelTracker
+    get_file_path,
+    get_model_outputs_only,
+    send_batch_to_device,
+    send_model_to_device,
+    send_optimizer_to_device,
+    remove_object,
+    get_checkpoint_name,
+    ModelTracker,
 )
 from .types import (
-    List, Tuple, Dict, Optional, Union, _StringDict, _Config, _Device,
-    _Batch, _Loss, _TensorOrTensors, _EvalCriterionOrCriteria, _TrainResult,
-    _EvalResult, _TestResult, _DecoupleFnTrain, _DecoupleFnTest, _DecoupleFn
+    List,
+    Tuple,
+    Dict,
+    Optional,
+    Union,
+    _StringDict,
+    _Config,
+    _Device,
+    _Batch,
+    _Loss,
+    _TensorOrTensors,
+    _EvalCriterionOrCriteria,
+    _TrainResult,
+    _EvalResult,
+    _TestResult,
+    _DecoupleFnTrain,
+    _DecoupleFnTest,
+    _DecoupleFn,
 )
 
 
@@ -42,7 +63,7 @@ def train_model(
     config_info_dict: Optional[_StringDict] = None,
     start_epoch: Optional[int] = 0,
     decouple_fn_train: Optional[_DecoupleFnTrain] = None,
-    decouple_fn_eval: Optional[_DecoupleFnTrain] = None
+    decouple_fn_eval: Optional[_DecoupleFnTrain] = None,
 ) -> _StringDict:
     """
     Perform the entire model training routine.
@@ -92,7 +113,7 @@ def train_model(
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file = ""
     best_model: Optional[nn.Module] = None
-    for epoch in range(1+start_epoch, 1+start_epoch+epochs):
+    for epoch in range(1 + start_epoch, 1 + start_epoch + epochs):
         try:
             # Train epoch
             train_losses = train_epoch(
@@ -103,7 +124,7 @@ def train_model(
                 epoch=epoch,
                 optimizer=optimizer,
                 scheduler=scheduler if config.use_scheduler_after_step else None,
-                decouple_fn=decouple_fn_train
+                decouple_fn=decouple_fn_train,
             )
 
             # Evaluate on training set
@@ -113,7 +134,7 @@ def train_model(
                 device=config.device,
                 loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
-                decouple_fn=decouple_fn_eval
+                decouple_fn=decouple_fn_eval,
             )
             # Add train losses+eval metrics, and log them
             train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
@@ -125,7 +146,7 @@ def train_model(
                 device=config.device,
                 loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
-                decouple_fn=decouple_fn_eval
+                decouple_fn=decouple_fn_eval,
             )
             # Add val losses+eval metrics, and log them
             val_logger.add_and_log_metrics(val_losses, eval_metrics_val)
@@ -140,8 +161,9 @@ def train_model(
             # Set best epoch
             # Check if current epoch better than previous best based
             # on early stopping (if used) or all epoch history
-            if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric))\
-                or (not config.use_early_stopping and epoch == val_logger.get_overall_best_epoch()):
+            if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric)) or (
+                not config.use_early_stopping and epoch == val_logger.get_overall_best_epoch()
+            ):
                 logging.info("Computing best epoch and adding to validation logger...")
                 val_logger.set_best_epoch(epoch)
                 logging.info("Done.")
@@ -149,9 +171,9 @@ def train_model(
                 # Replace model checkpoint if required
                 if not config.disable_checkpointing:
                     logging.info("Replacing current best model checkpoint...")
-                    best_checkpoint_file = save_model(model, config, epoch, train_logger,
-                                                      val_logger, optimizer, scheduler,
-                                                      config_info_dict)
+                    best_checkpoint_file = save_model(
+                        model, config, epoch, train_logger, val_logger, optimizer, scheduler, config_info_dict,
+                    )
                     remove_model(config, best_epoch, config_info_dict)
                     best_epoch = epoch
                     logging.info("Done.")
@@ -162,29 +184,47 @@ def train_model(
                 logging.info(f"Stopping early after {stop_epoch} epochs.")
                 break
 
-            stop_epoch = epoch # Update last epoch trained
-        except KeyboardInterrupt: # Option to quit training with keyboard interrupt
+            stop_epoch = epoch  # Update last epoch trained
+        except KeyboardInterrupt:  # Option to quit training with keyboard interrupt
             logging.warning("Keyboard Interrupted!")
-            stop_epoch = epoch - 1 # Current epoch training incomplete
+            stop_epoch = epoch - 1  # Current epoch training incomplete
             break
 
     # Save the model checkpoints
     if not config.disable_checkpointing:
         logging.info("Dumping model and results...")
-        save_model(model, config, stop_epoch, train_logger, val_logger,
-                   optimizer, scheduler, config_info_dict)
+        save_model(
+            model, config, stop_epoch, train_logger, val_logger, optimizer, scheduler, config_info_dict,
+        )
 
         # Save current and best models
-        save_model(model.copy(), config, stop_epoch, train_logger, val_logger,
-                   optimizer, scheduler, config_info_dict, checkpoint_type="model")
+        save_model(
+            model.copy(),
+            config,
+            stop_epoch,
+            train_logger,
+            val_logger,
+            optimizer,
+            scheduler,
+            config_info_dict,
+            checkpoint_type="model",
+        )
         if best_checkpoint_file != "":
-            checkpoint = load_model(model.copy(), config, best_checkpoint_file,
-                                    optimizer, scheduler)
+            checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
             best_model = checkpoint["model"]
             optimizer, scheduler = checkpoint["optimizer"], checkpoint["scheduler"]
-            checkpoint = None # Free up memory
-            save_model(best_model, config, best_epoch, train_logger, val_logger,
-                       optimizer, scheduler, config_info_dict, checkpoint_type="model")
+            checkpoint = None  # Free up memory
+            save_model(
+                best_model,
+                config,
+                best_epoch,
+                train_logger,
+                val_logger,
+                optimizer,
+                scheduler,
+                config_info_dict,
+                checkpoint_type="model",
+            )
         logging.info("Done.")
 
     return_dict = {
@@ -196,9 +236,10 @@ def train_model(
         "scheduler": scheduler,
         "stop_epoch": stop_epoch,
         "best_epoch": best_epoch,
-        "best_checkpoint_file": best_checkpoint_file
+        "best_checkpoint_file": best_checkpoint_file,
     }
     return return_dict
+
 
 def train_epoch(
     model: nn.Module,
@@ -208,17 +249,25 @@ def train_epoch(
     epoch: int,
     optimizer: Optimizer,
     scheduler: Optional[object] = None,
-    decouple_fn: Optional[_DecoupleFnTrain] = None
+    decouple_fn: Optional[_DecoupleFnTrain] = None,
 ) -> _TrainResult:
     """
     Perform one training epoch and return the loss per example
     for each iteration.
     See `perform_one_epoch()` for more details.
     """
-    return perform_one_epoch("train", model, dataloader, device,
-                             loss_criterion=loss_criterion,
-                             epoch=epoch, optimizer=optimizer,
-                             scheduler=scheduler, decouple_fn=decouple_fn)
+    return perform_one_epoch(
+        "train",
+        model,
+        dataloader,
+        device,
+        loss_criterion=loss_criterion,
+        epoch=epoch,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        decouple_fn=decouple_fn,
+    )
+
 
 @torch.no_grad()
 def evaluate_epoch(
@@ -227,7 +276,7 @@ def evaluate_epoch(
     device: _Device,
     loss_criterion: _Loss,
     eval_criteria: _EvalCriterionOrCriteria,
-    decouple_fn: Optional[_DecoupleFnTrain] = None
+    decouple_fn: Optional[_DecoupleFnTrain] = None,
 ) -> _EvalResult:
     """
     Perform one evaluation epoch and return the loss per example
@@ -235,10 +284,16 @@ def evaluate_epoch(
     the true targets.
     See `perform_one_epoch()` for more details.
     """
-    return perform_one_epoch("eval", model, dataloader, device,
-                             loss_criterion=loss_criterion,
-                             eval_criteria=eval_criteria,
-                             decouple_fn=decouple_fn)
+    return perform_one_epoch(
+        "eval",
+        model,
+        dataloader,
+        device,
+        loss_criterion=loss_criterion,
+        eval_criteria=eval_criteria,
+        decouple_fn=decouple_fn,
+    )
+
 
 @torch.no_grad()
 def get_all_predictions(
@@ -246,7 +301,7 @@ def get_all_predictions(
     dataloader: DataLoader,
     device: _Device,
     threshold_prob: Optional[float] = None,
-    decouple_fn: Optional[_DecoupleFnTest] = None
+    decouple_fn: Optional[_DecoupleFnTest] = None,
 ) -> _TestResult:
     """
     Make predictions on entire dataset and return raw outputs
@@ -254,9 +309,8 @@ def get_all_predictions(
     a classification model.
     See `perform_one_epoch()` for more details.
     """
-    return perform_one_epoch("test", model, dataloader, device,
-                             threshold_prob=threshold_prob,
-                             decouple_fn=decouple_fn)
+    return perform_one_epoch("test", model, dataloader, device, threshold_prob=threshold_prob, decouple_fn=decouple_fn)
+
 
 @timing
 def perform_one_epoch(
@@ -270,7 +324,7 @@ def perform_one_epoch(
     scheduler: Optional[object] = None,
     eval_criteria: Optional[_EvalCriterionOrCriteria] = None,
     threshold_prob: Optional[float] = None,
-    decouple_fn: Optional[_DecoupleFn] = None
+    decouple_fn: Optional[_DecoupleFn] = None,
 ) -> Union[_TrainResult, _EvalResult, _TestResult]:
     """
     Common loop for one training / evaluation / testing epoch on the entire dataset.
@@ -299,12 +353,10 @@ def perform_one_epoch(
 
     # Check presence of required arguments
     if phase == "train":
-        for param_name, param in zip(["epoch", "optimizer", "loss_criterion"],
-                                     [epoch, optimizer, loss_criterion]):
+        for param_name, param in zip(["epoch", "optimizer", "loss_criterion"], [epoch, optimizer, loss_criterion]):
             assert param is not None, f"Param '{param_name}' must not be None for training."
     elif phase == "eval":
-        for param_name, param in zip(["eval_criteria", "loss_criterion"],
-                                     [eval_criteria, loss_criterion]):
+        for param_name, param in zip(["eval_criteria", "loss_criterion"], [eval_criteria, loss_criterion]):
             assert param is not None, f"Param '{param_name}' must not be None for evaluation."
     elif phase != "test":
         raise ValueError(f"Param 'phase' ('{phase}') must be one of {ALLOWED_PHASES}.")
@@ -341,7 +393,7 @@ def perform_one_epoch(
             # Get inputs for testing
             if phase == "test":
                 inputs = send_batch_to_device(decouple_fn(batch), device)
-            else: # Get inputs and targets for training/evaluation
+            else:  # Get inputs and targets for training/evaluation
                 inputs, targets = send_batch_to_device(decouple_fn(batch), device)
 
             # Reset gradients to zero
@@ -353,8 +405,8 @@ def perform_one_epoch(
             outputs = get_model_outputs_only(model(inputs))
 
             # Store variables for logging
-            num_examples_complete = (batch_idx+1) * batch_size
-            percent_batches_complete = 100. * (batch_idx+1) / num_batches
+            num_examples_complete = (batch_idx + 1) * batch_size
+            percent_batches_complete = 100.0 * (batch_idx + 1) / num_batches
 
             # Store items for testing + print progress
             if phase == "test":
@@ -370,11 +422,10 @@ def perform_one_epoch(
                 # Print progess
                 if batch_idx in batches_to_print:
                     logging.info(
-                        f"{num_examples_complete}/{num_examples} "
-                        f"({percent_batches_complete:.0f}%) complete."
+                        f"{num_examples_complete}/{num_examples} " f"({percent_batches_complete:.0f}%) complete."
                     )
 
-            else: # Perform training / evaluation
+            else:  # Perform training / evaluation
                 # Compute and store loss
                 loss = loss_criterion(outputs, targets)
                 loss_value = loss.item()
@@ -384,7 +435,7 @@ def perform_one_epoch(
                 if phase == "train":
                     # Backprop + clip gradients + take scheduler step
                     loss.backward()
-                    nn.utils.clip_grad_norm_(model.parameters(), 1.)
+                    nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                     optimizer.step()
                     if scheduler is not None:
                         take_scheduler_step(scheduler, loss_value)
@@ -396,7 +447,7 @@ def perform_one_epoch(
                             f"({percent_batches_complete:.0f}%)]\tLoss: {loss_value:.6f}"
                         )
 
-                else: # Store items for evaluation
+                else:  # Store items for evaluation
                     outputs, targets = send_batch_to_device((outputs, targets), "cpu")
                     outputs_hist.append(outputs)
                     targets_hist.append(targets)
@@ -406,15 +457,16 @@ def perform_one_epoch(
         optimizer.zero_grad()
         model.zero_grad()
 
-    elif phase == "eval": # Perform evaluation on whole dataset
+    elif phase == "eval":  # Perform evaluation on whole dataset
         outputs_hist = torch.cat(outputs_hist, dim=0)
         targets_hist = torch.cat(targets_hist, dim=0)
 
         # Compute all evaluation criteria
-        eval_metrics = {eval_criterion: eval_fn(outputs_hist, targets_hist) \
-                        for eval_criterion, eval_fn in eval_criteria.items()}
+        eval_metrics = {
+            eval_criterion: eval_fn(outputs_hist, targets_hist) for eval_criterion, eval_fn in eval_criteria.items()
+        }
 
-    else: # Get outputs, predictions, probabilities
+    else:  # Get outputs, predictions, probabilities
         outputs_hist = torch.stack(outputs_hist, dim=0)
         if model.model_type == "classification":
             preds_hist = torch.stack(preds_hist, dim=0)
@@ -427,6 +479,7 @@ def perform_one_epoch(
         return loss_hist, eval_metrics, outputs_hist, targets_hist
     else:
         return outputs_hist, preds_hist, probs_hist
+
 
 def decouple_batch_train(batch: _Batch) -> Tuple[_Batch]:
     """
@@ -443,6 +496,7 @@ def decouple_batch_train(batch: _Batch) -> Tuple[_Batch]:
     inputs, targets = batch[:2]
     return inputs, targets
 
+
 def decouple_batch_test(batch: _Batch) -> _Batch:
     """
     Extract and return just the inputs
@@ -458,6 +512,7 @@ def decouple_batch_test(batch: _Batch) -> _Batch:
         return batch[0]
     return batch
 
+
 def take_scheduler_step(scheduler: object, val_metric: Optional[float] = None) -> None:
     """
     Take a scheduler step.
@@ -469,11 +524,11 @@ def take_scheduler_step(scheduler: object, val_metric: Optional[float] = None) -
 
     scheduler_name = scheduler.__class__.__name__
     if scheduler_name in REQUIRE_VAL_METRIC:
-        assert val_metric is not None, (f"Param 'val_metric' must be provided "
-                                        f"for '{scheduler_name}' scheduler.")
+        assert val_metric is not None, f"Param 'val_metric' must be provided " f"for '{scheduler_name}' scheduler."
         scheduler.step(val_metric)
     else:
         scheduler.step()
+
 
 def save_model(
     model: nn.Module,
@@ -484,7 +539,7 @@ def save_model(
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,
     config_info_dict: Optional[_StringDict] = None,
-    checkpoint_type: Optional[str] = "state"
+    checkpoint_type: Optional[str] = "state",
 ) -> str:
     """
     Save the checkpoint at a given epoch.
@@ -513,15 +568,13 @@ def save_model(
     logging.info(f"Saving {checkpoint_type} checkpoint '{checkpoint_path}'...")
 
     # Generate appropriate checkpoint dictionary
-    checkpoint = generate_checkpoint_dict(config, epoch, train_logger,
-                                          val_logger, optimizer, scheduler)
+    checkpoint = generate_checkpoint_dict(config, epoch, train_logger, val_logger, optimizer, scheduler)
 
     # Save model in appropriate way
     if checkpoint_type == "state":
-        checkpoint["model"] = model.module.state_dict() if hasattr(model, "module") \
-                              else model.state_dict()
+        checkpoint["model"] = model.module.state_dict() if hasattr(model, "module") else model.state_dict()
     else:
-        checkpoint["model"] = send_model_to_device(model, "cpu") # Save model on CPU
+        checkpoint["model"] = send_model_to_device(model, "cpu")  # Save model on CPU
 
     # `dill` is used when a model has serialization issues, e.g. that
     # caused by having a lambda function as an attribute of the model.
@@ -538,13 +591,14 @@ def save_model(
     logging.info("Done.")
     return checkpoint_file
 
+
 def generate_checkpoint_dict(
     config: _Config,
     epoch: int,
     train_logger: Optional[ModelTracker] = None,
     val_logger: Optional[ModelTracker] = None,
     optimizer: Optional[Optimizer] = None,
-    scheduler: Optional[object] = None
+    scheduler: Optional[object] = None,
 ) -> Dict[str, Union[_Config, int, ModelTracker, OrderedDict[str, _TensorOrTensors]]]:
     """
     Generate a dictionary for storing a checkpoint.
@@ -556,20 +610,17 @@ def generate_checkpoint_dict(
           and eval metrics so far (if provided)
         - Optimizer and scheduler state dicts (if provided)
     """
-    checkpoint = {
-        "config": config, # Good practice to store config too
-        "epoch": epoch
-    }
+    checkpoint = {"config": config, "epoch": epoch}  # Good practice to store config too
 
     # Save items if provided
     for name, obj in zip(
-        ("train_logger", "val_logger", "optimizer", "scheduler"),
-        (train_logger, val_logger, optimizer, scheduler)
+        ("train_logger", "val_logger", "optimizer", "scheduler"), (train_logger, val_logger, optimizer, scheduler),
     ):
         if obj is not None:
             checkpoint[name] = obj if name in ["train_logger", "val_logger"] else obj.state_dict()
 
     return checkpoint
+
 
 def load_model(
     model: nn.Module,
@@ -577,7 +628,7 @@ def load_model(
     checkpoint_file: str,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,
-    checkpoint_type: Optional[str] = "state"
+    checkpoint_type: Optional[str] = "state",
 ) -> _StringDict:
     """
     Load the checkpoint at a given epoch.
@@ -619,13 +670,13 @@ def load_model(
             checkpoint = torch.load(checkpoint_path, map_location=config.device, pickle_module=dill)
 
         # Load model in appropriate way
-        if checkpoint_type == "state": # Load state dict
+        if checkpoint_type == "state":  # Load state dict
             assert model is not None
             if hasattr(model, "module"):
                 model.module.load_state_dict(checkpoint["model"])
             else:
                 model.load_state_dict(checkpoint["model"])
-        else: # Load entire model
+        else:  # Load entire model
             assert model is None
             model = checkpoint["model"]
 
@@ -636,9 +687,10 @@ def load_model(
         epoch_trained = int(os.path.splitext(checkpoint_file)[0].split("-epoch_")[-1])
 
         # Verify consistency of last epoch trained
-        assert epoch_trained == checkpoint["epoch"], \
-            (f"Mismatch between epoch specified in checkpoint path ('{epoch_trained}'), "
-             f"epoch specified at saving time ('{checkpoint['epoch']}').")
+        assert epoch_trained == checkpoint["epoch"], (
+            f"Mismatch between epoch specified in checkpoint path ('{epoch_trained}'), "
+            f"epoch specified at saving time ('{checkpoint['epoch']}')."
+        )
 
         # Load train / val loggers if provided
         train_logger, val_logger = checkpoint.get("train_logger"), checkpoint.get("val_logger")
@@ -658,8 +710,7 @@ def load_model(
             )
 
         # Load optimizer and scheduler state dicts if provided
-        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device,
-                                                            optimizer, scheduler)
+        optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, optimizer, scheduler)
 
         logging.info("Done.")
 
@@ -674,24 +725,25 @@ def load_model(
         "train_logger": train_logger,
         "val_logger": val_logger,
         "optimizer": optimizer,
-        "scheduler": scheduler
+        "scheduler": scheduler,
     }
     return return_dict
+
 
 def load_optimizer_and_scheduler(
     checkpoint: _StringDict,
     device: _Device,
     optimizer: Optional[Optimizer] = None,
-    scheduler: Optional[object] = None
+    scheduler: Optional[object] = None,
 ) -> Tuple[Optional[Optimizer], Optional[object]]:
     """
     Load the state dict of a given optimizer
     and scheduler (if they're provided).
     Helper function for `load_model()`.
     """
+
     def load_state_dict(
-        obj: Union[Optimizer, object],
-        key: str = "optimizer"
+        obj: Union[Optimizer, object], key: str = "optimizer"
     ) -> Union[Optional[Optimizer], Optional[object]]:
         """
         Properly load state dict of optimizer/scheduler.
@@ -700,10 +752,7 @@ def load_optimizer_and_scheduler(
         if state_dict is not None:
             obj.load_state_dict(state_dict)
         else:
-            raise KeyError(
-                f"{key} argument expected its state dict in "
-                f"the loaded checkpoint but none was found."
-            )
+            raise KeyError(f"{key} argument expected its state dict in " f"the loaded checkpoint but none was found.")
         return obj
 
     # Load optimizer
@@ -717,11 +766,12 @@ def load_optimizer_and_scheduler(
 
     return optimizer, scheduler
 
+
 def remove_model(
     config: _Config,
     epoch: Optional[int],
     config_info_dict: Optional[_StringDict] = None,
-    checkpoint_type: Optional[str] = "state"
+    checkpoint_type: Optional[str] = "state",
 ) -> None:
     """
     Remove a checkpoint/model at a given epoch.
@@ -746,28 +796,27 @@ def remove_model(
         remove_object(checkpoint_path)
         logging.info("Done.")
 
-def validate_checkpoint_type(
-    checkpoint_type: str,
-    checkpoint_file: Optional[str] = None
-) -> None:
+
+def validate_checkpoint_type(checkpoint_type: str, checkpoint_file: Optional[str] = None) -> None:
     """
     Check that the passed `checkpoint_type`
     is valid and matches that obtained from
     `checkpoint_file`, if provided.
     """
     ALLOWED_CHECKPOINT_TYPES = ["state", "model"]
-    assert checkpoint_type in ALLOWED_CHECKPOINT_TYPES, \
-        (f"Param 'checkpoint_type' ('{checkpoint_type}') "
-         f"must be one of {ALLOWED_CHECKPOINT_TYPES}.")
+    assert checkpoint_type in ALLOWED_CHECKPOINT_TYPES, (
+        f"Param 'checkpoint_type' ('{checkpoint_type}') " f"must be one of {ALLOWED_CHECKPOINT_TYPES}."
+    )
 
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
         file_checkpoint_type = checkpoint_file.split("-", 3)[1]
-        assert file_checkpoint_type == checkpoint_type, \
-            (f"The type of checkpoint provided in param "
-             f"'checkpoint_type' ('{checkpoint_type}') does "
-             f"not match that obtained from the model at "
-             f"'{checkpoint_file}' ('{file_checkpoint_type}').")
+        assert file_checkpoint_type == checkpoint_type, (
+            f"The type of checkpoint provided in param "
+            f"'checkpoint_type' ('{checkpoint_type}') does "
+            f"not match that obtained from the model at "
+            f"'{checkpoint_file}' ('{file_checkpoint_type}')."
+        )
 
 
 class EarlyStopping(object):
@@ -779,17 +828,18 @@ class EarlyStopping(object):
     ineherently supported, so specifying
     their params is optional.
     """
+
     SUPPORTED_CRITERIA = ["mse", "accuracy", "precision", "recall", "f1", "auc"]
-    SUPPORTED_MODES = {"minimize": 0., "maximize": 1.}
+    SUPPORTED_MODES = {"minimize": 0.0, "maximize": 1.0}
     CRITERIA_MODE_DICT = {
         "mse": "minimize",
         "accuracy": "maximize",
         "precision": "maximize",
         "recall": "maximize",
         "f1": "maximize",
-        "auc": "maximize"
+        "auc": "maximize",
     }
-    DEFAULT_PARAMS = {"min_delta": 0.2*1e-3, "patience": 5, "best_val_tol": 5e-3}
+    DEFAULT_PARAMS = {"min_delta": 0.2 * 1e-3, "patience": 5, "best_val_tol": 5e-3}
 
     def __init__(
         self,
@@ -798,7 +848,7 @@ class EarlyStopping(object):
         min_delta: Optional[float] = None,
         patience: Optional[int] = None,
         best_val: Optional[float] = None,
-        best_val_tol: Optional[float] = None
+        best_val_tol: Optional[float] = None,
     ):
         """
         :param criterion: Name of early stopping criterion
@@ -812,8 +862,9 @@ class EarlyStopping(object):
                              This must be provided if `best_val` is provided
         """
         self.criterion = criterion
-        self._init_params(mode=mode, min_delta=min_delta, patience=patience,
-                          best_val=best_val, best_val_tol=best_val_tol)
+        self._init_params(
+            mode=mode, min_delta=min_delta, patience=patience, best_val=best_val, best_val_tol=best_val_tol,
+        )
         self._validate_params()
         self.best: Optional[float] = None
         self.num_bad_epochs = 0
@@ -842,9 +893,11 @@ class EarlyStopping(object):
             # Non-default params must be provided for unsupported criteria
             for k, v in kwargs.items():
                 if k not in self.DEFAULT_PARAMS.keys():
-                    assert v is not None, (f"The only criteria currently supported by "
-                                           f"default are {self.SUPPORTED_CRITERIA}, "
-                                           f"and hence param '{k}' is required.")
+                    assert v is not None, (
+                        f"The only criteria currently supported by "
+                        f"default are {self.SUPPORTED_CRITERIA}, "
+                        f"and hence param '{k}' is required."
+                    )
 
         # Finally set values and validate them
         for k, v in kwargs.items():
@@ -864,7 +917,7 @@ class EarlyStopping(object):
         """
         Check if the provided `metric` is the best one so far.
         """
-        if self.best is None: # After first step
+        if self.best is None:  # After first step
             return True
         if self.mode == "minimize":
             return metric < self.best - self.min_delta
@@ -874,21 +927,21 @@ class EarlyStopping(object):
         """
         Check if early stopping criterion met.
         """
-        if self.best is None: # First step
+        if self.best is None:  # First step
             self.best = metric
             return False
 
         if np.isnan(metric):
             return True
 
-        if self.is_better(metric): # Reset patience counter if better
+        if self.is_better(metric):  # Reset patience counter if better
             self.num_bad_epochs = 0
             self.best = metric
-        else: # Otherwise increment counter by 1
+        else:  # Otherwise increment counter by 1
             self.num_bad_epochs += 1
 
         # Check if already reached max value
-        if self.best_val is not None and np.abs(self.best_val-metric) < self.best_val_tol:
+        if self.best_val is not None and np.abs(self.best_val - metric) < self.best_val_tol:
             return True
 
         # Check if patience counter reached

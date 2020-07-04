@@ -2,7 +2,10 @@ import torch.nn as nn
 
 from .utils import get_file_path
 from .models_dl import (
-    SingleLayerClassifier, MultiLayerClassifier, SingleLayerRegressor, MultiLayerRegressor
+    SingleLayerClassifier,
+    MultiLayerClassifier,
+    SingleLayerRegressor,
+    MultiLayerRegressor,
 )
 from .additional_configs import BaseModelConfig
 from .types import Optional
@@ -27,10 +30,8 @@ def create_model(model_name: str, config: Optional[BaseModelConfig] = None) -> n
         raise RuntimeError(f"Unknown model name {model_name}.")
     return model
 
-def create_transformer_model(
-    model_name: str,
-    config: Optional[BaseModelConfig] = None
-) -> nn.Module:
+
+def create_transformer_model(model_name: str, config: Optional[BaseModelConfig] = None) -> nn.Module:
     """
     Create a transformer model (e.g. BERT) either using the
     default pretrained model or using the provided config.
@@ -41,20 +42,19 @@ def create_transformer_model(
     # Import here because it's an optional dependency
     from transformers import AutoConfig, AutoModel
 
-    if config is not None and hasattr(config, "output_dir"): # Load trained model from config
+    if config is not None and hasattr(config, "output_dir"):  # Load trained model from config
         kwargs = {
-            "pretrained_model_name_or_path": get_file_path(config.output_dir,
-                                                           config.model_name_or_path),
+            "pretrained_model_name_or_path": get_file_path(config.output_dir, config.model_name_or_path),
             "from_tf": False,
-            "config": AutoConfig.from_pretrained(get_file_path(config.output_dir,
-                                                               config.model_config_path))
+            "config": AutoConfig.from_pretrained(get_file_path(config.output_dir, config.model_config_path)),
         }
         model = AutoModel.from_pretrained(**kwargs)
 
-    else: # Load default pre-trained model
+    else:  # Load default pre-trained model
         model = AutoModel.from_pretrained(model_name)
 
     return model
+
 
 def is_transformer_model(model_name: str) -> bool:
     """
@@ -65,6 +65,7 @@ def is_transformer_model(model_name: str) -> bool:
     try:
         # Import here because it's an optional dependency
         from transformers import AutoConfig
+
         config = AutoConfig.from_pretrained(model_name)
         return True
     except OSError:

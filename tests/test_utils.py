@@ -15,11 +15,12 @@ class TestUtils(unittest.TestCase):
         Test saving/loading of different
         files (pickle, dill, yaml).
         """
+
         def _test_module_file_handling(
             data: Union[np.ndarray, Dict],
             primary_path: str,
             file_name: Optional[str] = None,
-            module: Optional[str] = "pickle"
+            module: Optional[str] = "pickle",
         ) -> None:
             """
             Test saving/loading of a
@@ -47,13 +48,15 @@ class TestUtils(unittest.TestCase):
 
         # Initialize dummy directory and data
         primary_path = "dummy_dir"
-        dummy_np_data = np.random.randn(10,10)
+        dummy_np_data = np.random.randn(10, 10)
         dummy_yaml_data = {"x": 1, "y": 2, "z": 3}
 
         # Test file handling for all file types
-        for data, file_name, module in zip([dummy_np_data, dummy_np_data, dummy_yaml_data],
-                                           ["dummy_data.pkl", "dummy_data.pkl", "dummy_data.yaml"],
-                                           ["pickle", "dill", "yaml"]):
+        for data, file_name, module in zip(
+            [dummy_np_data, dummy_np_data, dummy_yaml_data],
+            ["dummy_data.pkl", "dummy_data.pkl", "dummy_data.yaml"],
+            ["pickle", "dill", "yaml"],
+        ):
             # Test directly with `file_name`
             _test_module_file_handling(data, file_name, module=module)
 
@@ -149,7 +152,7 @@ class TestUtils(unittest.TestCase):
         Test sending of batch to different devices.
         """
         # Define batch
-        a, b, c = [1,2,3], [4,5,6], [7,8,9]
+        a, b, c = [1, 2, 3], [4, 5, 6], [7, 8, 9]
         batch = self._get_batch(a, b, c, batch_type=torch.tensor, device="cpu")
 
         if torch.cuda.is_available():
@@ -171,19 +174,17 @@ class TestUtils(unittest.TestCase):
         tensor(s) to numpy array(s).
         """
         # Define numpy and torch batches
-        a, b, c = [1.5,2,3], [4,-5,6], [7,0,9]
+        a, b, c = [1.5, 2, 3], [4, -5, 6], [7, 0, 9]
         batch_np = self._get_batch(a, b, c, batch_type=np.array)
         batch_torch = self._get_batch(a, b, c, batch_type=torch.tensor, device="cpu")
 
         # Compare contents of both batches
-        self.assertTrue(utils.compare_tensors_or_arrays(batch_np,
-                        utils.convert_tensor_to_numpy(batch_torch)))
+        self.assertTrue(utils.compare_tensors_or_arrays(batch_np, utils.convert_tensor_to_numpy(batch_torch)))
 
         if torch.cuda.is_available():
             # Compare contents of both batches when tensor is on GPU
             batch_torch_cuda = utils.send_batch_to_device(batch_torch, "cuda")
-            self.assertTrue(utils.compare_tensors_or_arrays(batch_np,
-                            utils.convert_tensor_to_numpy(batch_torch_cuda)))
+            self.assertTrue(utils.compare_tensors_or_arrays(batch_np, utils.convert_tensor_to_numpy(batch_torch_cuda)))
 
     def test_convert_numpy_to_tensor(self):
         """
@@ -191,13 +192,12 @@ class TestUtils(unittest.TestCase):
         array(s) to torch tensor(s).
         """
         # Define numpy and torch batches
-        a, b, c = [1.5,2,3], [4,-5,6], [7,0,9]
+        a, b, c = [1.5, 2, 3], [4, -5, 6], [7, 0, 9]
         batch_np = self._get_batch(a, b, c, batch_type=np.array)
         batch_torch = self._get_batch(a, b, c, batch_type=torch.tensor, device="cpu")
 
         # Compare contents of both batches
-        self.assertTrue(utils.compare_tensors_or_arrays(batch_torch,
-                        utils.convert_numpy_to_tensor(batch_np)))
+        self.assertTrue(utils.compare_tensors_or_arrays(batch_torch, utils.convert_numpy_to_tensor(batch_np)))
 
         if torch.cuda.is_available():
             # Compare contents of both batches when tensor is on GPU

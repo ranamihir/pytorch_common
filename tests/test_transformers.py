@@ -8,6 +8,7 @@ from pytorch_common import utils
 # Check if `transformers` installed
 try:
     from transformers import AutoModel, AutoConfig
+
     TRANSFORMERS_INSTALLED = True
 except ImportError:
     TRANSFORMERS_INSTALLED = False
@@ -42,10 +43,14 @@ class TestTransformerModels(unittest.TestCase):
         """
         # Test that correct `transformers` model is
         # loaded by ensuring that configs match
-        self.assertEqual(create_model("distilbert-base-uncased", None).config,
-                         AutoModel.from_pretrained("distilbert-base-uncased").config)
-        self.assertEqual(create_transformer_model("distilbert-base-uncased", None).config,
-                         AutoModel.from_pretrained("distilbert-base-uncased").config)
+        self.assertEqual(
+            create_model("distilbert-base-uncased", None).config,
+            AutoModel.from_pretrained("distilbert-base-uncased").config,
+        )
+        self.assertEqual(
+            create_transformer_model("distilbert-base-uncased", None).config,
+            AutoModel.from_pretrained("distilbert-base-uncased").config,
+        )
 
         # Check that errror is raised for wrong model
         with self.assertRaises(AssertionError):
@@ -61,13 +66,14 @@ class TestTransformerModels(unittest.TestCase):
         """
         Test `SequencePooler` setup for different configurations.
         """
+
         def get_seq_pooler(model_name: str) -> nn.Module:
             """
             Return the `SequencePooler` for `model_name`.
             """
             if is_transformer_model(model_name):
                 model_type = AutoConfig.from_pretrained(model_name).model_type
-            else: # Pass `model_name` as-is if not `transformers`-based model
+            else:  # Pass `model_name` as-is if not `transformers`-based model
                 model_type = model_name
             return utils.SequencePooler(model_type)
 

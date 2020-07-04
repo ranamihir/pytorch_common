@@ -23,6 +23,7 @@ class BasePyTorchDataset(Dataset):
         But you may set it to the desired column during
         initialization, and rest should work as-is.
     """
+
     def __init__(self):
         """
         Initialize BasePyTorchDataset.
@@ -30,10 +31,10 @@ class BasePyTorchDataset(Dataset):
           - Enable tqdm
         """
         super().__init__()
-        self.__name__ = self.__class__.__name__ # Set dataset name
+        self.__name__ = self.__class__.__name__  # Set dataset name
         self.target_col = "target"
-        self.data = pd.DataFrame() # Create empty dataframe
-        tqdm.pandas() # Enable tqdm
+        self.data = pd.DataFrame()  # Create empty dataframe
+        tqdm.pandas()  # Enable tqdm
 
     def __getitem__(self, index):
         raise NotImplementedError
@@ -45,11 +46,11 @@ class BasePyTorchDataset(Dataset):
         """
         Print useful summary statistics of the dataset.
         """
-        logging.info("\n"+"-"*40)
+        logging.info("\n" + "-" * 40)
         print_dataframe(self.data)
         value_counts = self.data[self.target_col].value_counts()
         logging.info(f"Target value counts:\n{value_counts}")
-        logging.info("\n"+"-"*40)
+        logging.info("\n" + "-" * 40)
 
     def save(self, *args, **kwargs) -> None:
         """
@@ -96,7 +97,7 @@ class BasePyTorchDataset(Dataset):
         oversampling_factor: Optional[float] = None,
         undersampling_factor: Optional[float] = None,
         class_to_sample: Optional[Union[float, str]] = None,
-        column: Optional[str] = None
+        column: Optional[str] = None,
     ) -> None:
         """
         Generic function for under-/over-sampling a given class.
@@ -137,7 +138,7 @@ class BasePyTorchDataset(Dataset):
         self,
         oversampling_factor: float,
         class_to_sample: Optional[Union[float, str]] = None,
-        column: Optional[str] = None
+        column: Optional[str] = None,
     ) -> None:
         """
         Oversample a given class.
@@ -155,7 +156,7 @@ class BasePyTorchDataset(Dataset):
         class_count, class_indices = class_info["count"], class_info["indices"]
 
         # Randomly sample indices to oversample
-        num_to_oversample = np.floor(class_count * (oversampling_factor-1)).astype(int)
+        num_to_oversample = np.floor(class_count * (oversampling_factor - 1)).astype(int)
         indices = np.random.choice(class_indices, size=num_to_oversample, replace=True)
 
         # Append oversampled rows at the bottom and shuffle data
@@ -166,7 +167,7 @@ class BasePyTorchDataset(Dataset):
         self,
         undersampling_factor: float,
         class_to_sample: Optional[Union[float, str]] = None,
-        column: Optional[str] = None
+        column: Optional[str] = None,
     ) -> None:
         """
         Undersample a given class.
@@ -184,7 +185,7 @@ class BasePyTorchDataset(Dataset):
         class_count, class_indices = class_info["count"], class_info["indices"]
 
         # Randomly sample indices to undersample
-        num_to_remove = np.floor(class_count*(1 - 1/undersampling_factor)).astype(int)
+        num_to_remove = np.floor(class_count * (1 - 1 / undersampling_factor)).astype(int)
         indices = np.random.choice(class_indices, size=num_to_remove, replace=False)
 
         # Remove undersampled rows and shuffle data
@@ -192,10 +193,7 @@ class BasePyTorchDataset(Dataset):
         self.shuffle_and_reindex_data()
 
     def _get_class_info(
-        self,
-        class_to_sample: Optional[Union[float, str]] = None,
-        column: Optional[str] = None,
-        minority: bool = True
+        self, class_to_sample: Optional[Union[float, str]] = None, column: Optional[str] = None, minority: bool = True,
     ) -> Tuple[Union[float, str], int, List[int]]:
         """
         Get the label, counts, and indices of each class.
@@ -232,7 +230,7 @@ class BasePyTorchDataset(Dataset):
         if class_to_sample is None:
             class_label = value_counts.index.tolist()[-1 if minority else 0]
         else:
-            class_label = str(class_to_sample) # Convert to string
+            class_label = str(class_to_sample)  # Convert to string
         class_count = value_counts[class_label]
 
         # Get class indices
@@ -260,6 +258,7 @@ class DummyMultiClassDataset(BasePyTorchDataset):
     Dummy dataset for generating
     random multi-class style data.
     """
+
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
         self.size = config.size
@@ -282,8 +281,7 @@ class DummyMultiClassDataset(BasePyTorchDataset):
         numpy random state for reproducibility.
         """
         x = create_feature_from_index(index, self.dim)
-        y = torch.as_tensor(np.random.RandomState(index).choice(range(self.num_classes)),
-                            dtype=torch.long)
+        y = torch.as_tensor(np.random.RandomState(index).choice(range(self.num_classes)), dtype=torch.long)
         return pd.Series([x, y])
 
 
@@ -292,6 +290,7 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
     Dummy dataset for generating
     random multi-label style data.
     """
+
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
         self.size = config.size
@@ -314,8 +313,7 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
         numpy random state for reproducibility.
         """
         x = create_feature_from_index(index, self.dim)
-        y = torch.as_tensor(np.random.RandomState(index).choice([0,1], size=self.num_classes),
-                            dtype=torch.long)
+        y = torch.as_tensor(np.random.RandomState(index).choice([0, 1], size=self.num_classes), dtype=torch.long)
         return pd.Series([x, y])
 
 
@@ -324,6 +322,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
     Dummy dataset for generating
     random regression style data.
     """
+
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
         self.size = config.size
@@ -350,11 +349,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
         return pd.Series([x, y])
 
 
-def create_dataframe(
-    size: int,
-    target_col: str,
-    row_gen_func: Callable[[int], pd.Series]
-) -> pd.DataFrame:
+def create_dataframe(size: int, target_col: str, row_gen_func: Callable[[int], pd.Series]) -> pd.DataFrame:
     """
     Generate a dataframe of length `size` using
     the function `row_gen_func` to generate the
@@ -365,11 +360,8 @@ def create_dataframe(
     data[columns] = data.index.to_series().apply(row_gen_func)
     return data
 
-def create_feature_from_index(
-    index: int,
-    dim: int,
-    dtype: Optional[torch.dtype] = torch.float32
-) -> torch.Tensor:
+
+def create_feature_from_index(index: int, dim: int, dtype: Optional[torch.dtype] = torch.float32) -> torch.Tensor:
     """
     Fix the torch random generator seed based on
     `index` and return a randomly sampled value

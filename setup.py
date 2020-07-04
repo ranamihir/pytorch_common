@@ -11,7 +11,6 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(),
     test_suite="tests",
-
     # Packages that this package requires
     install_requires=[
         "numpy>=1.17.2",
@@ -24,13 +23,9 @@ setup(
         "munch>=2.5.0",
         "locket==0.2.0",
     ],
-
     # Optional dependencies
-    extras_require={
-        "nlp": ["transformers>=3.0.0"] # for NLP related projects
-    },
-
+    extras_require={"nlp": ["transformers>=3.0.0"]},  # for NLP related projects
     # Add config and sql files to the package
     # https://python-packaging.readthedocs.io/en/latest/non-code-files.html
-    include_package_data=True
+    include_package_data=True,
 )

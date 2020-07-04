@@ -20,8 +20,19 @@ from tqdm import tqdm
 from dask.callbacks import Callback
 
 from .types import (
-    Any, List, Tuple, Dict, Iterable, Optional, Union, _StringDict,
-    _Config, _Device, _Batch, _TensorOrTensors, _Figure
+    Any,
+    List,
+    Tuple,
+    Dict,
+    Iterable,
+    Optional,
+    Union,
+    _StringDict,
+    _Config,
+    _Device,
+    _Batch,
+    _TensorOrTensors,
+    _Figure,
 )
 
 
@@ -30,6 +41,7 @@ def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] 
     Create the parent and (optionally) all child
     directories within parent directory.
     """
+
     def create_dir_if_not_exists(dir_path: str) -> None:
         """
         Create a directory at `dir_path`
@@ -50,6 +62,7 @@ def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] 
             dir_path = get_file_path(parent_dir_path, dir_name)
             create_dir_if_not_exists(dir_path)
 
+
 def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
     """
     Remove a directory at `dir_path`.
@@ -64,6 +77,7 @@ def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
         else:
             os.rmdir(dir_path)
 
+
 def human_time_interval(time_seconds: float) -> str:
     """
     Converts a time interval in seconds to a human-friendly
@@ -74,10 +88,10 @@ def human_time_interval(time_seconds: float) -> str:
     "3h 41m 41s 100ms"
     """
     hours, time_seconds = divmod(time_seconds, 3600)
-    minutes, time_seconds= divmod(time_seconds, 60)
+    minutes, time_seconds = divmod(time_seconds, 60)
     seconds, milliseconds = divmod(time_seconds, 1)
     hours, minutes, seconds = int(hours), int(minutes), int(seconds)
-    milliseconds, float_milliseconds = int(milliseconds*1000), milliseconds*1000
+    milliseconds, float_milliseconds = int(milliseconds * 1000), milliseconds * 1000
 
     if hours > 0:
         return f"{hours}h {minutes:02}m {seconds:02}s {milliseconds:03}ms"
@@ -87,6 +101,7 @@ def human_time_interval(time_seconds: float) -> str:
         return f"{seconds}s {milliseconds:03}ms"
     return f"{float_milliseconds:.2f}ms"
 
+
 def set_seed(seed: Optional[int] = 0) -> None:
     """
     Fix all random seeds.
@@ -94,7 +109,8 @@ def set_seed(seed: Optional[int] = 0) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed) # Safe to call even if no GPU available
+    torch.cuda.manual_seed_all(seed)  # Safe to call even if no GPU available
+
 
 def print_dataframe(data: pd.DataFrame) -> None:
     """
@@ -105,13 +121,14 @@ def print_dataframe(data: pd.DataFrame) -> None:
     logging.info(f"\nColumns:\n{data.columns}\n")
     logging.info(f"\nSummary statistics:\n{data.describe()}\n")
 
+
 def save_plot(
     config: _Config,
     fig: _Figure,
     plot_name: str,
     model_name: str,
     config_info_dict: Optional[_StringDict] = None,
-    ext: Optional[str] = "png"
+    ext: Optional[str] = "png",
 ) -> None:
     """
     Save a high-quality plot created by matplotlib.
@@ -123,11 +140,9 @@ def save_plot(
     file_name = "-".join([plot_name, unique_name])
     fig.savefig(get_file_path(config.plot_dir, f"{file_name}.{ext}"), dpi=300)
 
+
 def save_object(
-    obj: Any,
-    primary_path: str,
-    file_name: Optional[str] = None,
-    module: Optional[str] = "pickle"
+    obj: Any, primary_path: str, file_name: Optional[str] = None, module: Optional[str] = "pickle"
 ) -> None:
     """
     This is a generic function to save any given
@@ -145,6 +160,7 @@ def save_object(
         save_pickle(obj, file_path, module)
     logging.info("Done.")
 
+
 def save_pickle(obj: Any, file_path: str, module: Optional[str] = "pickle") -> None:
     """
     This is a defensive way to write (pickle/dill).dump,
@@ -153,10 +169,11 @@ def save_pickle(obj: Any, file_path: str, module: Optional[str] = "pickle") -> N
     pickle_module = get_pickle_module(module)
     bytes_out = pickle_module.dumps(obj, protocol=pickle_module.HIGHEST_PROTOCOL)
     n_bytes = sys.getsizeof(bytes_out)
-    MAX_BYTES = 2**31 - 1
+    MAX_BYTES = 2 ** 31 - 1
     with open(file_path, "wb") as f_out:
         for idx in range(0, n_bytes, MAX_BYTES):
-            f_out.write(bytes_out[idx:idx+MAX_BYTES])
+            f_out.write(bytes_out[idx : idx + MAX_BYTES])
+
 
 def save_yaml(obj: Dict, file_path: str) -> None:
     """
@@ -166,11 +183,8 @@ def save_yaml(obj: Dict, file_path: str) -> None:
     with open(file_path, "w") as f_out:
         yaml.dump(obj, f_out)
 
-def load_object(
-    primary_path: str,
-    file_name: Optional[str] = None,
-    module: Optional[str] = "pickle"
-) -> Any:
+
+def load_object(primary_path: str, file_name: Optional[str] = None, module: Optional[str] = "pickle") -> Any:
     """
     This is a generic function to load any given
     object using different `module`s, e.g. pickle,
@@ -191,6 +205,7 @@ def load_object(
     else:
         raise FileNotFoundError(f"Could not find '{file_path}'.")
 
+
 def load_pickle(file_path: str, module: Optional[str] = "pickle") -> Any:
     """
     This is a defensive way to write (pickle/dill).load,
@@ -203,12 +218,13 @@ def load_pickle(file_path: str, module: Optional[str] = "pickle") -> Any:
     input_size = os.path.getsize(file_path)
     bytes_in = bytearray(0)
     pickle_module = get_pickle_module(module)
-    MAX_BYTES = 2**31 - 1
+    MAX_BYTES = 2 ** 31 - 1
     with open(file_path, "rb") as f:
         for _ in range(0, input_size, MAX_BYTES):
             bytes_in += f.read(MAX_BYTES)
     obj = pickle_module.loads(bytes_in)
     return obj
+
 
 def load_yaml(file_path: str) -> Dict:
     """
@@ -224,6 +240,7 @@ def load_yaml(file_path: str) -> Dict:
         obj = yaml.safe_load(f)
     return obj if obj is not None else {}
 
+
 def remove_object(primary_path: str, file_name: Optional[str] = None) -> None:
     """
     Remove a given object if it exists.
@@ -237,6 +254,7 @@ def remove_object(primary_path: str, file_name: Optional[str] = None) -> None:
         os.remove(file_path)
         logging.info("Done.")
 
+
 def get_file_path(primary_path: str, file_name: Optional[str] = None) -> str:
     """
     Generate appropriate full file path:
@@ -248,6 +266,7 @@ def get_file_path(primary_path: str, file_name: Optional[str] = None) -> str:
     """
     return primary_path if file_name is None else os.path.join(primary_path, file_name)
 
+
 def get_pickle_module(pickle_module: Optional[str] = "pickle") -> Union[pickle, dill]:
     """
     Return the correct module for pickling.
@@ -257,9 +276,8 @@ def get_pickle_module(pickle_module: Optional[str] = "pickle") -> Union[pickle, 
         return pickle
     elif pickle_module == "dill":
         return dill
-    raise ValueError(
-        f"Param 'pickle_module' ('{pickle_module}') must be one of ['pickle', 'dill']."
-    )
+    raise ValueError(f"Param 'pickle_module' ('{pickle_module}') must be one of ['pickle', 'dill'].")
+
 
 def delete_model(model: nn.Module) -> None:
     """
@@ -267,6 +285,7 @@ def delete_model(model: nn.Module) -> None:
     """
     model = None
     torch.cuda.empty_cache()
+
 
 def get_string_from_dict(config_info_dict: Optional[_StringDict] = None) -> str:
     """
@@ -282,15 +301,13 @@ def get_string_from_dict(config_info_dict: Optional[_StringDict] = None) -> str:
     """
     config_info = ""
     if isinstance(config_info_dict, dict):
-        config_info_dict = OrderedDict(sorted(config_info_dict.items())) # Sort to be order-agnostic
+        config_info_dict = OrderedDict(sorted(config_info_dict.items()))  # Sort to be order-agnostic
         clean = lambda k: str(k).replace("-", "_").lower()
         config_info = "-".join([f"{clean(k)}_{clean(v)}" for k, v in config_info_dict.items()])
     return config_info
 
-def get_unique_config_name(
-    primary_name: str,
-    config_info_dict: Optional[_StringDict] = None
-) -> str:
+
+def get_unique_config_name(primary_name: str, config_info_dict: Optional[_StringDict] = None) -> str:
     """
     Return a unique name for the current configuration.
 
@@ -318,11 +335,9 @@ def get_unique_config_name(
     unique_name = primary_name + unique_id
     return unique_name
 
+
 def get_checkpoint_name(
-    checkpoint_type: str,
-    model_name: str,
-    epoch: int,
-    config_info_dict: Optional[_StringDict] = None
+    checkpoint_type: str, model_name: str, epoch: int, config_info_dict: Optional[_StringDict] = None,
 ) -> str:
     """
     Returns the appropriate name of checkpoint file
@@ -338,6 +353,7 @@ def get_checkpoint_name(
     checkpoint_name = f"checkpoint-{checkpoint_type}-{unique_name}-epoch_{epoch}.pt"
     return checkpoint_name
 
+
 def get_trainable_params(model: nn.Module) -> Dict[str, int]:
     """
     Print and return the number of trainable
@@ -346,11 +362,9 @@ def get_trainable_params(model: nn.Module) -> Dict[str, int]:
     num_params = sum(p.numel() for p in model.parameters())
     num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     model_name = getattr(model, "__name__", model.__class__.__name__)
-    logging.info(
-        f"Number of trainable/total parameters in {model_name}: "
-        f"{num_trainable_params}/{num_params}"
-    )
+    logging.info(f"Number of trainable/total parameters in {model_name}: " f"{num_trainable_params}/{num_params}")
     return {"trainable": num_trainable_params, "total": num_params}
+
 
 def get_model_outputs_only(outputs: _TensorOrTensors) -> _TensorOrTensors:
     """
@@ -364,11 +378,8 @@ def get_model_outputs_only(outputs: _TensorOrTensors) -> _TensorOrTensors:
         outputs = outputs[0]
     return outputs
 
-def send_model_to_device(
-    model: nn.Module,
-    device: _Device,
-    device_ids: Optional[List[int]] = None
-) -> nn.Module:
+
+def send_model_to_device(model: nn.Module, device: _Device, device_ids: Optional[List[int]] = None) -> nn.Module:
     """
     Send a model to specified device.
     Will also parallelize model if required.
@@ -399,11 +410,8 @@ def send_model_to_device(
         logging.info("Done.")
     return model
 
-def send_batch_to_device(
-    batch: _Batch,
-    device: _Device,
-    non_blocking: Optional[bool] = True
-) -> _Batch:
+
+def send_batch_to_device(batch: _Batch, device: _Device, non_blocking: Optional[bool] = True) -> _Batch:
     """
     Send batch to given device.
 
@@ -440,9 +448,10 @@ def send_batch_to_device(
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(send_batch_to_device(e, device, non_blocking) for e in batch)
-    else: # Structure/type of batch unknown
+    else:  # Structure/type of batch unknown
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
+
 
 def send_optimizer_to_device(optimizer: Optimizer, device: _Device) -> Optimizer:
     """
@@ -453,6 +462,7 @@ def send_optimizer_to_device(optimizer: Optimizer, device: _Device) -> Optimizer
             if torch.is_tensor(v):
                 state[k] = v.to(device)
     return optimizer
+
 
 def convert_tensor_to_numpy(batch: _Batch) -> _Batch:
     """
@@ -465,14 +475,13 @@ def convert_tensor_to_numpy(batch: _Batch) -> _Batch:
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(convert_tensor_to_numpy(e) for e in batch)
-    else: # Structure/type of batch unknown
+    else:  # Structure/type of batch unknown
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
+
 def convert_numpy_to_tensor(
-    batch: _Batch,
-    device: Optional[_Device] = None,
-    non_blocking: Optional[bool] = True
+    batch: _Batch, device: Optional[_Device] = None, non_blocking: Optional[bool] = True
 ) -> _Batch:
     """
     Convert numpy array(s) to torch tensor(s) and
@@ -487,9 +496,10 @@ def convert_numpy_to_tensor(
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(convert_numpy_to_tensor(e, device, non_blocking) for e in batch)
-    else: # Structure/type of batch unknown
+    else:  # Structure/type of batch unknown
         logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
+
 
 def compare_tensors_or_arrays(batch_a: _Batch, batch_b: _Batch) -> bool:
     """
@@ -509,16 +519,14 @@ def compare_tensors_or_arrays(batch_a: _Batch, batch_b: _Batch) -> bool:
         return np.all(batch_a == batch_b)
     elif isinstance(batch_a, (list, tuple)) and isinstance(batch_b, (list, tuple)):
         return all(compare_tensors_or_arrays(a, b) for a, b in zip(batch_a, batch_b))
-    else: # Structure/type of batch unknown
+    else:  # Structure/type of batch unknown
         raise TypeError(
             f"Types of each batch '({type(batch_a)}, {type(batch_b)})' must "
             f"be `np.ndarray`, `torch.Tensor` or a list/tuple of them."
         )
 
-def compare_model_parameters(
-    parameters1: Iterable[torch.Tensor],
-    parameters2: Iterable[torch.Tensor]
-) -> bool:
+
+def compare_model_parameters(parameters1: Iterable[torch.Tensor], parameters2: Iterable[torch.Tensor]) -> bool:
     """
     Compare two sets of model parameters.
     Useful in unit tests for ensuring consistency
@@ -530,9 +538,9 @@ def compare_model_parameters(
             return False
     return True
 
+
 def compare_model_state_dicts(
-    state_dict1: OrderedDict[str, _TensorOrTensors],
-    state_dict2: OrderedDict[str, _TensorOrTensors]
+    state_dict1: OrderedDict[str, _TensorOrTensors], state_dict2: OrderedDict[str, _TensorOrTensors]
 ) -> bool:
     """
     Compare two sets of model state dicts.
@@ -545,6 +553,7 @@ def compare_model_state_dicts(
             return False
     return True
 
+
 def is_batch_on_gpu(batch: _Batch) -> bool:
     """
     Check if a `batch` is on a GPU.
@@ -556,8 +565,9 @@ def is_batch_on_gpu(batch: _Batch) -> bool:
         return batch.is_cuda
     elif isinstance(batch, (list, tuple)):
         return all(is_batch_on_gpu(e) for e in batch)
-    else: # Structure/type of batch unknown
+    else:  # Structure/type of batch unknown
         raise TypeError(f"Type '{type(batch)}' not understood.")
+
 
 def is_model_on_gpu(model: nn.Module) -> bool:
     """
@@ -565,21 +575,21 @@ def is_model_on_gpu(model: nn.Module) -> bool:
     """
     return is_batch_on_gpu(next(model.parameters()))
 
+
 def is_model_parallelized(model: nn.Module) -> bool:
     """
     Check if a `model` is parallelized on multiple GPUs.
     """
     return is_model_on_gpu(model) and isinstance(model, DataParallel)
 
-def get_total_grad_norm(
-    parameters: Iterable[torch.Tensor],
-    norm_type: Optional[float] = 2
-) -> torch.Tensor:
+
+def get_total_grad_norm(parameters: Iterable[torch.Tensor], norm_type: Optional[float] = 2) -> torch.Tensor:
     """
     Get the total `norm_type` norm
     over all parameter gradients.
     """
     return nn.utils.clip_grad_norm_(parameters, max_norm=np.inf, norm_type=norm_type)
+
 
 def get_model_performance_trackers(config: _Config) -> Tuple[ModelTracker, ModelTracker]:
     """
@@ -599,6 +609,7 @@ class ModelTracker(object):
     any evaluation metrics (accuracy, f1, etc.)
     at each epoch.
     """
+
     def __init__(self, config: _Config, is_train: Optional[bool] = True):
         self.eval_criteria = config.eval_criteria
         self.is_train = is_train
@@ -626,9 +637,7 @@ class ModelTracker(object):
         self.loss_hist[epoch] = losses
 
     def get_losses(
-        self,
-        epoch: Optional[int] = None,
-        flatten: Optional[bool] = False
+        self, epoch: Optional[int] = None, flatten: Optional[bool] = False
     ) -> Union[List[float], OrderedDict[str, List[float]]]:
         """
         Get the loss history.
@@ -643,7 +652,7 @@ class ModelTracker(object):
         epoch = self._get_correct_epoch(epoch, "loss")
         if epoch is not None:
             return self.loss_hist[epoch]
-        if flatten: # Flatten across all epochs
+        if flatten:  # Flatten across all epochs
             return self.get_all_losses()
         return self.loss_hist
 
@@ -665,10 +674,7 @@ class ModelTracker(object):
             self.eval_metrics_hist[eval_criterion][epoch] = eval_metrics[eval_criterion]
 
     def get_eval_metrics(
-        self,
-        eval_criterion: Optional[str] = None,
-        epoch: Optional[int] = None,
-        flatten: Optional[bool] = False
+        self, eval_criterion: Optional[str] = None, epoch: Optional[int] = None, flatten: Optional[bool] = False,
     ) -> Union[float, List[float], OrderedDict[str, Union[float, List[float]]]]:
         """
         Get the evaluation metrics history.
@@ -689,20 +695,21 @@ class ModelTracker(object):
         """
         epoch = self._get_correct_epoch(epoch, "eval_metrics")
         if eval_criterion is not None:
-            if epoch is not None: # Both params provided
+            if epoch is not None:  # Both params provided
                 return self.eval_metrics_hist[eval_criterion][epoch]
-            elif flatten: # Flatten across all epochs
+            elif flatten:  # Flatten across all epochs
                 return self.get_all_eval_metrics(eval_criterion)
-            return self.eval_metrics_hist[eval_criterion] # Return ordered dict
+            return self.eval_metrics_hist[eval_criterion]  # Return ordered dict
         elif epoch is not None:
-            return OrderedDict({eval_criterion: self.eval_metrics_hist[eval_criterion][epoch] \
-                                for eval_criterion in self.eval_criteria})
+            return OrderedDict(
+                {
+                    eval_criterion: self.eval_metrics_hist[eval_criterion][epoch]
+                    for eval_criterion in self.eval_criteria
+                }
+            )
         return self.eval_metrics_hist
 
-    def get_all_eval_metrics(
-        self,
-        eval_criterion: Optional[str] = None
-    ) -> Union[List[float], Dict[str, List[float]]]:
+    def get_all_eval_metrics(self, eval_criterion: Optional[str] = None) -> Union[List[float], Dict[str, List[float]]]:
         """
         Get the entire eval_metrics history across all
         epochs flattened into one list for each eval_criterion.
@@ -710,15 +717,15 @@ class ModelTracker(object):
                                history for that eval_criterion
                                is returned.
         """
+
         def get_eval_criterion_metrics(eval_criterion):
             return list(self.eval_metrics_hist[eval_criterion].values())
 
         if eval_criterion is not None:
             return get_eval_criterion_metrics(eval_criterion)
-        eval_metrics_dict = OrderedDict({
-            eval_criterion: get_eval_criterion_metrics(eval_criterion) \
-            for eval_criterion in self.eval_criteria
-        })
+        eval_metrics_dict = OrderedDict(
+            {eval_criterion: get_eval_criterion_metrics(eval_criterion) for eval_criterion in self.eval_criteria}
+        )
         return eval_metrics_dict
 
     def log_epoch_metrics(self, epoch: Optional[int] = -1) -> str:
@@ -731,23 +738,19 @@ class ModelTracker(object):
         epoch_eval_metrics = self._get_correct_epoch(epoch, "eval_metrics")
         assert epoch_loss == epoch_eval_metrics
         dataset_type = "TRAIN" if self.is_train else "VAL  "
-        mean_loss_epoch =  np.mean(self.get_losses(epoch=epoch_loss))
-        result_str = (f"\n\033[1m{dataset_type} Epoch: {epoch_loss}"
-                      f"\tAverage loss: {mean_loss_epoch:.4f}, ")
-        result_str += ", ".join([
-            f"{eval_criterion}: {self.get_eval_metrics(eval_criterion, epoch_loss):.4f}" \
-            for eval_criterion in self.eval_criteria
-        ])
+        mean_loss_epoch = np.mean(self.get_losses(epoch=epoch_loss))
+        result_str = f"\n\033[1m{dataset_type} Epoch: {epoch_loss}" f"\tAverage loss: {mean_loss_epoch:.4f}, "
+        result_str += ", ".join(
+            [
+                f"{eval_criterion}: {self.get_eval_metrics(eval_criterion, epoch_loss):.4f}"
+                for eval_criterion in self.eval_criteria
+            ]
+        )
         result_str += "\033[0m\n"
         logging.info(result_str)
         return result_str
 
-    def add_metrics(
-        self,
-        losses: List[float],
-        eval_metrics: Dict[str, float],
-        epoch: Optional[int] = -1
-    ) -> None:
+    def add_metrics(self, losses: List[float], eval_metrics: Dict[str, float], epoch: Optional[int] = -1) -> None:
         """
         Shorthand function to add losses
         and eval metrics at the end of
@@ -757,10 +760,7 @@ class ModelTracker(object):
         self.add_eval_metrics(eval_metrics, epoch)
 
     def add_and_log_metrics(
-        self,
-        losses: List[float],
-        eval_metrics: Dict[str, float],
-        epoch: Optional[int] = -1
+        self, losses: List[float], eval_metrics: Dict[str, float], epoch: Optional[int] = -1
     ) -> str:
         """
         Shorthand function to add losses
@@ -805,9 +805,7 @@ class ModelTracker(object):
             self.best_epoch = self.get_overall_best_epoch()
         else:
             if best_epoch not in self.epochs:
-                raise ValueError(
-                    f"Best epoch provided ({best_epoch}) must be one of {self.epochs}."
-                )
+                raise ValueError(f"Best epoch provided ({best_epoch}) must be one of {self.epochs}.")
             self.best_epoch = best_epoch
 
     def get_overall_best_epoch(self) -> int:
@@ -834,7 +832,7 @@ class ModelTracker(object):
         """
         List of epochs for which eval metrics history is stored.
         """
-        k = list(self.eval_metrics_hist.keys())[0] # Any random metric
+        k = list(self.eval_metrics_hist.keys())[0]  # Any random metric
         return list(self.eval_metrics_hist[k].keys())
 
     @property
@@ -855,8 +853,7 @@ class ModelTracker(object):
         the epoch itself.
         """
         if epoch == -1:
-            total_epochs = self._epochs_loss if hist_type == "loss" \
-                           else self._epochs_eval_metrics
+            total_epochs = self._epochs_loss if hist_type == "loss" else self._epochs_eval_metrics
             return max(total_epochs) if len(total_epochs) else 0
         return epoch
 
@@ -867,10 +864,9 @@ class ModelTracker(object):
         the epoch itself.
         """
         if epoch == -1:
-            total_epochs = self._epochs_loss if hist_type == "loss" \
-                           else self._epochs_eval_metrics
+            total_epochs = self._epochs_loss if hist_type == "loss" else self._epochs_eval_metrics
             epoch = max(total_epochs) if len(total_epochs) else 0
-        return epoch+1
+        return epoch + 1
 
 
 class SequencePooler(nn.Module):
@@ -880,6 +876,7 @@ class SequencePooler(nn.Module):
     Class used instead of lambda functions to remain
     compatible with `torch.save()` and `torch.load()`.
     """
+
     DEFAULT_POOLER_TYPE = "default"
 
     def __init__(self, model_type: Optional[str] = "bert"):
@@ -911,7 +908,7 @@ class SequencePooler(nn.Module):
             "distilbert": self._distilbert_pooler,
             "albert": self._albert_pooler,
             "roberta": self._roberta_pooler,
-            "electra": self._electra_pooler
+            "electra": self._electra_pooler,
         }
 
         # Use default pooler if not supported
@@ -920,8 +917,7 @@ class SequencePooler(nn.Module):
             self.pooler = self.POOLER_MAPPING[self.model_type]
         else:
             logging.warning(
-                f"No supported sequence pooler was found for model of "
-                f"type '{model_type}'. Using the default one."
+                f"No supported sequence pooler was found for model of " f"type '{model_type}'. Using the default one."
             )
             self.model_type = self.DEFAULT_POOLER_TYPE
             self.pooler = self._default_pooler
@@ -942,19 +938,19 @@ class SequencePooler(nn.Module):
            /src/transformers/modeling_bert.py#L738-L739
         3. https://www.kaggle.com/questions-and-answers/86510
         """
-        return x[1] # Pooled seq vector
+        return x[1]  # Pooled seq vector
 
     def _distilbert_pooler(self, x):
-        return x[0][:,0] # [CLS] vector
+        return x[0][:, 0]  # [CLS] vector
 
     def _albert_pooler(self, x):
-        return self._bert_pooler(x) # Same as BERT (see above)
+        return self._bert_pooler(x)  # Same as BERT (see above)
 
     def _roberta_pooler(self, x):
-        return x[0][:,0] # <s> vector (equiv. to [CLS])
+        return x[0][:, 0]  # <s> vector (equiv. to [CLS])
 
     def _electra_pooler(self, x):
-        return x[0][:,0] # [CLS] vector
+        return x[0][:, 0]  # [CLS] vector
 
 
 class DataParallel(nn.DataParallel):
@@ -965,6 +961,7 @@ class DataParallel(nn.DataParallel):
     methods when it is wrapped in a `module` attribute because
     of `nn.DataParallel`.
     """
+
     def __init__(self, model: nn.Module, **kwargs):
         super().__init__(model, **kwargs)
 
@@ -989,9 +986,9 @@ class DaskProgressBar(Callback):
     Real-time tqdm progress bar adapted to dask dataframes (for `apply`).
     Code reference: https://github.com/tqdm/tqdm/issues/278#issue-180452055
     """
+
     def _start_state(self, dsk, state):
-        self._tqdm = tqdm(total=sum(len(state[k]) for k in \
-                                    ["ready", "waiting", "running", "finished"]))
+        self._tqdm = tqdm(total=sum(len(state[k]) for k in ["ready", "waiting", "running", "finished"]))
 
     def _posttask(self, key, result, dsk, state, worker_id):
         self._tqdm.update(1)
@@ -1010,6 +1007,7 @@ class GELU(nn.Module):
     https://github.com/huggingface/transformers/blob/1cdd2ad2afb73f6af185aafecb7dd7941a90c4d1
     /src/transformers/activations.py#L25-L29
     """
+
     def __init__(self):
         super().__init__()
 

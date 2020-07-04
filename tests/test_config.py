@@ -20,7 +20,7 @@ class TestConfig(unittest.TestCase):
             "packagedir": "dummy_package_dir",
             "misc_data_dir": "dummy_misc_data_dir",
             "batch_size_per_gpu": 8,
-            "device": cls.default_device
+            "device": cls.default_device,
         }
 
         cls.n_gpu = torch.cuda.device_count()
@@ -40,9 +40,9 @@ class TestConfig(unittest.TestCase):
         Test loading of config with different configurations.
         """
         config = self._load_config({"classification_type": "multiclass"})
-        self.assertEqual(config.classification_type, "multiclass") # Test overridden value
-        self.assertEqual(config.device, self.default_device) # Test overridden value
-        self.assertFalse(config.assert_gpu) # Test same value
+        self.assertEqual(config.classification_type, "multiclass")  # Test overridden value
+        self.assertEqual(config.device, self.default_device)  # Test overridden value
+        self.assertFalse(config.assert_gpu)  # Test same value
 
         # Test disabling loading of pytorch_common config
         dictionary = {"load_pytorch_common_config": False}
@@ -54,29 +54,45 @@ class TestConfig(unittest.TestCase):
         """
         # Test incompatible settings
         self._test_config_error({"model_type": "regression", "loss_criterion": "accuracy"})
-        self._test_config_error({"model_type": "classification", "eval_criteria": ["accuracy"],
-                                 "use_early_stopping": False, "early_stopping_criterion": "f1"})
-        self._test_config_error({"model_type": "classification", "eval_criteria": ["accuracy"],
-                                 "use_early_stopping": True, "early_stopping_criterion": "f1"})
+        self._test_config_error(
+            {
+                "model_type": "classification",
+                "eval_criteria": ["accuracy"],
+                "use_early_stopping": False,
+                "early_stopping_criterion": "f1",
+            }
+        )
+        self._test_config_error(
+            {
+                "model_type": "classification",
+                "eval_criteria": ["accuracy"],
+                "use_early_stopping": True,
+                "early_stopping_criterion": "f1",
+            }
+        )
         self._test_config_error({"model_type": "classification", "classification_type": "dummy"})
         for classification_type in ["binary", "multiclass", "multilabel"]:
-            self._test_config_error({"model_type": "regression",
-                                     "classification_type": classification_type})
+            self._test_config_error({"model_type": "regression", "classification_type": classification_type})
 
         # Test that FocalLoss only compatible with binary classification
-        self._load_config({"model_type": "classification", "classification_type": "binary",
-                           "loss_criterion": "focal-loss"})
+        self._load_config(
+            {"model_type": "classification", "classification_type": "binary", "loss_criterion": "focal-loss",}
+        )
         for classification_type in ["multiclass", "multilabel"]:
-            self._test_config_error({"model_type": "classification",
-                                     "classification_type": classification_type,
-                                     "loss_criterion": "focal-loss"})
+            self._test_config_error(
+                {
+                    "model_type": "classification",
+                    "classification_type": classification_type,
+                    "loss_criterion": "focal-loss",
+                }
+            )
 
     def test_check_and_set_devices_on_cpu(self):
         """
         Test CPU device configuration.
         """
         # Test incompatible settings
-        self._test_config_error({"device": "cpu", "device_ids": [0,1]})
+        self._test_config_error({"device": "cpu", "device_ids": [0, 1]})
         self.assertEqual(self._load_config({"device": "cpu"}).n_gpu, 0)
 
     def test_check_and_set_devices_on_gpu(self):
@@ -85,8 +101,8 @@ class TestConfig(unittest.TestCase):
         """
         if torch.cuda.is_available():
             # Test that `device_ids` are automatically swapped if specified order is incorrect
-            config = self._load_config({"device": "cuda:0", "device_ids": [1,0]})
-            self.assertEqual(config.device_ids, [0,1])
+            config = self._load_config({"device": "cuda:0", "device_ids": [1, 0]})
+            self.assertEqual(config.device_ids, [0, 1])
 
             if self.n_gpu > 1:
                 # Test full parallelization if `device_ids==-1`
@@ -101,8 +117,7 @@ class TestConfig(unittest.TestCase):
         arugments raises an error.
         """
         # Test deprecated arugments
-        self._test_config_error({"device": "cpu", "batch_size_per_gpu": None,
-                                 "batch_size": 8}, error=ValueError)
+        self._test_config_error({"device": "cpu", "batch_size_per_gpu": None, "batch_size": 8}, error=ValueError)
         self._test_config_error({"batch_size_per_gpu": None, "batch_size": 8}, error=ValueError)
 
     def test_incompatible_batch_sizes(self):
@@ -115,8 +130,7 @@ class TestConfig(unittest.TestCase):
         self._test_config_error({"batch_size_per_gpu": None}, error=ValueError)
 
         SUPPORTED_MODES = ["train", "eval", "test"]
-        batch_size_dict = {f"{mode}_batch_size_per_gpu": self.base_batch_size \
-                           for mode in SUPPORTED_MODES}
+        batch_size_dict = {f"{mode}_batch_size_per_gpu": self.base_batch_size for mode in SUPPORTED_MODES}
 
         # Raise error if both a common and mode-specific `batch_size_per_gpu` is provided
         self._test_config_error({**batch_size_dict}, error=ValueError)
@@ -126,12 +140,17 @@ class TestConfig(unittest.TestCase):
         Test batch size configuration on CPU.
         """
         SUPPORTED_MODES = ["train", "eval", "test"]
-        batch_size_dict = {f"{mode}_batch_size_per_gpu": self.base_batch_size*(i+1) \
-                           for i, mode in enumerate(SUPPORTED_MODES)}
+        batch_size_dict = {
+            f"{mode}_batch_size_per_gpu": self.base_batch_size * (i + 1) for i, mode in enumerate(SUPPORTED_MODES)
+        }
 
         # Ensure final derived batch size for each mode on CPU is correct
         same_batch_size_dict = {"device": "cpu"}
-        different_batch_sizes_dict = {"device": "cpu", "batch_size_per_gpu": None, **batch_size_dict}
+        different_batch_sizes_dict = {
+            "device": "cpu",
+            "batch_size_per_gpu": None,
+            **batch_size_dict,
+        }
         self._test_all_batch_sizes(same_batch_size_dict, different_batch_sizes_dict, 1)
 
     def test_set_all_batch_sizes_on_gpu(self):
@@ -139,8 +158,9 @@ class TestConfig(unittest.TestCase):
         Test batch size configuration on GPU.
         """
         SUPPORTED_MODES = ["train", "eval", "test"]
-        batch_size_dict = {f"{mode}_batch_size_per_gpu": self.base_batch_size*(i+1) \
-                           for i, mode in enumerate(SUPPORTED_MODES)}
+        batch_size_dict = {
+            f"{mode}_batch_size_per_gpu": self.base_batch_size * (i + 1) for i, mode in enumerate(SUPPORTED_MODES)
+        }
 
         # Ensure final derived batch size for each mode on GPU is correct
         if torch.cuda.is_available():
@@ -149,7 +169,7 @@ class TestConfig(unittest.TestCase):
                 "device": "cuda:0",
                 "device_ids": [0],
                 "batch_size_per_gpu": None,
-                **batch_size_dict
+                **batch_size_dict,
             }
             self._test_all_batch_sizes(same_batch_size_dict, different_batch_sizes_dict, 1)
 
@@ -161,7 +181,7 @@ class TestConfig(unittest.TestCase):
                     "device": "cuda:0",
                     "device_ids": -1,
                     "batch_size_per_gpu": None,
-                    **batch_size_dict
+                    **batch_size_dict,
                 }
                 self._test_all_batch_sizes(same_batch_size_dict, different_batch_sizes_dict, n_gpu)
 
@@ -169,24 +189,21 @@ class TestConfig(unittest.TestCase):
             raise unittest.SkipTest("GPU(s) not available.")
 
     def _test_all_batch_sizes(
-        self,
-        same_batch_size_dict: Dict,
-        different_batch_sizes_dict: Dict,
-        multiplier: int
+        self, same_batch_size_dict: Dict, different_batch_sizes_dict: Dict, multiplier: int
     ) -> None:
         """
         Test the configuration of batch size assuming
         (1) common, and (2) different batch sizes for each mode.
         """
         config = self._load_config(same_batch_size_dict)
-        self.assertEqual(getattr(config, "train_batch_size"), self.base_batch_size*multiplier)
-        self.assertEqual(getattr(config, "eval_batch_size"), self.base_batch_size*multiplier)
-        self.assertEqual(getattr(config, "test_batch_size"), self.base_batch_size*multiplier)
+        self.assertEqual(getattr(config, "train_batch_size"), self.base_batch_size * multiplier)
+        self.assertEqual(getattr(config, "eval_batch_size"), self.base_batch_size * multiplier)
+        self.assertEqual(getattr(config, "test_batch_size"), self.base_batch_size * multiplier)
 
         config = self._load_config(different_batch_sizes_dict)
-        self.assertEqual(getattr(config, "train_batch_size"), self.base_batch_size*multiplier)
-        self.assertEqual(getattr(config, "eval_batch_size"), self.base_batch_size*2*multiplier)
-        self.assertEqual(getattr(config, "test_batch_size"), self.base_batch_size*3*multiplier)
+        self.assertEqual(getattr(config, "train_batch_size"), self.base_batch_size * multiplier)
+        self.assertEqual(getattr(config, "eval_batch_size"), self.base_batch_size * 2 * multiplier)
+        self.assertEqual(getattr(config, "test_batch_size"), self.base_batch_size * 3 * multiplier)
 
     def _test_config_error(self, dictionary: Dict, error=AssertionError):
         """

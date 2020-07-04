@@ -6,8 +6,10 @@ from munch import Munch
 
 import pytorch_common
 from .metrics import (
-    CLASSIFICATION_LOSS_CRITERIA, CLASSIFICATION_EVAL_CRITERIA,
-    REGRESSION_LOSS_CRITERIA, REGRESSION_EVAL_CRITERIA
+    CLASSIFICATION_LOSS_CRITERIA,
+    CLASSIFICATION_EVAL_CRITERIA,
+    REGRESSION_LOSS_CRITERIA,
+    REGRESSION_EVAL_CRITERIA,
 )
 from .utils import get_file_path, make_dirs, set_seed, load_object
 from .types import Optional, _StringDict, _Config
@@ -20,6 +22,7 @@ class Config(Munch):
     Class attributes can be accessed with both
     `configobj["key"]` and `configobj.key`.
     """
+
     def __init__(self, dictionary: Optional[_StringDict] = None):
         if dictionary:
             super().__init__(dictionary)
@@ -52,9 +55,7 @@ def load_pytorch_common_config(dictionary: _StringDict) -> Munch:
 
         # Throw warning if both scheduler configs enabled (not common)
         if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
-            logging.warning(
-                "Scheduler is configured to take a step both after every step and every epoch."
-            )
+            logging.warning("Scheduler is configured to take a step both after every step and every epoch.")
 
         # Throw warning if checkpointing is disabled
         if merged_config.disable_checkpointing:
@@ -62,6 +63,7 @@ def load_pytorch_common_config(dictionary: _StringDict) -> Munch:
 
         return Munch(merged_config)
     return Munch(dictionary)
+
 
 def load_config(config_file: Optional[str] = "config.yaml") -> Config:
     """
@@ -78,6 +80,7 @@ def load_config(config_file: Optional[str] = "config.yaml") -> Config:
     dictionary = load_object(configdir, config_file, module="yaml")
     config = Config(dictionary)
     return config
+
 
 def set_pytorch_config(config: _Config) -> None:
     """
@@ -101,19 +104,23 @@ def set_pytorch_config(config: _Config) -> None:
         set_seed(config.seed)
 
         # Check for model and classification type
-        assert (config.model_type == "classification" and \
-            config.classification_type in ["binary", "multiclass", "multilabel"]) \
-            or (config.model_type == "regression" and not hasattr(config, "classification_type"))
+        assert (
+            config.model_type == "classification"
+            and config.classification_type in ["binary", "multiclass", "multilabel"]
+        ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
 
         # TODO: Remove this after extending FocalLoss
         if config.model_type == "classification" and config.loss_criterion == "focal-loss":
-            assert config.classification_type == "binary", ("FocalLoss is currently only supported"
-                                                            "for binary classification.")
+            assert config.classification_type == "binary", (
+                "FocalLoss is currently only supported" "for binary classification."
+            )
 
         # Ensure GPU availability as some models are prohibitively slow on CPU
         if config.assert_gpu:
-            assert config.n_gpu >= 1, ("Usage of GPU is required as per config but either "
-                                       "one isn't available or the device is set to CPU.")
+            assert config.n_gpu >= 1, (
+                "Usage of GPU is required as per config but either " "one isn't available or the device is set to CPU."
+            )
+
 
 def set_additional_dirs(config: _Config) -> None:
     """
@@ -122,13 +129,14 @@ def set_additional_dirs(config: _Config) -> None:
     """
     if config.get("misc_data_dir"):
         set_and_create_dir(config, config.packagedir, "misc_data_dir")
-    else: # Point `misc_data_dir` to `transientdir` by default
+    else:  # Point `misc_data_dir` to `transientdir` by default
         config["misc_data_dir"] = config.transientdir
         setattr(config, "misc_data_dir", config.transientdir)
 
     for directory in ["output_dir", "plot_dir", "checkpoint_dir"]:
         if config.get(directory):
             set_and_create_dir(config, config.misc_data_dir, directory)
+
 
 def set_and_create_dir(config: _Config, parent_dir: str, directory: str) -> None:
     """
@@ -140,6 +148,7 @@ def set_and_create_dir(config: _Config, parent_dir: str, directory: str) -> None
     config[directory] = dir_path
     setattr(config, directory, dir_path)
     make_dirs(config[directory])
+
 
 def set_loss_and_eval_criteria(config: _Config) -> None:
     """
@@ -167,6 +176,7 @@ def set_loss_and_eval_criteria(config: _Config) -> None:
             config.early_stopping_criterion = default_stopping_criterion
     assert config.early_stopping_criterion in config.eval_criteria
 
+
 def _check_loss_and_eval_criteria(config: _Config) -> None:
     """
     Ensure that the loss and eval criteria
@@ -182,13 +192,18 @@ def _check_loss_and_eval_criteria(config: _Config) -> None:
         LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA
         EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA
 
-    assert config.loss_criterion in LOSS_CRITERIA, (f"Loss criterion ('{config.loss_criterion}') "
-                                                    f"for `model_type=='classification' must be one"
-                                                    f" of {LOSS_CRITERIA}.")
+    assert config.loss_criterion in LOSS_CRITERIA, (
+        f"Loss criterion ('{config.loss_criterion}') "
+        f"for `model_type=='classification' must be one"
+        f" of {LOSS_CRITERIA}."
+    )
     for eval_criterion in config.eval_criteria:
-        assert eval_criterion in EVAL_CRITERIA, (f"Eval criterion ('{eval_criterion}') for "
-                                                 f"`model_type=='classification'` must be one"
-                                                 f" of {EVAL_CRITERIA}.")
+        assert eval_criterion in EVAL_CRITERIA, (
+            f"Eval criterion ('{eval_criterion}') for "
+            f"`model_type=='classification'` must be one"
+            f" of {EVAL_CRITERIA}."
+        )
+
 
 def check_and_set_devices(config: _Config) -> None:
     """
@@ -199,8 +214,8 @@ def check_and_set_devices(config: _Config) -> None:
     """
     # Check device provided
     if "cuda" in config.device:
-        assert torch.cuda.is_available() # Check for CUDA
-        torch.cuda.set_device(config.device) # Set default CUDA device
+        assert torch.cuda.is_available()  # Check for CUDA
+        torch.cuda.set_device(config.device)  # Set default CUDA device
 
         # Get device IDs
         config.device_ids = config.device_ids if config.get("device_ids") else []
@@ -214,7 +229,7 @@ def check_and_set_devices(config: _Config) -> None:
         assert config.n_gpu <= torch.cuda.device_count()
     else:
         assert config.device == "cpu"
-        assert (not config.get("device_ids") or config.device_ids == -1)
+        assert not config.get("device_ids") or config.device_ids == -1
         config.device_ids = []
         config.n_gpu = 0
 
@@ -228,12 +243,15 @@ def check_and_set_devices(config: _Config) -> None:
 
         # Swap order if necessary to bring default_device to index 0
         default_device_ind = config.device_ids.index(default_device)
-        config.device_ids[default_device_ind], config.device_ids[0] = \
-            config.device_ids[0], config.device_ids[default_device_ind]
+        config.device_ids[default_device_ind], config.device_ids[0] = (
+            config.device_ids[0],
+            config.device_ids[default_device_ind],
+        )
 
     # Use cudnn benchmarks
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
+
 
 def set_all_batch_sizes(config: _Config) -> None:
     """
@@ -248,6 +266,7 @@ def set_all_batch_sizes(config: _Config) -> None:
     The per-GPU batch sizes for each mode will then be converted
     to the total batch size depending on number of devices.
     """
+
     def set_mode_batch_size(mode: str, batch_size_per_gpu: int) -> None:
         """
         Set per-GPU and total batch size for a
@@ -264,9 +283,9 @@ def set_all_batch_sizes(config: _Config) -> None:
     if batch_size is not None:
         raise ValueError(
             f"Param 'batch_size' ({batch_size}) is now deprecated. Please either provide "
-             "'batch_size_per_gpu' for per-GPU batch size, or 'train_batch_size_per_gpu', "
-             "'eval_batch_size_per_gpu', and 'test_batch_size_per_gpu' if different per-GPU "
-             "batch sizes are to be provided for each mode."
+            "'batch_size_per_gpu' for per-GPU batch size, or 'train_batch_size_per_gpu', "
+            "'eval_batch_size_per_gpu', and 'test_batch_size_per_gpu' if different per-GPU "
+            "batch sizes are to be provided for each mode."
         )
 
     SUPPORTED_MODES = ["train", "eval", "test"]
@@ -277,10 +296,8 @@ def set_all_batch_sizes(config: _Config) -> None:
         mode_batch_size_per_gpu = config.get(mode_batch_size_str)
         if batch_size_per_gpu is None:
             if mode_batch_size_per_gpu is None:
-                raise ValueError(
-                    f"One of 'batch_size_per_gpu'  or '{mode_batch_size_str}' must be provided."
-                )
-            batch_size_to_set = mode_batch_size_per_gpu # Specific to each mode
+                raise ValueError(f"One of 'batch_size_per_gpu'  or '{mode_batch_size_str}' must be provided.")
+            batch_size_to_set = mode_batch_size_per_gpu  # Specific to each mode
         else:
             if mode_batch_size_per_gpu is not None:
                 raise ValueError(
@@ -288,7 +305,7 @@ def set_all_batch_sizes(config: _Config) -> None:
                     f"'{mode_batch_size_str}' ({mode_batch_size_per_gpu}) "
                     f"must be provided."
                 )
-            batch_size_to_set = batch_size_per_gpu # Common for all modes
+            batch_size_to_set = batch_size_per_gpu  # Common for all modes
 
         # Set per-GPU and total batch size for mode
         set_mode_batch_size(mode, batch_size_to_set)

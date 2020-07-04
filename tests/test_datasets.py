@@ -4,7 +4,10 @@ import numpy as np
 from pytorch_common.additional_configs import BaseDatasetConfig
 from pytorch_common.datasets import create_dataset
 from pytorch_common.datasets_dl import (
-    BasePyTorchDataset, DummyMultiClassDataset, DummyMultiLabelDataset, DummyRegressionDataset
+    BasePyTorchDataset,
+    DummyMultiClassDataset,
+    DummyMultiLabelDataset,
+    DummyRegressionDataset,
 )
 from pytorch_common.types import Optional, _StringDict
 
@@ -15,11 +18,7 @@ class TestModels(unittest.TestCase):
         """
         Set up default config dictionary for a dataset.
         """
-        cls.default_config_dict = {
-            "size": 30,
-            "dim": 4,
-            "num_classes": 3
-        }
+        cls.default_config_dict = {"size": 30, "dim": 4, "num_classes": 3}
 
     def test_create_dataset(self):
         """
@@ -56,8 +55,7 @@ class TestModels(unittest.TestCase):
         majority_class_post = dataset._get_class_info(class_to_sample=majority_class_pre["label"])
 
         # Ensure correct number of rows for both classes
-        self.assertEqual(minority_class_post["count"],
-                         minority_info_pre["count"]*oversampling_factor)
+        self.assertEqual(minority_class_post["count"], minority_info_pre["count"] * oversampling_factor)
         self.assertEqual(majority_class_post["count"], majority_class_pre["count"])
 
     def test_undersample_class(self):
@@ -81,13 +79,12 @@ class TestModels(unittest.TestCase):
 
         # Ensure correct number of rows for both classes
         self.assertEqual(minority_class_post["count"], minority_info_pre["count"])
-        self.assertEqual(majority_class_post["count"],
-                         np.ceil(majority_class_pre["count"]/undersampling_factor))
+        self.assertEqual(
+            majority_class_post["count"], np.ceil(majority_class_pre["count"] / undersampling_factor),
+        )
 
     def _get_dataset(
-        self,
-        dataset_name: Optional[str] = "multi_class_dataset",
-        dictionary: Optional[_StringDict] = None
+        self, dataset_name: Optional[str] = "multi_class_dataset", dictionary: Optional[_StringDict] = None,
     ) -> BasePyTorchDataset:
         """
         Merge the provided `dictionary` with the default

@@ -13,6 +13,7 @@ class BaseDatasetConfig(Munch):
     Class attributes can be accessed with both
     `configobj["key"]` and `configobj.key`.
     """
+
     def __init__(self, dictionary: Optional[_StringDict] = None):
         if dictionary:
             super().__init__(dictionary)
@@ -44,11 +45,7 @@ class BaseModelConfig(Munch):
     `configobj["key"]` and `configobj.key`.
     """
 
-    def __init__(
-        self,
-        dictionary: Optional[_StringDict] = None,
-        model_type: Optional[str] = "classification"
-    ):
+    def __init__(self, dictionary: Optional[_StringDict] = None, model_type: Optional[str] = "classification"):
         if dictionary:
             super().__init__(dictionary)
 

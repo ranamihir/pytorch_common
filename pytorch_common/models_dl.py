@@ -14,16 +14,15 @@ class BasePyTorchModel(nn.Module):
     """
     Generic PyTorch Model implementing useful methods.
     """
+
     def __init__(self, model_type: Optional[str] = "classification"):
         super().__init__()
 
         self.model_type = model_type
-        self.__name__ = self.__class__.__name__ # Set model name
+        self.__name__ = self.__class__.__name__  # Set model name
 
     def initialize_model(
-        self,
-        init_weights: Optional[bool] = False,
-        models_to_init: Optional[_ModelOrModels] = None
+        self, init_weights: Optional[bool] = False, models_to_init: Optional[_ModelOrModels] = None
     ) -> None:
         """
         Call this function in the child model class.
@@ -35,9 +34,9 @@ class BasePyTorchModel(nn.Module):
                   calling this function, otherwise the pretrained
                   model will also be reinitialized.
         """
-        self.print_model() # Print model architecture
-        self.get_trainable_params() # Print number of trainable parameters
-        if init_weights: # Initialize weights
+        self.print_model()  # Print model architecture
+        self.get_trainable_params()  # Print number of trainable parameters
+        if init_weights:  # Initialize weights
             logging.warning(
                 "You have set `init_weights=True`. Make sure your model does not include "
                 "a pretrained model, otherwise its weights will also be reinitialized."
@@ -71,7 +70,7 @@ class BasePyTorchModel(nn.Module):
                                  will initialize their weights
         """
         if models_to_init is None:
-            models_to_init = self # Base model
+            models_to_init = self  # Base model
         if not isinstance(models_to_init, list):
             models_to_init = [models_to_init]
         for model in models_to_init:
@@ -97,9 +96,7 @@ class BasePyTorchModel(nn.Module):
 
     @torch.no_grad()
     def predict_proba(
-        self,
-        outputs: torch.Tensor,
-        threshold: Optional[float] = None
+        self, outputs: torch.Tensor, threshold: Optional[float] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns predicted labels and probabilities
@@ -111,12 +108,9 @@ class BasePyTorchModel(nn.Module):
         :return probs: Predicted probabilities of each class
         """
         if self.model_type != "classification" and threshold is not None:
-            raise ValueError(
-                f"Param 'threshold' ('{threshold}') can only "
-                f"be provided for classification models."
-            )
+            raise ValueError(f"Param 'threshold' ('{threshold}') can only " f"be provided for classification models.")
 
-        probs = F.softmax(outputs, dim=-1) # Get probabilities of each class
+        probs = F.softmax(outputs, dim=-1)  # Get probabilities of each class
         num_classes = probs.shape[-1]
 
         # Get predictions based on provided threshold
@@ -124,19 +118,17 @@ class BasePyTorchModel(nn.Module):
             device = probs.device
             pos_tensor = torch.as_tensor(1, device=device)
             neg_tensor = torch.as_tensor(0, device=device)
-            labels_for_class_i = lambda i: torch.where(probs[...,i] >= threshold,
-                                                       pos_tensor, neg_tensor)
-            if num_classes == 2: # Only get labels for class 1 if binary classification
+            labels_for_class_i = lambda i: torch.where(probs[..., i] >= threshold, pos_tensor, neg_tensor)
+            if num_classes == 2:  # Only get labels for class 1 if binary classification
                 preds = labels_for_class_i(1)
-            else: # Get labels for each class if multiclass classification
-                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)],
-                                    dim=1).max(dim=-1)[1]
+            else:  # Get labels for each class if multiclass classification
+                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)], dim=1).max(dim=-1)[1]
         else:
             # Get class with max probability (same as threshold=0.5)
             preds = probs.max(dim=-1)[1]
 
-        if num_classes == 2: # Only get probs for class 1 if binary classification
-            probs = probs[...,1]
+        if num_classes == 2:  # Only get probs for class 1 if binary classification
+            probs = probs[..., 1]
         return preds, probs
 
     def copy(self) -> nn.Module:
@@ -159,11 +151,7 @@ class BasePyTorchModel(nn.Module):
         """
         self._change_frozen_state(models_to_unfreeze, freeze=False)
 
-    def _change_frozen_state(
-        self,
-        models: Optional[_ModelOrModels] = None,
-        freeze: Optional[bool] = True
-    ) -> None:
+    def _change_frozen_state(self, models: Optional[_ModelOrModels] = None, freeze: Optional[bool] = True) -> None:
         """
         Freeze or unfreeze the given `models`, i.e.,
         all their children will / won't have gradients.
@@ -176,17 +164,15 @@ class BasePyTorchModel(nn.Module):
         :freeze: Whether to freeze or unfreeze (bool)
         """
         if models is None:
-            models = self # Base model
+            models = self  # Base model
         if not isinstance(models, list):
             models = [models]
         for model in models:
             self._change_frozen_state_for_one_model(model, freeze)
-        self.get_trainable_params() # Re-print number of trainable parameters
+        self.get_trainable_params()  # Re-print number of trainable parameters
 
     def _change_frozen_state_for_one_model(
-        self,
-        model: Optional[nn.Module] = None,
-        freeze: Optional[bool] = True
+        self, model: Optional[nn.Module] = None, freeze: Optional[bool] = True
     ) -> None:
         """
         Freeze or unfreeze a given `model`, i.e.,
@@ -212,6 +198,7 @@ class SingleLayerClassifier(BasePyTorchModel):
     """
     Dummy single-layer multi-class "neural" network.
     """
+
     def __init__(self, config: BaseModelConfig):
         super().__init__(model_type="classification")
         self.in_dim = config.in_dim
@@ -229,6 +216,7 @@ class MultiLayerClassifier(BasePyTorchModel):
     """
     Dummy multi-layer multi-class neural network.
     """
+
     def __init__(self, config: BaseModelConfig):
         super().__init__(model_type="classification")
         self.in_dim = config.in_dim
@@ -237,11 +225,8 @@ class MultiLayerClassifier(BasePyTorchModel):
         self.num_layers = config.num_layers
 
         trunk = [nn.Sequential(nn.Linear(self.in_dim, self.h_dim), nn.ReLU(inplace=True))]
-        for _ in range(self.num_layers-1):
-            layer = nn.Sequential(
-                nn.Linear(self.h_dim, self.h_dim),
-                nn.ReLU(inplace=True)
-            )
+        for _ in range(self.num_layers - 1):
+            layer = nn.Sequential(nn.Linear(self.h_dim, self.h_dim), nn.ReLU(inplace=True))
             trunk.append(layer)
         self.trunk = nn.Sequential(*trunk)
 
@@ -257,6 +242,7 @@ class SingleLayerRegressor(BasePyTorchModel):
     """
     Dummy single-layer "neural" regressor.
     """
+
     def __init__(self, config: BaseModelConfig):
         super().__init__(model_type="regression")
         self.in_dim = config.in_dim
@@ -274,6 +260,7 @@ class MultiLayerRegressor(BasePyTorchModel):
     """
     Dummy multi-layer neural regressor.
     """
+
     def __init__(self, config: BaseModelConfig):
         super().__init__(model_type="regression")
         self.in_dim = config.in_dim
@@ -282,11 +269,8 @@ class MultiLayerRegressor(BasePyTorchModel):
         self.num_layers = config.num_layers
 
         trunk = [nn.Sequential(nn.Linear(self.in_dim, self.h_dim), nn.ReLU(inplace=True))]
-        for _ in range(self.num_layers-1):
-            layer = nn.Sequential(
-                nn.Linear(self.h_dim, self.h_dim),
-                nn.ReLU(inplace=True)
-            )
+        for _ in range(self.num_layers - 1):
+            layer = nn.Sequential(nn.Linear(self.h_dim, self.h_dim), nn.ReLU(inplace=True))
             trunk.append(layer)
         self.trunk = nn.Sequential(*trunk)
 
