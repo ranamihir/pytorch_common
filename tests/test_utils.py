@@ -1,12 +1,13 @@
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
 import torch
 
+from pytorch_common import utils
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
-from pytorch_common import utils
-from pytorch_common.types import List, Tuple, Dict, Callable, Optional, Union, _Batch
+from pytorch_common.types import Callable, Dict, List, Optional, Tuple, Union, _Batch
 
 
 class TestUtils(unittest.TestCase):

@@ -1,4 +1,5 @@
 from pkg_resources import get_distribution
+
 from .decorators import *
 
 # Set package version

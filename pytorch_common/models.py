@@ -1,14 +1,9 @@
 import torch.nn as nn
 
-from .utils import get_file_path
-from .models_dl import (
-    SingleLayerClassifier,
-    MultiLayerClassifier,
-    SingleLayerRegressor,
-    MultiLayerRegressor,
-)
 from .additional_configs import BaseModelConfig
+from .models_dl import MultiLayerClassifier, MultiLayerRegressor, SingleLayerClassifier, SingleLayerRegressor
 from .types import Optional
+from .utils import get_file_path
 
 
 def create_model(model_name: str, config: Optional[BaseModelConfig] = None) -> nn.Module:

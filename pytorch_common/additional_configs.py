@@ -1,6 +1,8 @@
 from __future__ import annotations
-from munch import Munch
+
 from copy import deepcopy
+
+from munch import Munch
 
 from .types import Optional, _StringDict
 

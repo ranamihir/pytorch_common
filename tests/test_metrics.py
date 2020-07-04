@@ -1,33 +1,25 @@
 import unittest
+
 import numpy as np
-from munch import Munch
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    f1_score,
-    recall_score,
-    roc_curve,
-    auc,
-    mean_squared_error,
-)
-
 import torch
+from munch import Munch
+from sklearn.metrics import accuracy_score, auc, f1_score, mean_squared_error, precision_score, recall_score, roc_curve
 
-from pytorch_common.utils import compare_tensors_or_arrays
 from pytorch_common import metrics
 from pytorch_common.types import (
     Any,
-    List,
-    Tuple,
-    Dict,
     Callable,
+    Dict,
     Iterable,
+    List,
     Optional,
+    Tuple,
     Union,
-    _StringDict,
-    _Loss,
     _EvalCriterionOrCriteria,
+    _Loss,
+    _StringDict,
 )
+from pytorch_common.utils import compare_tensors_or_arrays
 
 
 class TestMetrics(unittest.TestCase):

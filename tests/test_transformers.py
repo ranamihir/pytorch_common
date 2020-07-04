@@ -1,9 +1,10 @@
 import unittest
+
 import torch.nn as nn
 
-from pytorch_common.additional_configs import BaseModelConfig
-from pytorch_common.models import create_model, is_transformer_model, create_transformer_model
 from pytorch_common import utils
+from pytorch_common.additional_configs import BaseModelConfig
+from pytorch_common.models import create_model, create_transformer_model, is_transformer_model
 
 # Check if `transformers` installed
 try:

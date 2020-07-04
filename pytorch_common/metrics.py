@@ -1,14 +1,13 @@
-import numpy as np
 from collections import OrderedDict
 from functools import partial
 
+import numpy as np
 import torch
 import torch.nn as nn
+from sklearn.metrics import accuracy_score, auc, f1_score, precision_score, recall_score, roc_curve
 
+from .types import Callable, Optional, Tuple, Union, _Config, _EvalCriterionOrCriteria, _Loss
 from .utils import convert_tensor_to_numpy
-from sklearn.metrics import accuracy_score, precision_score, f1_score, recall_score, roc_curve, auc
-from .types import Tuple, Callable, Optional, Union, _Config, _Loss, _EvalCriterionOrCriteria
-
 
 REGRESSION_LOSS_CRITERIA = ["mse"]
 CLASSIFICATION_LOSS_CRITERIA = ["cross-entropy", "focal-loss"]

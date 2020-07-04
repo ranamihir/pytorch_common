@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .utils import get_trainable_params
 from .additional_configs import BaseModelConfig
-from .types import Tuple, Dict, Optional, _ModelOrModels
+from .types import Dict, Optional, Tuple, _ModelOrModels
+from .utils import get_trainable_params
 
 
 class BasePyTorchModel(nn.Module):

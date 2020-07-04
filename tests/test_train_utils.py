@@ -1,31 +1,31 @@
-import unittest
-import numpy as np
 import itertools
+import unittest
 
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from torch.optim import SGD
-from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 
-from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
-from pytorch_common.additional_configs import BaseDatasetConfig, BaseModelConfig
-from pytorch_common.datasets import create_dataset
-from pytorch_common.models import create_model
-from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
 from pytorch_common import train_utils, utils
+from pytorch_common.additional_configs import BaseDatasetConfig, BaseModelConfig
+from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
+from pytorch_common.datasets import create_dataset
+from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
+from pytorch_common.models import create_model
 from pytorch_common.types import (
     Any,
-    List,
-    Tuple,
-    Dict,
     Callable,
+    Dict,
     Iterable,
+    List,
     Optional,
+    Tuple,
     Union,
-    _StringDict,
     _EvalCriterionOrCriteria,
+    _StringDict,
 )
 
 

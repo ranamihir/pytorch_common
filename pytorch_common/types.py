@@ -1,11 +1,10 @@
-from munch import Munch
-from matplotlib.figure import Figure
-from typing import Any, List, Tuple, Dict, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from matplotlib.figure import Figure
+from munch import Munch
 from torch.nn.modules.loss import _Loss
-
 
 _StringDict = Dict[str, Any]
 _Config = Union[_StringDict, Munch]

@@ -1,14 +1,14 @@
 import unittest
 
-from pytorch_common.utils import get_trainable_params
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
 from pytorch_common.models_dl import (
-    SingleLayerClassifier,
     MultiLayerClassifier,
-    SingleLayerRegressor,
     MultiLayerRegressor,
+    SingleLayerClassifier,
+    SingleLayerRegressor,
 )
+from pytorch_common.utils import get_trainable_params
 
 
 class TestModels(unittest.TestCase):

@@ -1,38 +1,38 @@
 from __future__ import annotations
-import random
-import numpy as np
-import pandas as pd
+
+import hashlib
+import logging
 import os
+import pickle
+import random
 import shutil
 import sys
-import yaml
-import logging
-import pickle
-import dill
 from collections import OrderedDict
-import hashlib
 
+import dill
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-from torch.optim.optimizer import Optimizer
-
-from tqdm import tqdm
+import yaml
 from dask.callbacks import Callback
+from torch.optim.optimizer import Optimizer
+from tqdm import tqdm
 
 from .types import (
     Any,
-    List,
-    Tuple,
     Dict,
     Iterable,
+    List,
     Optional,
+    Tuple,
     Union,
-    _StringDict,
+    _Batch,
     _Config,
     _Device,
-    _Batch,
-    _TensorOrTensors,
     _Figure,
+    _StringDict,
+    _TensorOrTensors,
 )
 
 

@@ -1,47 +1,49 @@
 from __future__ import annotations
-import numpy as np
-import pandas as pd
-import os
+
 import logging
-import dill
+import os
 from collections import OrderedDict
 from itertools import islice
 
+import dill
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 
 from pytorch_common import timing
+
+from .types import (
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    _Batch,
+    _Config,
+    _DecoupleFn,
+    _DecoupleFnTest,
+    _DecoupleFnTrain,
+    _Device,
+    _EvalCriterionOrCriteria,
+    _EvalResult,
+    _Loss,
+    _StringDict,
+    _TensorOrTensors,
+    _TestResult,
+    _TrainResult,
+)
 from .utils import (
+    ModelTracker,
+    get_checkpoint_name,
     get_file_path,
     get_model_outputs_only,
+    remove_object,
     send_batch_to_device,
     send_model_to_device,
     send_optimizer_to_device,
-    remove_object,
-    get_checkpoint_name,
-    ModelTracker,
-)
-from .types import (
-    List,
-    Tuple,
-    Dict,
-    Optional,
-    Union,
-    _StringDict,
-    _Config,
-    _Device,
-    _Batch,
-    _Loss,
-    _TensorOrTensors,
-    _EvalCriterionOrCriteria,
-    _TrainResult,
-    _EvalResult,
-    _TestResult,
-    _DecoupleFnTrain,
-    _DecoupleFnTest,
-    _DecoupleFn,
 )
 
 

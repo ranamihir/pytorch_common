@@ -1,8 +1,9 @@
 import unittest
+
 import torch
 
-from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
 from pytorch_common import utils
+from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
 from pytorch_common.types import Dict, Optional
 
 

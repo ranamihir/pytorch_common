@@ -1,18 +1,21 @@
 from __future__ import annotations
+
 import logging
 import os
+
 import torch
 from munch import Munch
 
 import pytorch_common
+
 from .metrics import (
-    CLASSIFICATION_LOSS_CRITERIA,
     CLASSIFICATION_EVAL_CRITERIA,
-    REGRESSION_LOSS_CRITERIA,
+    CLASSIFICATION_LOSS_CRITERIA,
     REGRESSION_EVAL_CRITERIA,
+    REGRESSION_LOSS_CRITERIA,
 )
-from .utils import get_file_path, make_dirs, set_seed, load_object
-from .types import Optional, _StringDict, _Config
+from .types import Optional, _Config, _StringDict
+from .utils import get_file_path, load_object, make_dirs, set_seed
 
 
 class Config(Munch):

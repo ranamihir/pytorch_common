@@ -6,8 +6,8 @@ Useful Decorators
 Decorators are a useful way to save some typing and automate common tasks,
 such as timing function execution or debugging dataframe sizes.
 """
-import logging
 import inspect
+import logging
 import time
 from functools import wraps
 

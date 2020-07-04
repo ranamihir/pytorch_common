@@ -1,10 +1,5 @@
-from .datasets_dl import (
-    BasePyTorchDataset,
-    DummyMultiClassDataset,
-    DummyMultiLabelDataset,
-    DummyRegressionDataset,
-)
 from .additional_configs import BaseDatasetConfig
+from .datasets_dl import BasePyTorchDataset, DummyMultiClassDataset, DummyMultiLabelDataset, DummyRegressionDataset
 
 
 def create_dataset(dataset_name: str, config: BaseDatasetConfig) -> BasePyTorchDataset:
