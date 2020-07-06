@@ -240,10 +240,10 @@ def train_epoch(
     See `perform_one_epoch()` for more details.
     """
     return perform_one_epoch(
-        "train",
-        model,
-        dataloader,
-        device,
+        phase="train",
+        model=model,
+        dataloader=dataloader,
+        device=device,
         loss_criterion=loss_criterion,
         epoch=epoch,
         optimizer=optimizer,
@@ -268,10 +268,10 @@ def evaluate_epoch(
     See `perform_one_epoch()` for more details.
     """
     return perform_one_epoch(
-        "eval",
-        model,
-        dataloader,
-        device,
+        phase="eval",
+        model=model,
+        dataloader=dataloader,
+        device=device,
         loss_criterion=loss_criterion,
         eval_criteria=eval_criteria,
         decouple_fn=decouple_fn,
@@ -292,7 +292,14 @@ def get_all_predictions(
     a classification model.
     See `perform_one_epoch()` for more details.
     """
-    return perform_one_epoch("test", model, dataloader, device, threshold_prob=threshold_prob, decouple_fn=decouple_fn)
+    return perform_one_epoch(
+        phase="test",
+        model=model,
+        dataloader=dataloader,
+        device=device,
+        threshold_prob=threshold_prob,
+        decouple_fn=decouple_fn,
+    )
 
 
 @timing
