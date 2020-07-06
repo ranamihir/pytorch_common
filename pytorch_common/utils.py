@@ -19,21 +19,7 @@ from dask.callbacks import Callback
 from torch.optim.optimizer import Optimizer
 from tqdm import tqdm
 
-from .types import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    _Batch,
-    _Config,
-    _Device,
-    _Figure,
-    _StringDict,
-    _TensorOrTensors,
-)
+from .types import *
 
 
 def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] = None) -> None:

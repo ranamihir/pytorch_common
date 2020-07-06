@@ -15,26 +15,7 @@ from torch.utils.data import DataLoader
 
 from pytorch_common import timing
 
-from .types import (
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    _Batch,
-    _Config,
-    _DecoupleFn,
-    _DecoupleFnTest,
-    _DecoupleFnTrain,
-    _Device,
-    _EvalCriterionOrCriteria,
-    _EvalResult,
-    _Loss,
-    _StringDict,
-    _TensorOrTensors,
-    _TestResult,
-    _TrainResult,
-)
+from .types import *
 from .utils import (
     ModelTracker,
     get_checkpoint_name,
