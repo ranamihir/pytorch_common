@@ -809,7 +809,7 @@ def validate_checkpoint_type(checkpoint_type: str, checkpoint_file: Optional[str
         )
 
 
-class EarlyStopping(object):
+class EarlyStopping:
     """
     Implements early stopping in PyTorch.
     Reference: https://gist.github.com/stefanonardo/693d96ceb2f531fa05db530f3e21517d

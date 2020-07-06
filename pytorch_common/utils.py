@@ -587,7 +587,7 @@ def get_model_performance_trackers(config: _Config) -> Tuple[ModelTracker, Model
     return train_logger, val_logger
 
 
-class ModelTracker(object):
+class ModelTracker:
     """
     Class for tracking model's progress.
 
