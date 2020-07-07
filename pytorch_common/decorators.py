@@ -32,11 +32,11 @@ def timing_with_param(*parameter_names) -> Callable:
     and print the requested function parameters.
 
     E.g.:
-        from pytorch_common import timing
-        @timing_with_param("name")
-        def somefunc(name):
-            # Do something with `name`
-            pass
+        >>> from pytorch_common import timing
+        >>> @timing_with_param("name")
+        >>> def somefunc(name):
+        >>>     # Do something with `name`
+        >>>     pass
     """
 
     def decorator(func: Callable) -> Callable:
@@ -116,20 +116,41 @@ def retry_if_exception(
 
 def monkey_patch_class_method(cls: object, func_name: Optional[str] = None) -> Callable:
     """
-    Monkey patch a particular method and override it with different
+    Monkey-patch a given method and override it with different
     implementation, or decorate it by adding extra logics.
-    Original method is saved on `.{func_name}_orig` attribute.
+    Original method is saved in the `.{func_name}_orig`
+    attribute of the original class.
 
     :param cls: Class being modified
-    :param func_name: Name of method being overridden
+    :param func_name: Name of method being overridden.
                       If not given, name of decorated function is used.
+
+    E.g.:
+        >>> from pytorch_common import monkey_patch_class_method
+        >>> class Test:
+        ...     def __init__(self, i):
+        ...             self.i = i
+        ...
+        ...     def square(self, x):
+        ...             return (self.i+x)*2
+        >>> x = 3
+        >>> test = Test(1)
+        >>> print(test.square(x))
+        8
+        >>> @monkey_patch_class_method(Test, "square")
+        ... def square(cls, x):
+        ...     return (cls.i+x)**2
+        >>> print(test.square(x))
+        16
+        >>> print(test.square_orig(x))
+        8
     """
 
     def decorator(func: Callable) -> Callable:
         nonlocal func_name
         if func_name is None:
             func_name = func.__name__
-        setattr(func, f"{func_name}_orig", getattr(cls, func_name, None))
+        setattr(cls, f"{func_name}_orig", getattr(cls, func_name, None))
         setattr(cls, func_name, func)
         return func
 
