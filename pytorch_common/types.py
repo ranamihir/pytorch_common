@@ -21,7 +21,7 @@ __all__ = [
     "_Device",
     "_Batch",
     "_Loss",
-    "_Figure",
+    "Figure",
     "_TensorOrTensors",
     "_ModelOrModels",
     "_EvalCriterionOrCriteria",
@@ -38,7 +38,6 @@ _StringDict = Dict[str, Any]
 _Config = Union[_StringDict, Munch]
 _Device = Union[str, torch.device]
 _Batch = Iterable
-_Figure = Figure
 
 _TensorOrTensors = Union[torch.Tensor, Iterable[torch.Tensor]]
 _ModelOrModels = Union[nn.Module, Iterable[nn.Module]]

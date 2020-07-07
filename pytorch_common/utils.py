@@ -110,7 +110,7 @@ def print_dataframe(data: pd.DataFrame) -> None:
 
 def save_plot(
     config: _Config,
-    fig: _Figure,
+    fig: Figure,
     plot_name: str,
     model_name: str,
     config_info_dict: Optional[_StringDict] = None,
