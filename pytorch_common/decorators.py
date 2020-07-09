@@ -101,7 +101,7 @@ def retry_if_exception(
                         if sleep_time is not None:
                             time.sleep(sleep_time)
                         PRINT_FUNC(
-                            f"Attempt {attempt+1}: Retrying because {func.__name__} has @retry_if_exception decorator on it."
+                            f"Attempt {attempt+1}/{max_retries}: Retrying because {func.__name__} has @retry_if_exception decorator on it."
                         )
                         continue
                     else:
