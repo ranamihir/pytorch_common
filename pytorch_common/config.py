@@ -15,7 +15,7 @@ from .metrics import (
     REGRESSION_LOSS_CRITERIA,
 )
 from .types import Optional, _Config, _StringDict
-from .utils import get_file_path, load_object, make_dirs, set_seed
+from .utils import configure_logging, get_file_path, load_object, make_dirs, set_seed
 
 
 class Config(Munch):
@@ -96,6 +96,9 @@ def set_pytorch_config(config: _Config) -> None:
     # Set and create additional required directories
     set_additional_dirs(config)
 
+    # Configure logging
+    configure_logging(config.log_dir)
+
     # Set and validate loss and eval criteria
     set_loss_and_eval_criteria(config)
 
@@ -110,31 +113,30 @@ def set_pytorch_config(config: _Config) -> None:
 
     # Check for model and classification type
     assert (
-        config.model_type == "classification"
-        and config.classification_type in ["binary", "multiclass", "multilabel"]
+        config.model_type == "classification" and config.classification_type in ["binary", "multiclass", "multilabel"]
     ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
 
     # TODO: Remove this after extending FocalLoss
     if config.model_type == "classification" and config.loss_criterion == "focal-loss":
-        assert config.classification_type == "binary", (
-            "FocalLoss is currently only supported for binary classification."
-        )
+        assert (
+            config.classification_type == "binary"
+        ), "FocalLoss is currently only supported for binary classification."
 
     # Ensure GPU availability as some models are prohibitively slow on CPU
     if config.assert_gpu:
-        assert config.n_gpu >= 1, (
-            "Usage of GPU is required as per config but either one isn't available or the device is set to CPU."
-        )
+        assert (
+            config.n_gpu >= 1
+        ), "Usage of GPU is required as per config but either one isn't available or the device is set to CPU."
 
 
 def set_additional_dirs(config: _Config) -> None:
     """
-    Update `output_dir`, `plot_dir`, and `checkpoint_dir`
-    directory paths to absolute ones and create them.
+    Update all directory paths to
+    absolute ones and create them.
     """
     if not config.disable_checkpointing:
         set_and_create_dir(config, "artifact_dir")
-        for directory in ["output_dir", "plot_dir", "checkpoint_dir"]:
+        for directory in ["output_dir", "plot_dir", "checkpoint_dir", "log_dir"]:
             if config.get(directory):
                 set_and_create_dir(config, directory, config.artifact_dir)
 

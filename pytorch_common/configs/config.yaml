@@ -2,6 +2,7 @@
 artifact_dir: ~/pytorch_common
 checkpoint_dir: checkpoints
 plot_dir: plots
+log_dir: logs
 
 # # Dataset config
 # dataset_config:

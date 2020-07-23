@@ -7,6 +7,7 @@ import pickle
 import random
 import shutil
 import sys
+import time
 from collections import OrderedDict
 
 import dill
@@ -34,7 +35,7 @@ def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] 
         if it doesn't exist already.
         """
         if not os.path.isdir(dir_path):
-            os.makedirs(dir_path)
+            os.makedirs(dir_path, exist_ok=True)  # exist_ok=True to avoid concurrent dir creation
 
     # Create parent dir
     create_dir_if_not_exists(parent_dir_path)
@@ -62,6 +63,40 @@ def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
             shutil.rmtree(dir_path, ignore_errors=True)
         else:
             os.rmdir(dir_path)
+
+
+def configure_logging(log_dir: Optional[str] = None):
+    """
+    Configures logging format to write to both stdout
+    and log files (if `log_dir` is specified).
+
+    If `log_dir` is specified, then log files of the
+    format `YYYY-MM-DD.log` will be written to `log_dir`.
+    """
+    # Reset logging because the below `logging.basicConfig`
+    # will do nothing if someone has already called logging
+    # methods before this call.
+    # Solution found at: https://rcaguilar.wordpress.com/2012/02/07/when-python-logging-isnt/
+    if logging.root:
+        del logging.root.handlers[:]
+
+    # Setup streaming handler so logging also goes to stdout
+    log_handlers = [logging.StreamHandler()]
+
+    if log_dir is not None:
+        # Set file name based on date
+        file_name = f"{time.strftime('%Y-%m-%d')}.log"
+        file_path = get_file_path(log_dir, file_name)
+
+        # Add a file handler
+        log_handlers.append(logging.FileHandler(file_path))
+
+    # Configure logging to log info messages and higher
+    logging.basicConfig(
+        handlers=log_handlers,
+        level=logging.INFO,
+        format="%(asctime)s: %(levelname)s: %(filename)s: %(funcName)s: %(message)s",
+    )
 
 
 def human_time_interval(time_seconds: float) -> str:
@@ -430,7 +465,7 @@ def send_batch_to_device(batch: _Batch, device: _Device, non_blocking: Optional[
         True
     """
     if torch.is_tensor(batch):
-        if compare_devices(batch.device, device): #  Avoid copy/transfer if already on given device
+        if compare_devices(batch.device, device):  #  Avoid copy/transfer if already on given device
             return batch
         return batch.to(device=device, non_blocking=non_blocking)
     elif isinstance(batch, (list, tuple)):
@@ -576,6 +611,7 @@ def compare_devices(device1, device2):
     Return True if the given devices
     are the same, otherwise False.
     """
+
     def _convert_to_torch_device(device):
         if isinstance(device, torch.device):
             return device
@@ -583,6 +619,7 @@ def compare_devices(device1, device2):
             return torch.device(device)
         else:
             raise ValueError(f"Device '{device}' not understood.")
+
     return _convert_to_torch_device(device1) == _convert_to_torch_device(device2)
 
 
