@@ -1,6 +1,5 @@
-# this file gets loaded first by default
-datadir: ~/vrds/output/pytorch_common
-
+# These directories will typically get overridden
+artifact_dir: ~/pytorch_common
 checkpoint_dir: checkpoints
 plot_dir: plots
 
@@ -11,7 +10,7 @@ plot_dir: plots
 #   num_classes: &num_classes 2
 
 # Replace with your model name
-model: single_layer_classifier
+model_name: single_layer_classifier
 
 # Specify model type for model metrics tracker
 model_type: classification

@@ -3,7 +3,7 @@ import unittest
 import torch
 
 from pytorch_common import utils
-from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
+from pytorch_common.config import Config, load_pytorch_common_config
 from pytorch_common.types import Dict, Optional
 
 
@@ -16,10 +16,7 @@ class TestConfig(unittest.TestCase):
         cls.default_device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         cls.config = {
-            "load_pytorch_common_config": True,
-            "transientdir": "dummy_transientdir",
-            "packagedir": "dummy_package_dir",
-            "misc_data_dir": "dummy_misc_data_dir",
+            "artifact_dir": "dummy_artifact_dir",
             "batch_size_per_gpu": 8,
             "device": cls.default_device,
         }
@@ -31,10 +28,9 @@ class TestConfig(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """
-        Delete all directories created during config initialization.
+        Delete data directory created during config initialization.
         """
-        for directory in ["transientdir", "packagedir", "misc_data_dir"]:
-            utils.remove_dir(cls.config[directory], force=True)
+        utils.remove_dir(cls.config["artifact_dir"], force=True)
 
     def test_load_pytorch_common_config(self):
         """
@@ -46,8 +42,7 @@ class TestConfig(unittest.TestCase):
         self.assertFalse(config.assert_gpu)  # Test same value
 
         # Test disabling loading of pytorch_common config
-        dictionary = {"load_pytorch_common_config": False}
-        self.assertEqual(dict(self._load_config(dictionary)), self._get_merged_dict(dictionary))
+        self.assertEqual(dict(self._load_config({}, pytorch_common_config=False)), self.config)
 
     def test_set_loss_and_eval_criteria(self):
         """
@@ -214,14 +209,14 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(error):
             self._load_config(dictionary)
 
-    def _load_config(self, dictionary: Optional[Dict] = None) -> Config:
+    def _load_config(self, dictionary: Optional[Dict] = None, pytorch_common_config: Optional[bool] = True) -> Config:
         """
         Load the default pytorch_common config
         after overriding it with `dictionary`.
         """
-        dictionary = self._get_merged_dict(dictionary)
-        config = load_pytorch_common_config(dictionary)
-        set_pytorch_config(config)
+        config = self._get_merged_dict(dictionary)
+        if pytorch_common_config:
+            config = load_pytorch_common_config(config)
         return config
 
     def _get_merged_dict(self, dictionary: Optional[Dict] = None) -> Dict:

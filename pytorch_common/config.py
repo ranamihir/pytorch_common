@@ -37,35 +37,38 @@ class Config(Munch):
         pass
 
 
-def load_pytorch_common_config(dictionary: _StringDict) -> Munch:
+def load_pytorch_common_config(dictionary: Optional[_StringDict] = None) -> Munch:
     """
     Load the pytorch_common config (if present) and
     update attributes which are present in the project
     specific `dictionary`, and return that dictionary.
     """
+    if dictionary is None:
+        dictionary = {}
+
     # Load `pytorch_common` config if required
-    if dictionary.get("load_pytorch_common_config"):
-        logging.info("Loading default pytorch_common config...")
-        pytorch_common_config = load_config()
+    logging.info("Loading default pytorch_common config...")
+    pytorch_common_config = load_config()
 
-        logging.info("Done. Overriding default config with provided dictionary...")
+    logging.info("Done. Overriding default config with provided dictionary...")
 
-        # Override pytorch_common config with project specific one
-        # And then set it back to original dictionary
-        pytorch_common_config.update(dictionary)
-        merged_config = pytorch_common_config
-        logging.info("Done.")
+    # Override pytorch_common config with project specific one
+    # And then set it back to original dictionary
+    pytorch_common_config.update(dictionary)
+    merged_config = pytorch_common_config
+    logging.info("Done.")
 
-        # Throw warning if both scheduler configs enabled (not common)
-        if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
-            logging.warning("Scheduler is configured to take a step both after every step and every epoch.")
+    # Throw warning if both scheduler configs enabled (not common)
+    if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
+        logging.warning("Scheduler is configured to take a step both after every step and every epoch.")
 
-        # Throw warning if checkpointing is disabled
-        if merged_config.disable_checkpointing:
-            logging.warning("Checkpointing is disabled. No models will be saved during training.")
+    # Throw warning if checkpointing is disabled
+    if merged_config.disable_checkpointing:
+        logging.warning("Checkpointing is disabled. No models will be saved during training.")
 
-        return Munch(merged_config)
-    return Munch(dictionary)
+    set_pytorch_config(merged_config)
+
+    return merged_config
 
 
 def load_config(config_file: Optional[str] = "config.yaml") -> Config:
@@ -90,39 +93,38 @@ def set_pytorch_config(config: _Config) -> None:
     Validate and set config for all
     things related to PyTorch / GPUs.
     """
-    if config.get("load_pytorch_common_config"):
-        # Set and create additional required directories
-        set_additional_dirs(config)
+    # Set and create additional required directories
+    set_additional_dirs(config)
 
-        # Set and validate loss and eval criteria
-        set_loss_and_eval_criteria(config)
+    # Set and validate loss and eval criteria
+    set_loss_and_eval_criteria(config)
 
-        # Verify config for CUDA / CPU device(s) provided
-        check_and_set_devices(config)
+    # Verify config for CUDA / CPU device(s) provided
+    check_and_set_devices(config)
 
-        # Compute correct batch size if per GPU one available
-        set_all_batch_sizes(config)
+    # Compute correct batch size if per GPU one available
+    set_all_batch_sizes(config)
 
-        # Fix seed
-        set_seed(config.seed)
+    # Fix seed
+    set_seed(config.seed)
 
-        # Check for model and classification type
-        assert (
-            config.model_type == "classification"
-            and config.classification_type in ["binary", "multiclass", "multilabel"]
-        ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
+    # Check for model and classification type
+    assert (
+        config.model_type == "classification"
+        and config.classification_type in ["binary", "multiclass", "multilabel"]
+    ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
 
-        # TODO: Remove this after extending FocalLoss
-        if config.model_type == "classification" and config.loss_criterion == "focal-loss":
-            assert config.classification_type == "binary", (
-                "FocalLoss is currently only supported" "for binary classification."
-            )
+    # TODO: Remove this after extending FocalLoss
+    if config.model_type == "classification" and config.loss_criterion == "focal-loss":
+        assert config.classification_type == "binary", (
+            "FocalLoss is currently only supported for binary classification."
+        )
 
-        # Ensure GPU availability as some models are prohibitively slow on CPU
-        if config.assert_gpu:
-            assert config.n_gpu >= 1, (
-                "Usage of GPU is required as per config but either " "one isn't available or the device is set to CPU."
-            )
+    # Ensure GPU availability as some models are prohibitively slow on CPU
+    if config.assert_gpu:
+        assert config.n_gpu >= 1, (
+            "Usage of GPU is required as per config but either one isn't available or the device is set to CPU."
+        )
 
 
 def set_additional_dirs(config: _Config) -> None:
@@ -130,24 +132,21 @@ def set_additional_dirs(config: _Config) -> None:
     Update `output_dir`, `plot_dir`, and `checkpoint_dir`
     directory paths to absolute ones and create them.
     """
-    if config.get("misc_data_dir"):
-        set_and_create_dir(config, config.packagedir, "misc_data_dir")
-    else:  # Point `misc_data_dir` to `transientdir` by default
-        config["misc_data_dir"] = config.transientdir
-        setattr(config, "misc_data_dir", config.transientdir)
-
-    for directory in ["output_dir", "plot_dir", "checkpoint_dir"]:
-        if config.get(directory):
-            set_and_create_dir(config, config.misc_data_dir, directory)
+    if not config.disable_checkpointing:
+        set_and_create_dir(config, "artifact_dir")
+        for directory in ["output_dir", "plot_dir", "checkpoint_dir"]:
+            if config.get(directory):
+                set_and_create_dir(config, directory, config.artifact_dir)
 
 
-def set_and_create_dir(config: _Config, parent_dir: str, directory: str) -> None:
+def set_and_create_dir(config: _Config, directory: str, parent_dir: Optional[str] = None) -> None:
     """
     Properly sets the `directory` attribute of `config`,
-    assuming `config[directory]` is inside `parent_dir`.
+    assuming `config[directory]` is inside `parent_dir` (if provided).
     Also creates the directory if it doesn't already exist.
     """
-    dir_path = os.path.expanduser(get_file_path(parent_dir, config[directory]))
+    dir_path = config[directory] if parent_dir is None else get_file_path(parent_dir, config[directory])
+    dir_path = os.path.expanduser(dir_path)
     config[directory] = dir_path
     setattr(config, directory, dir_path)
     make_dirs(config[directory])

@@ -43,10 +43,9 @@ class TestTrainUtils(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """
-        Delete all directories created during config initialization.
+        Delete data directory created during config initialization.
         """
-        for directory in ["transientdir", "packagedir", "misc_data_dir"]:
-            utils.remove_dir(cls.config[directory], force=True)
+        utils.remove_dir(cls.config["artifact_dir"], force=True)
 
     def test_early_stopping(self):
         """
@@ -238,9 +237,7 @@ class TestTrainUtils(unittest.TestCase):
 
         cls.default_config_dict = {
             "load_pytorch_common_config": True,
-            "transientdir": "dummy_transientdir",
-            "packagedir": "dummy_package_dir",
-            "misc_data_dir": "dummy_misc_data_dir",
+            "artifact_dir": "dummy_artifact_dir",
             "device": cls.default_device,
             "train_batch_size_per_gpu": 5,
             "eval_batch_size_per_gpu": 5,

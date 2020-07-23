@@ -430,6 +430,8 @@ def send_batch_to_device(batch: _Batch, device: _Device, non_blocking: Optional[
         True
     """
     if torch.is_tensor(batch):
+        if compare_devices(batch.device, device): #  Avoid copy/transfer if already on given device
+            return batch
         return batch.to(device=device, non_blocking=non_blocking)
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
@@ -446,7 +448,7 @@ def send_optimizer_to_device(optimizer: Optimizer, device: _Device) -> Optimizer
     for state in optimizer.state.values():
         for k, v in state.items():
             if torch.is_tensor(v):
-                state[k] = v.to(device)
+                state[k] = send_batch_to_device(v, device)
     return optimizer
 
 
@@ -457,7 +459,7 @@ def convert_tensor_to_numpy(batch: _Batch) -> _Batch:
     `torch.Tensor` or a tuple/list of them as input.
     """
     if torch.is_tensor(batch):
-        return batch.to("cpu").detach().numpy()
+        return send_batch_to_device(batch, "cpu").detach().numpy()
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(convert_tensor_to_numpy(e) for e in batch)
@@ -567,6 +569,21 @@ def is_model_parallelized(model: nn.Module) -> bool:
     Check if a `model` is parallelized on multiple GPUs.
     """
     return is_model_on_gpu(model) and isinstance(model, DataParallel)
+
+
+def compare_devices(device1, device2):
+    """
+    Return True if the given devices
+    are the same, otherwise False.
+    """
+    def _convert_to_torch_device(device):
+        if isinstance(device, torch.device):
+            return device
+        elif isinstance(device, str):
+            return torch.device(device)
+        else:
+            raise ValueError(f"Device '{device}' not understood.")
+    return _convert_to_torch_device(device1) == _convert_to_torch_device(device2)
 
 
 def get_total_grad_norm(parameters: Iterable[torch.Tensor], norm_type: Optional[float] = 2) -> torch.Tensor:

@@ -553,7 +553,7 @@ def save_model(
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model_name, epoch, config_info_dict)
     checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     logging.info(f"Saving {checkpoint_type} checkpoint '{checkpoint_path}'...")
 
@@ -779,7 +779,7 @@ def remove_model(
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
 
-    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model, epoch, config_info_dict)
+    checkpoint_file = get_checkpoint_name(checkpoint_type, config.model_name, epoch, config_info_dict)
     checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
         logging.info(f"Removing {checkpoint_type} checkpoint '{checkpoint_path}'...")
