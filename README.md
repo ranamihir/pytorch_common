@@ -45,7 +45,7 @@ pip install ".[nlp]"
 
 # Usage
 
-The default [config](https://github.com/ranamihir/pytorch_common/pytorch_common/configs/config.yaml) can be loaded, and overridden with a user-specified dictionary, as follows:
+The default [config](https://github.com/ranamihir/pytorch_common/blob/master/pytorch_common/configs/config.yaml) can be loaded, and overridden with a user-specified dictionary, as follows:
 ```python
 from pytorch_common.config import load_pytorch_common_config
 
