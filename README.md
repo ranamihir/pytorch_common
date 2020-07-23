@@ -1,3 +1,4 @@
+
 # Overview
 
 This reposity contains PyTorch code that is common and (hopefully) helpful to most projects built on PyTorch.
@@ -30,8 +31,16 @@ In a nutshell, it has code for:
   - etc.
 
 # Installation
+To install this package, you must have [pytorch](https://pytorch.org/) (and [transformers](https://github.com/huggingface/transformers) for accessing NLP-based functionalities) installed.
+If you don't already have it, you can create a conda environment by running:
+```bash
+conda env create -f requirements-dev.yaml`
+pip install -e . # or ".[nlp]" if required
+```
+which will create an environment called `pytorch_common` for you with all the required dependencies.
 
-The package can be installed from source:
+
+The package can then be installed from source:
 ```bash
 git clone git@github.com:ranamihir/pytorch_common
 cd pytorch_common
@@ -94,13 +103,7 @@ Several unit tests are present in the `tests/` directory. You may manually run t
 python -m unittest discover tests
 ```
 
-Please note, the tests need to be run from within an environment that has [pytorch](https://pytorch.org/) installed (and [transformers](https://github.com/huggingface/transformers) in case you're leveraging the NLP-based functionalities.)
-If you don't already have it, you can create a conda environment by running:
-```bash
-conda env create -f requirements-dev.yaml`
-pip install -e . # or ".[nlp]" if required
-```
-which will create an environment called `pytorch_common` for you with all the required dependencies.
+Make sure to first activate the environment that has [pytorch](https://pytorch.org/) (and optionally [transformers](https://github.com/huggingface/transformers)) installed.
 
 Additionally, I have also added a pre-push hook so that all tests are run locally before each push.
 This is done because these tests take some time (depending on resources available), and pre-commit hooks tend to slow down development.
