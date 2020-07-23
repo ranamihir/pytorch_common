@@ -25,9 +25,6 @@ if [ -n "$(pythonfiles)" ]; then
   fi
 fi
 
-# Activate env where pytorch is installed
-source activate pytorch_common
-
 current_branch=`git branch | grep '*' | sed 's/* //'`
 
 ### Uncomment the following code block to run tests only on master branch ###

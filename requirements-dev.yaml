@@ -1,4 +1,4 @@
-name: pytorch_common
+name: github
 channels:
   - pytorch
 dependencies:
@@ -6,15 +6,14 @@ dependencies:
   - numpy=1.17.2
   - pandas=0.24.0
   - nb_conda=2.2.1
-  - pip=19.2.2
-  - cudatoolkit=9.0
-  - pytorch=1.1
+  - pip=20.0.2
+  - cudatoolkit=10.2
+  - pytorch=1.5.1
   - pip:
-    - dask[dataframe]==2.3.0
+    - dask[dataframe]==2.21.0
     - toolz==0.10.0
     - scikit-learn==0.22.1
-    - ipdb==0.13.2
-    - pdbpp==0.10.2
-    - dill==0.3.1.1
+    - dill==0.3.2
     - munch==2.5.0
     - locket==0.2.0
+    - matplotlib==3.2.1
