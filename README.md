@@ -106,7 +106,7 @@ return_dict = train_model(
     model, config, train_loader, val_loader, optimizer, loss_criterion_train, loss_criterion_eval, eval_criteria, train_logger, val_logger
 )
 ```
-
+For more details on getting started, check out the [basic usage notebook](https://github.com/ranamihir/pytorch_common/blob/master/notebooks/basic_usage.ipynb) and other examples in the [notebooks](https://github.com/ranamihir/pytorch_common/blob/master/notebooks/) folder.
 
 # Testing
 
