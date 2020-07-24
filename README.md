@@ -1,8 +1,8 @@
 
 # PyTorch-Common
 <p>
-	<a href="https://github.com/ranamihir/pytorch_common/blob/master/LICENSE">
-        <img alt="GitHub" src="https://img.shields.io/github/license/ranamihir/pytorch_common.svg?color=blue">
+    <a href="https://github.com/ranamihir/pytorch_common/blob/master/LICENSE">
+        <img alt="GitHub" src="https://img.shields.io/github/license/ranamihir/pytorch_common.svg">
     </a>
     <a href="https://github.com/ranamihir/pytorch_common/releases">
         <img alt="GitHub release" src="https://img.shields.io/github/release/ranamihir/pytorch_common.svg">
