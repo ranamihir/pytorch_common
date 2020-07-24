@@ -1,10 +1,20 @@
 
-# Overview
+# PyTorch-Common
+<p>
+    <a href="https://github.com/ranamihir/pytorch_common/blob/master/LICENSE">
+        <img alt="GitHub" src="https://img.shields.io/github/license/ranamihir/pytorch_common.svg">
+    </a>
+    <a href="https://github.com/ranamihir/pytorch_common/releases">
+        <img alt="GitHub release" src="https://img.shields.io/github/release/ranamihir/pytorch_common.svg">
+    </a>
+</p>
 
 `pytorch-common` is a lightweight wrapper that contains PyTorch code that is common and (hopefully) helpful to most projects built on PyTorch. It is built with 3 main principles in mind:
 - Make use of PyTorch available to people without much in-depth knowledge of it while providing enormous flexibility and support for hardcore users
 - Under-the-hood optimization for fast and memory efficient performance
-- Ability to change all settings (e.g. model, loss, metrics, devices, hyperparameters, artifact directories, etc.) directly from config.
+- Ability to change all settings (e.g. model, loss, metrics, devices, hyperparameters, artifact directories, etc.) directly from config
+
+# Features
 
 In a nutshell, it has code for:
   - Training / testing models
@@ -100,9 +110,9 @@ return_dict = train_model(
 
 # Testing
 
-Several unit tests are present in the `tests/` directory. You may manually run them with:
+Several unit tests are present in the [tests](https://github.com/ranamihir/pytorch_common/tree/master/tests) directory. You may manually run them with:
 
-```python
+```bash
 python -m unittest discover tests
 ```
 
