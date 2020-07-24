@@ -97,7 +97,7 @@ def set_pytorch_config(config: _Config) -> None:
     set_additional_dirs(config)
 
     # Configure logging
-    configure_logging(config.log_dir)
+    configure_logging(config.log_dir, write_to_file=not config.disable_checkpointing)
 
     # Set and validate loss and eval criteria
     set_loss_and_eval_criteria(config)

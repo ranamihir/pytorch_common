@@ -65,7 +65,7 @@ def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
             os.rmdir(dir_path)
 
 
-def configure_logging(log_dir: Optional[str] = None):
+def configure_logging(log_dir: Optional[str] = None, write_to_file: Optional[bool] = True):
     """
     Configures logging format to write to both stdout
     and log files (if `log_dir` is specified).
@@ -83,7 +83,7 @@ def configure_logging(log_dir: Optional[str] = None):
     # Setup streaming handler so logging also goes to stdout
     log_handlers = [logging.StreamHandler()]
 
-    if log_dir is not None:
+    if write_to_file and log_dir is not None:
         # Set file name based on date
         file_name = f"{time.strftime('%Y-%m-%d')}.log"
         file_path = get_file_path(log_dir, file_name)
