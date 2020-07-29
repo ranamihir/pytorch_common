@@ -47,7 +47,7 @@ In a nutshell, it has code for:
 To install this package, you must have [pytorch](https://pytorch.org/) (and [transformers](https://github.com/huggingface/transformers) for accessing NLP-based functionalities) installed.
 If you don't already have it, you can create a conda environment by running:
 ```bash
-conda env create -f requirements-dev.yaml`
+conda env create -f requirements.yaml`
 pip install -e . # or ".[nlp]" if required
 ```
 which will create an environment called `pytorch_common` for you with all the required dependencies.
