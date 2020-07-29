@@ -1,4 +1,4 @@
-name: github
+name: pytorch_common
 channels:
   - pytorch
 dependencies:
