@@ -1,5 +1,6 @@
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
+import numpy as np
 import torch
 import torch.nn as nn
 from matplotlib.figure import Figure
@@ -17,6 +18,7 @@ __all__ = [
     "Union",
     "Munch",
     "_StringDict",
+    "_StringArrayDict",
     "_Config",
     "_Device",
     "_Batch",
@@ -35,6 +37,7 @@ __all__ = [
 
 
 _StringDict = Dict[str, Any]
+_StringArrayDict = Dict[str, np.ndarray]
 _Config = Union[_StringDict, Munch]
 _Device = Union[str, torch.device]
 _Batch = Iterable

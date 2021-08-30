@@ -35,7 +35,7 @@ def make_dirs(parent_dir_path: str, child_dirs: Optional[Union[str, List[str]]] 
         if it doesn't exist already.
         """
         if not os.path.isdir(dir_path):
-            os.makedirs(dir_path, exist_ok=True)  # exist_ok=True to avoid concurrent dir creation
+            os.makedirs(dir_path, exist_ok=True)  # `exist_ok=True` to avoid concurrent dir creation
 
     # Create parent dir
     create_dir_if_not_exists(parent_dir_path)
@@ -162,9 +162,7 @@ def save_plot(
     fig.savefig(get_file_path(config.plot_dir, f"{file_name}.{ext}"), dpi=300)
 
 
-def save_object(
-    obj: Any, primary_path: str, file_name: Optional[str] = None, module: Optional[str] = "pickle"
-) -> None:
+def save_object(obj: Any, primary_path: str, file_name: Optional[str] = None, module: Optional[str] = "pickle") -> None:
     """
     This is a generic function to save any given
     object using different `module`s, e.g. pickle,
@@ -293,11 +291,9 @@ def get_pickle_module(pickle_module: Optional[str] = "pickle") -> Union[pickle, 
     Return the correct module for pickling.
     :param pickle_module: must be one of ["pickle", "dill"]
     """
-    if pickle_module == "pickle":
-        return pickle
-    elif pickle_module == "dill":
-        return dill
-    raise ValueError(f"Param 'pickle_module' ('{pickle_module}') must be one of ['pickle', 'dill'].")
+    if not pickle_module in ["pickle", "dill"]:
+        raise ValueError(f"Param 'pickle_module' ('{pickle_module}') must be one of ['pickle', 'dill'].")
+    return eval(pickle_module)
 
 
 def delete_model(model: nn.Module) -> None:
@@ -358,7 +354,10 @@ def get_unique_config_name(primary_name: str, config_info_dict: Optional[_String
 
 
 def get_checkpoint_name(
-    checkpoint_type: str, model_name: str, epoch: int, config_info_dict: Optional[_StringDict] = None,
+    checkpoint_type: str,
+    model_name: str,
+    epoch: int,
+    config_info_dict: Optional[_StringDict] = None,
 ) -> str:
     """
     Returns the appropriate name of checkpoint file
@@ -383,7 +382,7 @@ def get_trainable_params(model: nn.Module) -> Dict[str, int]:
     num_params = sum(p.numel() for p in model.parameters())
     num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     model_name = getattr(model, "__name__", model.__class__.__name__)
-    logging.info(f"Number of trainable/total parameters in {model_name}: " f"{num_trainable_params}/{num_params}")
+    logging.info(f"Number of trainable/total parameters in {model_name}: {num_trainable_params}/{num_params}")
     return {"trainable": num_trainable_params, "total": num_params}
 
 
@@ -714,7 +713,10 @@ class ModelTracker:
             self.eval_metrics_hist[eval_criterion][epoch] = eval_metrics[eval_criterion]
 
     def get_eval_metrics(
-        self, eval_criterion: Optional[str] = None, epoch: Optional[int] = None, flatten: Optional[bool] = False,
+        self,
+        eval_criterion: Optional[str] = None,
+        epoch: Optional[int] = None,
+        flatten: Optional[bool] = False,
     ) -> Union[float, List[float], OrderedDict[str, Union[float, List[float]]]]:
         """
         Get the evaluation metrics history.
@@ -742,10 +744,7 @@ class ModelTracker:
             return self.eval_metrics_hist[eval_criterion]  # Return ordered dict
         elif epoch is not None:
             return OrderedDict(
-                {
-                    eval_criterion: self.eval_metrics_hist[eval_criterion][epoch]
-                    for eval_criterion in self.eval_criteria
-                }
+                {eval_criterion: self.eval_metrics_hist[eval_criterion][epoch] for eval_criterion in self.eval_criteria}
             )
         return self.eval_metrics_hist
 
@@ -779,7 +778,7 @@ class ModelTracker:
         assert epoch_loss == epoch_eval_metrics
         dataset_type = "TRAIN" if self.is_train else "VAL  "
         mean_loss_epoch = np.mean(self.get_losses(epoch=epoch_loss))
-        result_str = f"\n\033[1m{dataset_type} Epoch: {epoch_loss}" f"\tAverage loss: {mean_loss_epoch:.4f}, "
+        result_str = f"\n\033[1m{dataset_type} Epoch: {epoch_loss}\tAverage loss: {mean_loss_epoch:.4f}, "
         result_str += ", ".join(
             [
                 f"{eval_criterion}: {self.get_eval_metrics(eval_criterion, epoch_loss):.4f}"
@@ -957,7 +956,7 @@ class SequencePooler(nn.Module):
             self.pooler = self.POOLER_MAPPING[self.model_type]
         else:
             logging.warning(
-                f"No supported sequence pooler was found for model of " f"type '{model_type}'. Using the default one."
+                f"No supported sequence pooler was found for model of type '{model_type}'. Using the default one."
             )
             self.model_type = self.DEFAULT_POOLER_TYPE
             self.pooler = self._default_pooler

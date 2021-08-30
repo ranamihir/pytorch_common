@@ -40,7 +40,7 @@ class BasePyTorchDataset(Dataset):
         raise NotImplementedError
 
     def __len__(self):
-        raise NotImplementedError
+        return len(self.data)
 
     def print_dataset(self) -> None:
         """
@@ -48,8 +48,11 @@ class BasePyTorchDataset(Dataset):
         """
         logging.info("\n" + "-" * 40)
         print_dataframe(self.data)
-        value_counts = self.data[self.target_col].value_counts()
-        logging.info(f"Target value counts:\n{value_counts}")
+
+        if self.target_col in self.data:
+            value_counts = self.data[self.target_col].value_counts()
+            logging.info(f"Target value counts:\n{value_counts}")
+
         logging.info("\n" + "-" * 40)
 
     def save(self, *args, **kwargs) -> None:
@@ -85,11 +88,14 @@ class BasePyTorchDataset(Dataset):
         """
         remove_object(*args, **kwargs)
 
-    def progress_apply(self, data: pd.DataFrame, func: Callable, *args, **kwargs) -> pd.DataFrame:
+    def progress_apply(self, data: Union[pd.DataFrame, pd.Series], func: Callable, *args, **kwargs) -> pd.DataFrame:
         """
         Generic function to `progress_apply` a given row-level
         function `func` on the given `data` (chunk).
         """
+        if isinstance(data, pd.Series):
+            return data.progress_apply(func, *args, **kwargs)
+        assert isinstance(data, pd.DataFrame)
         return data.progress_apply(func, *args, **kwargs, axis=1)
 
     def sample_class(
@@ -193,7 +199,10 @@ class BasePyTorchDataset(Dataset):
         self.shuffle_and_reindex_data()
 
     def _get_class_info(
-        self, class_to_sample: Optional[Union[float, str]] = None, column: Optional[str] = None, minority: bool = True,
+        self,
+        class_to_sample: Optional[Union[float, str]] = None,
+        column: Optional[str] = None,
+        minority: bool = True,
     ) -> Tuple[Union[float, str], int, List[int]]:
         """
         Get the label, counts, and indices of each class.

@@ -155,7 +155,14 @@ def train_model(
                 if not config.disable_checkpointing:
                     logging.info("Replacing current best model checkpoint...")
                     best_checkpoint_file = save_model(
-                        model, config, epoch, train_logger, val_logger, optimizer, scheduler, config_info_dict,
+                        model,
+                        config,
+                        epoch,
+                        train_logger,
+                        val_logger,
+                        optimizer,
+                        scheduler,
+                        config_info_dict,
                     )
                     remove_model(config, best_epoch, config_info_dict)
                     best_epoch = epoch
@@ -177,7 +184,14 @@ def train_model(
     if not config.disable_checkpointing:
         logging.info("Dumping model and results...")
         save_model(
-            model, config, stop_epoch, train_logger, val_logger, optimizer, scheduler, config_info_dict,
+            model,
+            config,
+            stop_epoch,
+            train_logger,
+            val_logger,
+            optimizer,
+            scheduler,
+            config_info_dict,
         )
 
         # Save current and best models
@@ -370,10 +384,10 @@ def perform_one_epoch(
 
     # Store all required items to be returned
     loss_hist: List[float] = []
-    targets_hist: List[torch.Tensor] = []
-    outputs_hist: List[torch.Tensor] = []
-    preds_hist: List[torch.Tensor] = []
-    probs_hist: List[torch.Tensor] = []
+    targets_hist: _TensorOrTensors = []
+    outputs_hist: _TensorOrTensors = []
+    preds_hist: _TensorOrTensors = []
+    probs_hist: _TensorOrTensors = []
 
     # Enable gradient computation if training to be performed else disable it.
     # Technically not required if this function is called from other supported
@@ -411,9 +425,7 @@ def perform_one_epoch(
 
                 # Print progess
                 if batch_idx in batches_to_print:
-                    logging.info(
-                        f"{num_examples_complete}/{num_examples} " f"({percent_batches_complete:.0f}%) complete."
-                    )
+                    logging.info(f"{num_examples_complete}/{num_examples} ({percent_batches_complete:.0f}%) complete.")
 
             else:  # Perform training / evaluation
                 # Compute and store loss
@@ -514,7 +526,7 @@ def take_scheduler_step(scheduler: object, val_metric: Optional[float] = None) -
 
     scheduler_name = scheduler.__class__.__name__
     if scheduler_name in REQUIRE_VAL_METRIC:
-        assert val_metric is not None, f"Param 'val_metric' must be provided " f"for '{scheduler_name}' scheduler."
+        assert val_metric is not None, f"Param 'val_metric' must be provided for '{scheduler_name}' scheduler."
         scheduler.step(val_metric)
     else:
         scheduler.step()
@@ -604,7 +616,8 @@ def generate_checkpoint_dict(
 
     # Save items if provided
     for name, obj in zip(
-        ("train_logger", "val_logger", "optimizer", "scheduler"), (train_logger, val_logger, optimizer, scheduler),
+        ("train_logger", "val_logger", "optimizer", "scheduler"),
+        (train_logger, val_logger, optimizer, scheduler),
     ):
         if obj is not None:
             checkpoint[name] = obj if name in ["train_logger", "val_logger"] else obj.state_dict()
@@ -742,7 +755,7 @@ def load_optimizer_and_scheduler(
         if state_dict is not None:
             obj.load_state_dict(state_dict)
         else:
-            raise KeyError(f"{key} argument expected its state dict in " f"the loaded checkpoint but none was found.")
+            raise KeyError(f"{key} argument expected its state dict in the loaded checkpoint but none was found.")
         return obj
 
     # Load optimizer
@@ -794,9 +807,9 @@ def validate_checkpoint_type(checkpoint_type: str, checkpoint_file: Optional[str
     `checkpoint_file`, if provided.
     """
     ALLOWED_CHECKPOINT_TYPES = ["state", "model"]
-    assert checkpoint_type in ALLOWED_CHECKPOINT_TYPES, (
-        f"Param 'checkpoint_type' ('{checkpoint_type}') " f"must be one of {ALLOWED_CHECKPOINT_TYPES}."
-    )
+    assert (
+        checkpoint_type in ALLOWED_CHECKPOINT_TYPES
+    ), f"Param 'checkpoint_type' ('{checkpoint_type}') must be one of {ALLOWED_CHECKPOINT_TYPES}."
 
     # Check that provided checkpoint_type matches that of checkpoint_file
     if checkpoint_file is not None:
@@ -853,7 +866,11 @@ class EarlyStopping:
         """
         self.criterion = criterion
         self._init_params(
-            mode=mode, min_delta=min_delta, patience=patience, best_val=best_val, best_val_tol=best_val_tol,
+            mode=mode,
+            min_delta=min_delta,
+            patience=patience,
+            best_val=best_val,
+            best_val_tol=best_val_tol,
         )
         self._validate_params()
         self.best: Optional[float] = None

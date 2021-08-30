@@ -12,8 +12,8 @@ class BaseDatasetConfig(Munch):
     Base configuration class for
     dataset-related settings.
 
-    Class attributes can be accessed with
-    both `config["key"]` and `config.key`.
+    Class attributes can be accessed with both
+    `configobj["key"]` and `configobj.key`.
     """
 
     def __init__(self, dictionary: Optional[_StringDict] = None):
@@ -43,8 +43,8 @@ class BaseModelConfig(Munch):
     Base configuration class for
     model-related settings.
 
-    Class attributes can be accessed with
-    both `config["key"]` and `config.key`.
+    Class attributes can be accessed with both
+    `configobj["key"]` and `configobj.key`.
     """
 
     def __init__(self, dictionary: Optional[_StringDict] = None, model_type: Optional[str] = "classification"):
