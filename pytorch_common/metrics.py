@@ -99,7 +99,7 @@ def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cro
                 agg_func = torch.mean
             else:
                 raise ValueError(
-                    f"Param 'multilabel_reduction' ('{multilabel_reduction}') " f"must be one of ['sum', 'mean']."
+                    f"Param 'multilabel_reduction' ('{multilabel_reduction}') must be one of ['sum', 'mean']."
                 )
 
     # Get per-label loss
@@ -124,7 +124,10 @@ def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cro
     # Multilabel classification
     else:
         return lambda output_hist, y_hist: agg_func(
-            torch.stack([loss_criterion(output_hist, y_hist[..., i]) for i in range(y_hist.shape[-1])], dim=0,)
+            torch.stack(
+                [loss_criterion(output_hist, y_hist[..., i]) for i in range(y_hist.shape[-1])],
+                dim=0,
+            )
         )
 
 
@@ -153,7 +156,7 @@ def get_eval_criterion_function(
             agg_func = np.mean
         else:
             raise ValueError(
-                f"Param 'multilabel_reduction' ('{multilabel_reduction}') " f"must be one of ['mean', 'none']."
+                f"Param 'multilabel_reduction' ('{multilabel_reduction}') must be one of ['mean', 'none']."
             )
 
     # Get per-label eval criterion

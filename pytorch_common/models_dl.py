@@ -108,7 +108,7 @@ class BasePyTorchModel(nn.Module):
         :return probs: Predicted probabilities of each class
         """
         if self.model_type != "classification" and threshold is not None:
-            raise ValueError(f"Param 'threshold' ('{threshold}') can only " f"be provided for classification models.")
+            raise ValueError(f"Param 'threshold' ('{threshold}') can only be provided for classification models.")
 
         probs = F.softmax(outputs, dim=-1)  # Get probabilities of each class
         num_classes = probs.shape[-1]
