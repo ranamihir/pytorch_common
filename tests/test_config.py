@@ -72,7 +72,11 @@ class TestConfig(unittest.TestCase):
 
         # Test that FocalLoss only compatible with binary classification
         self._load_config(
-            {"model_type": "classification", "classification_type": "binary", "loss_criterion": "focal-loss",}
+            {
+                "model_type": "classification",
+                "classification_type": "binary",
+                "loss_criterion": "focal-loss",
+            }
         )
         for classification_type in ["multiclass", "multilabel"]:
             self._test_config_error(

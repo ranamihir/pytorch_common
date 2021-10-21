@@ -8,7 +8,7 @@ from pytorch_common.models import create_model, create_transformer_model, is_tra
 
 # Check if `transformers` installed
 try:
-    from transformers import AutoModel, AutoConfig
+    from transformers import AutoConfig, AutoModel
 
     TRANSFORMERS_INSTALLED = True
 except ImportError:

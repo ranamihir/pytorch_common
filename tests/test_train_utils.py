@@ -87,7 +87,12 @@ class TestTrainUtils(unittest.TestCase):
 
         # Define classification kwargs
         classification_dataset_kwargs = [
-            {"dataset_name": "multi_class_dataset", "size": size, "dim": in_dim, "num_classes": num_classes,},
+            {
+                "dataset_name": "multi_class_dataset",
+                "size": size,
+                "dim": in_dim,
+                "num_classes": num_classes,
+            },
             {
                 "dataset_name": "multi_label_dataset",
                 "size": size,
@@ -112,7 +117,12 @@ class TestTrainUtils(unittest.TestCase):
 
         # Define regression kwargs
         regression_dataset_kwargs = [
-            {"dataset_name": "regression_dataset", "size": size, "in_dim": in_dim, "out_dim": out_dim,}
+            {
+                "dataset_name": "regression_dataset",
+                "size": size,
+                "in_dim": in_dim,
+                "out_dim": out_dim,
+            }
         ]
 
         regression_model_kwargs = [
@@ -278,9 +288,7 @@ class TestTrainUtils(unittest.TestCase):
             self.config.classification_type = "multilabel"
             self.config.loss_kwargs["multilabel_reduction"] = multilabel_reduction
             self.config.eval_criteria_kwargs["multilabel_reduction"] = multilabel_reduction
-        loss_criterion_train, loss_criterion_test, eval_criteria = get_loss_eval_criteria(
-            self.config, reduction="mean"
-        )
+        loss_criterion_train, loss_criterion_test, eval_criteria = get_loss_eval_criteria(self.config, reduction="mean")
 
         training_objects = {
             "train_loader": train_loader,
@@ -343,7 +351,8 @@ class TestTrainUtils(unittest.TestCase):
         train_logger, val_logger = utils.get_model_performance_trackers(self.config)
         train_logger.add_metrics(np.random.randn(10), {eval_criterion: np.random.randn(10)})
         val_logger.add_metrics(
-            np.random.randn(self.config.epochs), {eval_criterion: np.random.randn(self.config.epochs)},
+            np.random.randn(self.config.epochs),
+            {eval_criterion: np.random.randn(self.config.epochs)},
         )
         val_logger.set_best_epoch(1)
 

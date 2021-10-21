@@ -110,7 +110,11 @@ class TestMetrics(unittest.TestCase):
         return metrics.get_loss_eval_criteria(config)
 
     def _test_metrics(
-        self, predictions: np.ndarray, targets: np.ndarray, eval_criteria: List, true_values: _StringDict,
+        self,
+        predictions: np.ndarray,
+        targets: np.ndarray,
+        eval_criteria: List,
+        true_values: _StringDict,
     ) -> None:
         """
         Test that all `eval_criteria` values computed using

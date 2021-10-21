@@ -81,11 +81,14 @@ class TestModels(unittest.TestCase):
         # Ensure correct number of rows for both classes
         self.assertEqual(minority_class_post["count"], minority_info_pre["count"])
         self.assertEqual(
-            majority_class_post["count"], np.ceil(majority_class_pre["count"] / undersampling_factor),
+            majority_class_post["count"],
+            np.ceil(majority_class_pre["count"] / undersampling_factor),
         )
 
     def _get_dataset(
-        self, dataset_name: Optional[str] = "multi_class_dataset", dictionary: Optional[_StringDict] = None,
+        self,
+        dataset_name: Optional[str] = "multi_class_dataset",
+        dictionary: Optional[_StringDict] = None,
     ) -> BasePyTorchDataset:
         """
         Merge the provided `dictionary` with the default
