@@ -115,15 +115,20 @@ class TestUtils(unittest.TestCase):
         model_cpu = utils.send_model_to_device(model.copy(), "cpu")
         self.assertFalse(utils.is_model_on_gpu(model_cpu))
         self.assertFalse(utils.is_model_on_gpu(model))
+        self.assertFalse(model_cpu.is_cuda)
+        self.assertFalse(model.is_cuda)
 
         if torch.cuda.is_available():
             # Test sending model to GPU
             model_cuda = utils.send_model_to_device(model_cpu.copy(), "cuda")
             self.assertTrue(utils.is_model_on_gpu(model_cuda))
+            self.assertTrue(model_cuda.is_cuda)
 
             # Ensure original models unchanged
             self.assertFalse(utils.is_model_on_gpu(model_cpu))
             self.assertFalse(utils.is_model_on_gpu(model))
+            self.assertFalse(model_cpu.is_cuda)
+            self.assertFalse(model.is_cuda)
 
             n_gpu = torch.cuda.device_count()
             if n_gpu > 1:
@@ -131,22 +136,34 @@ class TestUtils(unittest.TestCase):
                 model_parallel = utils.send_model_to_device(model_cuda.copy(), "cuda", range(n_gpu))
                 self.assertTrue(utils.is_model_on_gpu(model_parallel))
                 self.assertTrue(utils.is_model_parallelized(model_parallel))
+                self.assertTrue(model_parallel.is_cuda)
+                self.assertTrue(model_parallel.is_parallelized)
 
                 # Ensure original single-GPU model unchanged
-                self.assertNotIsInstance(model_cuda, utils.DataParallel)
                 self.assertTrue(utils.is_model_on_gpu(model_cuda))
+                self.assertFalse(utils.is_model_parallelized(model_cuda))
+                self.assertTrue(model_cuda.is_cuda)
+                self.assertFalse(model_cuda.is_parallelized)
 
                 # Ensure original model unchanged
                 self.assertFalse(utils.is_model_on_gpu(model))
                 self.assertFalse(utils.is_model_parallelized(model))
+                self.assertFalse(model.is_cuda)
+                self.assertFalse(model.is_parallelized)
 
                 # Test sending of multi-GPU model to CPU
                 model_cpu = utils.send_model_to_device(model_parallel, "cpu")
                 self.assertFalse(utils.is_model_on_gpu(model_cpu))
+                self.assertFalse(utils.is_model_parallelized(model_cpu))
+                self.assertFalse(model_cpu.is_cuda)
+                self.assertFalse(model_cpu.is_parallelized)
 
             # Test sending of single-GPU model to CPU
             model_cpu = utils.send_model_to_device(model_cuda, "cpu")
             self.assertFalse(utils.is_model_on_gpu(model_cpu))
+            self.assertFalse(utils.is_model_parallelized(model_cpu))
+            self.assertFalse(model_cpu.is_cuda)
+            self.assertFalse(model_cpu.is_parallelized)
 
     def test_send_batch_to_device(self):
         """

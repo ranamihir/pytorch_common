@@ -61,7 +61,7 @@ class TestModels(unittest.TestCase):
         parts of or the entirety of a model.
         """
         model = create_model("multi_layer_classifier", self.default_config)  # Create model
-        total = model.get_trainable_params()["total"]  # Get total model parameters
+        total = model.num_parameters["total"]  # Get total model parameters
 
         self._test_model_parameters(model, total, total)  # Full model
 

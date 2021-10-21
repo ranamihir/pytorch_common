@@ -9,6 +9,7 @@ import shutil
 import sys
 import time
 from collections import OrderedDict
+from copy import deepcopy
 
 import dill
 import numpy as np
@@ -65,7 +66,7 @@ def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
             os.rmdir(dir_path)
 
 
-def configure_logging(log_dir: Optional[str] = None, write_to_file: Optional[bool] = True):
+def setup_logging(name: str, log_dir: Optional[str] = None) -> logging.Logger:
     """
     Configures logging format to write to both stdout
     and log files (if `log_dir` is specified).
@@ -80,10 +81,16 @@ def configure_logging(log_dir: Optional[str] = None, write_to_file: Optional[boo
     if logging.root:
         del logging.root.handlers[:]
 
+    LOG_FORMAT = "%(asctime)s: %(levelname)s: %(filename)s: %(funcName)s: %(message)s"
+    formatter = logging.Formatter(LOG_FORMAT)
+
+    logger = logging.getLogger(name)
+    logger.setLevel("INFO")
+
     # Setup streaming handler so logging also goes to stdout
     log_handlers = [logging.StreamHandler()]
 
-    if write_to_file and log_dir is not None:
+    if log_dir is not None:
         # Set file name based on date
         file_name = f"{time.strftime('%Y-%m-%d')}.log"
         file_path = get_file_path(log_dir, file_name)
@@ -91,12 +98,12 @@ def configure_logging(log_dir: Optional[str] = None, write_to_file: Optional[boo
         # Add a file handler
         log_handlers.append(logging.FileHandler(file_path))
 
-    # Configure logging to log info messages and higher
-    logging.basicConfig(
-        handlers=log_handlers,
-        level=logging.INFO,
-        format="%(asctime)s: %(levelname)s: %(filename)s: %(funcName)s: %(message)s",
-    )
+    # Configure all logging to log info messages and higher
+    for handler in log_handlers:
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    return logger
 
 
 def human_time_interval(time_seconds: float) -> str:
@@ -137,10 +144,10 @@ def print_dataframe(data: pd.DataFrame) -> None:
     """
     Print useful summary statistics of a dataframe.
     """
-    logging.info(f"\nHead of data:\n{data.head(10)}\n")
-    logging.info(f"\nShape of data: {data.shape}\n")
-    logging.info(f"\nColumns:\n{data.columns}\n")
-    logging.info(f"\nSummary statistics:\n{data.describe()}\n")
+    logger.info(f"\nHead of data:\n{data.head(10)}\n")
+    logger.info(f"\nShape of data: {data.shape}\n")
+    logger.info(f"\nColumns:\n{data.columns}\n")
+    logger.info(f"\nSummary statistics:\n{data.describe()}\n")
 
 
 def save_plot(
@@ -172,12 +179,12 @@ def save_object(obj: Any, primary_path: str, file_name: Optional[str] = None, mo
           how to set `primary_path` and `file_name`.
     """
     file_path = get_file_path(primary_path, file_name)
-    logging.info(f"Saving '{file_path}'...")
+    logger.info(f"Saving '{file_path}'...")
     if module == "yaml":
         save_yaml(obj, file_path)
     else:
         save_pickle(obj, file_path, module)
-    logging.info("Done.")
+    logger.info("Done.")
 
 
 def save_pickle(obj: Any, file_path: str, module: Optional[str] = "pickle") -> None:
@@ -213,13 +220,13 @@ def load_object(primary_path: str, file_name: Optional[str] = None, module: Opti
           how to set `primary_path` and `file_name`.
     """
     file_path = get_file_path(primary_path, file_name)
-    logging.info(f"Loading '{file_path}'...")
+    logger.info(f"Loading '{file_path}'...")
     if os.path.isfile(file_path):
         if module == "yaml":
             obj = load_yaml(file_path)
         else:
             obj = load_pickle(file_path, module)
-        logging.info(f"Successfully loaded '{file_path}'.")
+        logger.info(f"Successfully loaded '{file_path}'.")
         return obj
     else:
         raise FileNotFoundError(f"Could not find '{file_path}'.")
@@ -269,9 +276,9 @@ def remove_object(primary_path: str, file_name: Optional[str] = None) -> None:
     """
     file_path = get_file_path(primary_path, file_name)
     if os.path.isfile(file_path):
-        logging.info(f"Removing '{file_path}'...")
+        logger.info(f"Removing '{file_path}'...")
         os.remove(file_path)
-        logging.info("Done.")
+        logger.info("Done.")
 
 
 def get_file_path(primary_path: str, file_name: Optional[str] = None) -> str:
@@ -382,7 +389,7 @@ def get_trainable_params(model: nn.Module) -> Dict[str, int]:
     num_params = sum(p.numel() for p in model.parameters())
     num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     model_name = getattr(model, "__name__", model.__class__.__name__)
-    logging.info(f"Number of trainable/total parameters in {model_name}: {num_trainable_params}/{num_params}")
+    logger.info(f"Number of trainable/total parameters in {model_name}: {num_trainable_params}/{num_params}")
     return {"trainable": num_trainable_params, "total": num_params}
 
 
@@ -399,6 +406,10 @@ def get_model_outputs_only(outputs: _TensorOrTensors) -> _TensorOrTensors:
     return outputs
 
 
+def copy_model(model: nn.Module) -> nn.Module:
+    return deepcopy(model)
+
+
 def send_model_to_device(model: nn.Module, device: _Device, device_ids: Optional[List[int]] = None) -> nn.Module:
     """
     Send a model to specified device.
@@ -406,16 +417,17 @@ def send_model_to_device(model: nn.Module, device: _Device, device_ids: Optional
 
     Note: `model.to()` is an inplace operation, so it will move the
           original model to the desired device. If the original model
-          is to be retained on the original device, and a copy is
-          to be moved to the desired device(s) and returned, make
-          sure to set `model.copy()` to this function.
+          is to be retained on the original device, and a copy is to
+          be moved to the desired device(s) and returned, make sure to
+          send `model.copy()` (or `copy.deepcopy(model)` if not your
+          model is not inherited from `BasePyTorchModel`) to this function.
     """
-    logging.info(f"Setting default device for model to {device}...")
+    logger.info(f"Setting default device for model to {device}...")
     # Note: `model.to()` doesn't work as desired if model is
     # parallelized (model is still wrapped inside
     # `module`); therefore must do `model.module.to()`
     model = model.module.to(device) if hasattr(model, "module") else model.to(device)
-    logging.info("Done.")
+    logger.info("Done.")
 
     # Set default value here instead of in signature
     # See: http://www.omahapython.org/IdiomaticPython.html#default-parameter-values
@@ -425,9 +437,9 @@ def send_model_to_device(model: nn.Module, device: _Device, device_ids: Optional
     # Parallelize model
     n_gpu = len(device_ids)
     if n_gpu > 1:
-        logging.info(f"Using {n_gpu} GPUs: {device_ids}...")
+        logger.info(f"Using {n_gpu} GPUs: {device_ids}...")
         model = DataParallel(model, device_ids=device_ids)
-        logging.info("Done.")
+        logger.info("Done.")
     return model
 
 
@@ -471,7 +483,7 @@ def send_batch_to_device(batch: _Batch, device: _Device, non_blocking: Optional[
         # Retain same data type as original
         return type(batch)(send_batch_to_device(e, device, non_blocking) for e in batch)
     else:  # Structure/type of batch unknown
-        logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
+        logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
 
@@ -498,7 +510,7 @@ def convert_tensor_to_numpy(batch: _Batch) -> _Batch:
         # Retain same data type as original
         return type(batch)(convert_tensor_to_numpy(e) for e in batch)
     else:  # Structure/type of batch unknown
-        logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
+        logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
 
@@ -514,12 +526,16 @@ def convert_numpy_to_tensor(
     """
     if isinstance(batch, np.ndarray):
         batch = torch.as_tensor(batch)
-        return batch if device is None else send_batch_to_device(batch, device, non_blocking)
+        return (
+            batch
+            if (device is None or compare_devices(batch.device, device))
+            else send_batch_to_device(batch, device, non_blocking)
+        )
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(convert_numpy_to_tensor(e, device, non_blocking) for e in batch)
     else:  # Structure/type of batch unknown
-        logging.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
+        logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
 
@@ -595,14 +611,51 @@ def is_model_on_gpu(model: nn.Module) -> bool:
     """
     Check if a `model` is on a GPU.
     """
-    return is_batch_on_gpu(next(model.parameters()))
+    return get_model_device(model).type != "cpu"
 
 
 def is_model_parallelized(model: nn.Module) -> bool:
     """
-    Check if a `model` is parallelized on multiple GPUs.
+    Check if a `model` is parallelized across multiple GPUs.
     """
-    return is_model_on_gpu(model) and isinstance(model, DataParallel)
+    try:
+        return isinstance(model.device_ids, (list, tuple))
+    except AttributeError:
+        return False
+
+
+def get_model_device(model: nn.Module) -> torch.device:
+    """
+    The device the `model` is on (assuming that all
+    the model parameters are on the same device).
+    """
+    return get_next_parameter(model).device
+
+
+def get_model_dtype(model: nn.Module) -> torch.dtype:
+    """
+    The dtype of the `model` (assuming that all
+    the model parameters have the same dtype).
+    """
+    return get_next_parameter(model).dtype
+
+
+def get_next_parameter(model: nn.Module) -> _TensorOrTensors:
+    """
+    Get next model parameter.
+    Useful for getting model device and dtype.
+    """
+    try:
+        return next(model.parameters())
+    except StopIteration:  # For nn.DataParallel compatibility in PyTorch 1.5
+
+        def find_tensor_attributes(module: nn.Module) -> List[Tuple[str, Tensor]]:
+            tuples = [(k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)]
+            return tuples
+
+        gen = model._named_members(get_members_fn=find_tensor_attributes)
+        first_tuple = next(gen)
+        return first_tuple[1]
 
 
 def compare_devices(device1, device2):
@@ -610,6 +663,8 @@ def compare_devices(device1, device2):
     Return True if the given devices
     are the same, otherwise False.
     """
+    if any(device is None for device in (device1, device2)):
+        return False
 
     def _convert_to_torch_device(device):
         if isinstance(device, torch.device):
@@ -786,7 +841,7 @@ class ModelTracker:
             ]
         )
         result_str += "\033[0m\n"
-        logging.info(result_str)
+        logger.info(result_str)
         return result_str
 
     def add_metrics(self, losses: List[float], eval_metrics: Dict[str, float], epoch: Optional[int] = -1) -> None:
@@ -955,7 +1010,7 @@ class SequencePooler(nn.Module):
             self.model_type = model_type
             self.pooler = self.POOLER_MAPPING[self.model_type]
         else:
-            logging.warning(
+            logger.warning(
                 f"No supported sequence pooler was found for model of type '{model_type}'. Using the default one."
             )
             self.model_type = self.DEFAULT_POOLER_TYPE
@@ -1019,6 +1074,14 @@ class DataParallel(nn.DataParallel):
         except AttributeError:
             return getattr(self.module, name)
 
+    @property
+    def is_parallelized(self) -> bool:
+        """
+        Check if the model is parallelized
+        across multiple GPUs.
+        """
+        return is_model_parallelized(self)
+
 
 class DaskProgressBar(Callback):
     """
@@ -1052,3 +1115,6 @@ class GELU(nn.Module):
 
     def forward(self, x: torch.Tensor):
         return 0.5 * x * (1 + torch.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
+
+
+logger = setup_logging(__name__)
