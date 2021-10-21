@@ -7,18 +7,19 @@ Decorators are a useful way to save some typing and automate common tasks,
 such as timing function execution or debugging dataframe sizes.
 """
 import inspect
-import logging
 import time
 import traceback
 from functools import wraps
 
 from .types import Callable, Optional
-from .utils import human_time_interval
+from .utils import human_time_interval, setup_logging
+
+logger = setup_logging(__name__)
 
 try:
     __IPYTHON__
 except NameError:
-    PRINT_FUNC = logging.info
+    PRINT_FUNC = logger.info
 else:
     PRINT_FUNC = print
 

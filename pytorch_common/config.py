@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 
 import torch
@@ -15,7 +14,9 @@ from .metrics import (
     REGRESSION_LOSS_CRITERIA,
 )
 from .types import Optional, _Config, _StringDict
-from .utils import configure_logging, get_file_path, load_object, make_dirs, set_seed
+from .utils import get_file_path, load_object, make_dirs, set_seed, setup_logging
+
+logger = setup_logging(__name__)
 
 
 class Config(Munch):
@@ -26,14 +27,14 @@ class Config(Munch):
     `configobj["key"]` and `configobj.key`.
     """
 
-    def __init__(self, dictionary: Optional[_StringDict] = None):
+    def __init__(self, dictionary: Optional[_StringDict] = None) -> None:
         if dictionary:
             super().__init__(dictionary)
 
             # Set Config values that are not in config yaml
             self._initialize_additional_config()
 
-    def _initialize_additional_config(self):
+    def _initialize_additional_config(self) -> None:
         pass
 
 
@@ -47,24 +48,24 @@ def load_pytorch_common_config(dictionary: Optional[_StringDict] = None) -> Munc
         dictionary = {}
 
     # Load `pytorch_common` config if required
-    logging.info("Loading default pytorch_common config...")
+    logger.info("Loading default pytorch_common config...")
     pytorch_common_config = load_config()
 
-    logging.info("Done. Overriding default config with provided dictionary...")
+    logger.info("Done. Overriding default config with provided dictionary...")
 
     # Override pytorch_common config with project specific one
     # And then set it back to original dictionary
     pytorch_common_config.update(dictionary)
     merged_config = pytorch_common_config
-    logging.info("Done.")
+    logger.info("Done.")
 
     # Throw warning if both scheduler configs enabled (not common)
     if merged_config.use_scheduler_after_step and merged_config.use_scheduler_after_epoch:
-        logging.warning("Scheduler is configured to take a step both after every step and every epoch.")
+        logger.warning("Scheduler is configured to take a step both after every step and every epoch.")
 
     # Throw warning if checkpointing is disabled
     if merged_config.disable_checkpointing:
-        logging.warning("Checkpointing is disabled. No models will be saved during training.")
+        logger.warning("Checkpointing is disabled. No models will be saved during training.")
 
     set_pytorch_config(merged_config)
 
@@ -95,9 +96,6 @@ def set_pytorch_config(config: _Config) -> None:
     """
     # Set and create additional required directories
     set_additional_dirs(config)
-
-    # Configure logging
-    configure_logging(config.log_dir, write_to_file=not config.disable_checkpointing)
 
     # Set and validate loss and eval criteria
     set_loss_and_eval_criteria(config)

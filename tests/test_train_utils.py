@@ -43,7 +43,7 @@ class TestTrainUtils(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """
-        Delete data directory created during config initialization.
+        Delete artifact directory created during config initialization.
         """
         utils.remove_dir(cls.config["artifact_dir"], force=True)
 

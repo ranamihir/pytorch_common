@@ -28,7 +28,7 @@ class TestConfig(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """
-        Delete data directory created during config initialization.
+        Delete artifact directory created during config initialization.
         """
         utils.remove_dir(cls.config["artifact_dir"], force=True)
 
@@ -99,17 +99,16 @@ class TestConfig(unittest.TestCase):
         """
         Test GPU device configuration.
         """
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and self.n_gpu > 1:
             # Test that `device_ids` are automatically swapped if specified order is incorrect
             config = self._load_config({"device": "cuda:0", "device_ids": [1, 0]})
             self.assertEqual(config.device_ids, [0, 1])
 
-            if self.n_gpu > 1:
-                # Test full parallelization if `device_ids==-1`
-                config = self._load_config({"device": "cuda:0", "device_ids": -1})
-                self.assertEqual(config.device_ids, list(range(self.n_gpu)))
+            # Test full parallelization if `device_ids==-1`
+            config = self._load_config({"device": "cuda:0", "device_ids": -1})
+            self.assertEqual(config.device_ids, list(range(self.n_gpu)))
         else:
-            raise unittest.SkipTest("GPU(s) not available.")
+            raise unittest.SkipTest("> 1 GPUs not available.")
 
     def test_deprecated_batch_size(self):
         """

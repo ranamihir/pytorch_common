@@ -1,4 +1,3 @@
-import logging
 from copy import deepcopy
 
 import torch
@@ -6,8 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .additional_configs import BaseModelConfig
-from .types import Dict, Optional, Tuple, _ModelOrModels
-from .utils import get_trainable_params
+from .types import Dict, Optional, Tuple, Union, _ModelOrModels
+from .utils import copy_model, get_model_device, get_model_dtype, get_trainable_params, is_model_on_gpu, setup_logging
+
+logger = setup_logging(__name__)
 
 
 class BasePyTorchModel(nn.Module):
@@ -20,6 +21,57 @@ class BasePyTorchModel(nn.Module):
 
         self.model_type = model_type
         self.__name__ = self.__class__.__name__  # Set model name
+
+    @property
+    def num_parameters(self, trainable: Optional[Union[None, bool]] = None) -> Union[int, Dict[str, int]]:
+        """
+        Return the number of parameters of the model.
+
+        :param trainable: - If None, returns a dictionary
+                            with `trainable` and `total` parameters.
+                          - If True, returns only trainable parameters.
+                          - If False, returns total parameters.
+
+        See `utils.get_trainable_params()` for implementation.
+        """
+        parameters = get_trainable_params(self)
+        if trainable is None:
+            return parameters
+        return parameters["trainable"] if trainable else parameters["total"]
+
+    @property
+    def device(self) -> torch.device:
+        """
+        The device on which the module is.
+        """
+        return get_model_device(self)
+
+    @property
+    def dtype(self) -> torch.dtype:
+        """
+        The dtype of the module (assuming that all
+        the module parameters have the same dtype).
+        """
+        return get_model_dtype(self)
+
+    @property
+    def is_cuda(self) -> bool:
+        """
+        Check if the model is on a GPU.
+        """
+        return is_model_on_gpu(self)
+
+    @property
+    def is_parallelized(self) -> bool:
+        """
+        Check if the model is parallelized
+        across multiple GPUs.
+        NOTE: This property must be checked for
+              `DataParallel`. Here, it will always
+              return False. It is only defined here
+              to not return an AttributeError.
+        """
+        return False
 
     def initialize_model(
         self, init_weights: Optional[bool] = False, models_to_init: Optional[_ModelOrModels] = None
@@ -35,28 +87,19 @@ class BasePyTorchModel(nn.Module):
                   model will also be reinitialized.
         """
         self.print_model()  # Print model architecture
-        self.get_trainable_params()  # Print number of trainable parameters
+        get_trainable_params(self)  # Print number of trainable parameters
         if init_weights:  # Initialize weights
-            logging.warning(
+            logger.warning(
                 "You have set `init_weights=True`. Make sure your model does not include "
                 "a pretrained model, otherwise its weights will also be reinitialized."
             )
             self.initialize_weights(models_to_init)
 
-    def get_trainable_params(self) -> Dict[str, int]:
-        """
-        Print and return the number of trainable
-        and total parameters of the model.
-
-        See `utils.get_trainable_params()` for implementation.
-        """
-        return get_trainable_params(self)
-
     def print_model(self) -> None:
         """
         Print the model architecture.
         """
-        logging.info(self)
+        logger.info(self)
 
     def initialize_weights(self, models_to_init: Optional[_ModelOrModels] = None) -> None:
         """
@@ -135,7 +178,7 @@ class BasePyTorchModel(nn.Module):
         """
         Return a copy of the model.
         """
-        return deepcopy(self)
+        return copy_model(self)
 
     def freeze_module(self, models_to_freeze: Optional[_ModelOrModels] = None) -> None:
         """
@@ -169,7 +212,7 @@ class BasePyTorchModel(nn.Module):
             models = [models]
         for model in models:
             self._change_frozen_state_for_one_model(model, freeze)
-        self.get_trainable_params()  # Re-print number of trainable parameters
+        get_trainable_params(self)  # Re-print number of trainable/total parameters
 
     def _change_frozen_state_for_one_model(
         self, model: Optional[nn.Module] = None, freeze: Optional[bool] = True
@@ -188,10 +231,10 @@ class BasePyTorchModel(nn.Module):
         # Extract model name from class if not present already (for `transformers` models)
         model_name = getattr(model, "__name__", model.__class__.__name__)
 
-        logging.info(f"{'Freezing' if freeze else 'Unfreezing'} {model_name}...")
+        logger.info(f"{'Freezing' if freeze else 'Unfreezing'} {model_name}...")
         for param in model.parameters():
             param.requires_grad = not freeze
-        logging.info("Done.")
+        logger.info("Done.")
 
 
 class SingleLayerClassifier(BasePyTorchModel):
