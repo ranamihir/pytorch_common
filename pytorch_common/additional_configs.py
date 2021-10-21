@@ -16,14 +16,14 @@ class BaseDatasetConfig(Munch):
     `configobj["key"]` and `configobj.key`.
     """
 
-    def __init__(self, dictionary: Optional[_StringDict] = None):
+    def __init__(self, dictionary: Optional[_StringDict] = None) -> None:
         if dictionary:
             super().__init__(dictionary)
 
             # Set Config values that are not in config yaml
             self._initialize_additional_config()
 
-    def _initialize_additional_config(self):
+    def _initialize_additional_config(self) -> None:
         pass
 
     def copy(self, deep: Optional[bool] = True) -> BaseDatasetConfig:
@@ -47,7 +47,7 @@ class BaseModelConfig(Munch):
     `configobj["key"]` and `configobj.key`.
     """
 
-    def __init__(self, dictionary: Optional[_StringDict] = None, model_type: Optional[str] = "classification"):
+    def __init__(self, dictionary: Optional[_StringDict] = None, model_type: Optional[str] = "classification") -> None:
         if dictionary:
             super().__init__(dictionary)
 
@@ -56,7 +56,7 @@ class BaseModelConfig(Munch):
 
         self.model_type = model_type
 
-    def _initialize_additional_config(self):
+    def _initialize_additional_config(self) -> None:
         pass
 
     def copy(self, deep: Optional[bool] = True) -> BaseModelConfig:
