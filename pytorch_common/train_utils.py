@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from collections import OrderedDict
 from itertools import islice
@@ -25,7 +24,10 @@ from .utils import (
     send_batch_to_device,
     send_model_to_device,
     send_optimizer_to_device,
+    setup_logging,
 )
+
+logger = setup_logging(__name__)
 
 
 @timing
@@ -147,13 +149,13 @@ def train_model(
             if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric)) or (
                 not config.use_early_stopping and epoch == val_logger.get_overall_best_epoch()
             ):
-                logging.info("Computing best epoch and adding to validation logger...")
+                logger.info("Computing best epoch and adding to validation logger...")
                 val_logger.set_best_epoch(epoch)
-                logging.info("Done.")
+                logger.info("Done.")
 
                 # Replace model checkpoint if required
                 if not config.disable_checkpointing:
-                    logging.info("Replacing current best model checkpoint...")
+                    logger.info("Replacing current best model checkpoint...")
                     best_checkpoint_file = save_model(
                         model,
                         config,
@@ -166,23 +168,23 @@ def train_model(
                     )
                     remove_model(config, best_epoch, config_info_dict)
                     best_epoch = epoch
-                    logging.info("Done.")
+                    logger.info("Done.")
 
             # Quit training if stopping criterion met
             if config.use_early_stopping and early_stopping.stop(early_stopping_metric):
                 stop_epoch = epoch
-                logging.info(f"Stopping early after {stop_epoch} epochs.")
+                logger.info(f"Stopping early after {stop_epoch} epochs.")
                 break
 
             stop_epoch = epoch  # Update last epoch trained
         except KeyboardInterrupt:  # Option to quit training with keyboard interrupt
-            logging.warning("Keyboard Interrupted!")
+            logger.warning("Keyboard Interrupted!")
             stop_epoch = epoch - 1  # Current epoch training incomplete
             break
 
     # Save the model checkpoints
     if not config.disable_checkpointing:
-        logging.info("Dumping model and results...")
+        logger.info("Dumping model and results...")
         save_model(
             model,
             config,
@@ -222,7 +224,7 @@ def train_model(
                 config_info_dict,
                 checkpoint_type="model",
             )
-        logging.info("Done.")
+        logger.info("Done.")
 
     return_dict = {
         "model": model,
@@ -425,7 +427,7 @@ def perform_one_epoch(
 
                 # Print progess
                 if batch_idx in batches_to_print:
-                    logging.info(f"{num_examples_complete}/{num_examples} ({percent_batches_complete:.0f}%) complete.")
+                    logger.info(f"{num_examples_complete}/{num_examples} ({percent_batches_complete:.0f}%) complete.")
 
             else:  # Perform training / evaluation
                 # Compute and store loss
@@ -444,7 +446,7 @@ def perform_one_epoch(
 
                     # Print progess
                     if batch_idx in batches_to_print:
-                        logging.info(
+                        logger.info(
                             f"Train Epoch: {epoch} [{num_examples_complete}/{num_examples} "
                             f"({percent_batches_complete:.0f}%)]\tLoss: {loss_value:.6f}"
                         )
@@ -567,7 +569,7 @@ def save_model(
 
     checkpoint_file = get_checkpoint_name(checkpoint_type, config.model_name, epoch, config_info_dict)
     checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
-    logging.info(f"Saving {checkpoint_type} checkpoint '{checkpoint_path}'...")
+    logger.info(f"Saving {checkpoint_type} checkpoint '{checkpoint_path}'...")
 
     # Generate appropriate checkpoint dictionary
     checkpoint = generate_checkpoint_dict(config, epoch, train_logger, val_logger, optimizer, scheduler)
@@ -590,7 +592,7 @@ def save_model(
     except AttributeError:
         torch.save(checkpoint, checkpoint_path, pickle_module=dill)
 
-    logging.info("Done.")
+    logger.info("Done.")
     return checkpoint_file
 
 
@@ -664,7 +666,7 @@ def load_model(
 
     checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
-        logging.info(f"Loading {checkpoint_type} checkpoint '{checkpoint_path}'...")
+        logger.info(f"Loading {checkpoint_type} checkpoint '{checkpoint_path}'...")
 
         # See `save_model()` for explanation
         try:
@@ -700,14 +702,14 @@ def load_model(
 
         # Throw warning if model trained for more epochs
         if train_logger is not None and max(train_logger.epochs) > epoch_trained:
-            logging.warning(
+            logger.warning(
                 f"The specified epoch was {epoch_trained} but the model was trained for "
                 f"{max(train_logger.epochs)} epochs. Ignore this warning if it was intentional."
             )
 
         # Throw warning if best epoch is different
         if val_logger is not None and val_logger.best_epoch != epoch_trained:
-            logging.warning(
+            logger.warning(
                 f"The specified epoch was {epoch_trained} but the best epoch based on validation "
                 f"set was {val_logger.best_epoch}. Ignore this warning if it was intentional."
             )
@@ -715,7 +717,7 @@ def load_model(
         # Load optimizer and scheduler state dicts if provided
         optimizer, scheduler = load_optimizer_and_scheduler(checkpoint, config.device, optimizer, scheduler)
 
-        logging.info("Done.")
+        logger.info("Done.")
 
     else:
         raise FileNotFoundError(f"No {checkpoint_type} checkpoint found at '{checkpoint_path}'.")
@@ -795,9 +797,9 @@ def remove_model(
     checkpoint_file = get_checkpoint_name(checkpoint_type, config.model_name, epoch, config_info_dict)
     checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
-        logging.info(f"Removing {checkpoint_type} checkpoint '{checkpoint_path}'...")
+        logger.info(f"Removing {checkpoint_type} checkpoint '{checkpoint_path}'...")
         remove_object(checkpoint_path)
-        logging.info("Done.")
+        logger.info("Done.")
 
 
 def validate_checkpoint_type(checkpoint_type: str, checkpoint_file: Optional[str] = None) -> None:

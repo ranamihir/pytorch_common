@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from types import FunctionType
 
 import numpy as np
@@ -10,7 +9,9 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from .types import Callable, List, Optional, Tuple, Union, _StringDict
-from .utils import load_object, print_dataframe, remove_object, save_object
+from .utils import load_object, print_dataframe, remove_object, save_object, setup_logging
+
+logger = setup_logging(__name__)
 
 
 class BasePyTorchDataset(Dataset):
@@ -46,14 +47,14 @@ class BasePyTorchDataset(Dataset):
         """
         Print useful summary statistics of the dataset.
         """
-        logging.info("\n" + "-" * 40)
+        logger.info("\n" + "-" * 40)
         print_dataframe(self.data)
 
-        if self.target_col in self.data:
+        if self.target_col in self.data.columns:
             value_counts = self.data[self.target_col].value_counts()
-            logging.info(f"Target value counts:\n{value_counts}")
+            logger.info(f"Target value counts:\n{value_counts}")
 
-        logging.info("\n" + "-" * 40)
+        logger.info("\n" + "-" * 40)
 
     def save(self, *args, **kwargs) -> None:
         """

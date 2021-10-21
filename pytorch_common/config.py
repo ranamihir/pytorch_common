@@ -113,7 +113,8 @@ def set_pytorch_config(config: _Config) -> None:
 
     # Check for model and classification type
     assert (
-        config.model_type == "classification" and config.classification_type in ["binary", "multiclass", "multilabel"]
+        config.model_type == "classification"
+        and config.classification_type in ["binary", "multiclass", "multilabel"]
     ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
 
     # TODO: Remove this after extending FocalLoss
