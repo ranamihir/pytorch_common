@@ -6,7 +6,15 @@ import torch.nn.functional as F
 
 from .additional_configs import BaseModelConfig
 from .types import Dict, Optional, Tuple, Union, _ModelOrModels
-from .utils import copy_model, get_model_device, get_model_dtype, get_trainable_params, is_model_on_gpu, setup_logging
+from .utils import (
+    copy_model,
+    get_model_device,
+    get_model_dtype,
+    get_trainable_params,
+    is_model_on_gpu,
+    is_model_parallelized,
+    setup_logging,
+)
 
 logger = setup_logging(__name__)
 
@@ -71,7 +79,7 @@ class BasePyTorchModel(nn.Module):
               return False. It is only defined here
               to not return an AttributeError.
         """
-        return False
+        return is_model_parallelized(self)
 
     def initialize_model(
         self, init_weights: Optional[bool] = False, models_to_init: Optional[_ModelOrModels] = None
