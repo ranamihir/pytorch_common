@@ -255,6 +255,13 @@ class BasePyTorchDataset(Dataset):
         # Shuffle and reindex data
         self.data = self.data.sample(frac=1).reset_index(drop=True)
 
+    def reindex_data(self) -> None:
+        """
+        Reindex data.
+        """
+        # Reindex data inplace
+        self.data.reset_index(drop=True, inplace=True)
+
     def __getstate__(self) -> _StringDict:
         """
         Update `__getstate__` to exclude object

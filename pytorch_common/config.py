@@ -80,11 +80,11 @@ def load_config(config_file: Optional[str] = "config.yaml") -> Config:
     to avoid repeating attributes.
     """
     # Create and initialize the runner
-    packagedir = pytorch_common.__path__[0]
-    configdir = get_file_path(packagedir, "configs")
+    package_dir = pytorch_common.__path__[0]
+    config_dir = get_file_path(package_dir, "configs")
 
     # Load pytorch_common config
-    dictionary = load_object(configdir, config_file, module="yaml")
+    dictionary = load_object(config_dir, config_file, module="yaml")
     config = Config(dictionary)
     return config
 
@@ -111,8 +111,7 @@ def set_pytorch_config(config: _Config) -> None:
 
     # Check for model and classification type
     assert (
-        config.model_type == "classification"
-        and config.classification_type in ["binary", "multiclass", "multilabel"]
+        config.model_type == "classification" and config.classification_type in ["binary", "multiclass", "multilabel"]
     ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
 
     # TODO: Remove this after extending FocalLoss
