@@ -93,11 +93,10 @@ class BasePyTorchDataset(Dataset):
         """
         Generic function to `progress_apply` a given row-level
         function `func` on the given `data` (chunk).
+        Can pass other arguments along, e.g. `axis=1` if
+        `data` is a DataFrame.
         """
-        if isinstance(data, pd.Series):
-            return data.progress_apply(func, *args, **kwargs)
-        assert isinstance(data, pd.DataFrame)
-        return data.progress_apply(func, *args, **kwargs, axis=1)
+        return data.progress_apply(func, *args, **kwargs)
 
     def sample_class(
         self,

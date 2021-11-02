@@ -109,6 +109,7 @@ def train_model(
                 epoch=epoch,
                 optimizer=optimizer,
                 scheduler=scheduler if config.use_scheduler_after_step else None,
+                epochs=epochs,
                 decouple_fn=decouple_fn_train,
             )
 
@@ -248,6 +249,7 @@ def train_epoch(
     epoch: int,
     optimizer: Optimizer,
     scheduler: Optional[object] = None,
+    epochs: Optional[int] = None,
     decouple_fn: Optional[_DecoupleFnTrain] = None,
 ) -> _TrainResult:
     """
@@ -264,6 +266,7 @@ def train_epoch(
         epoch=epoch,
         optimizer=optimizer,
         scheduler=scheduler,
+        epochs=epochs,
         decouple_fn=decouple_fn,
     )
 
@@ -330,6 +333,7 @@ def perform_one_epoch(
     scheduler: Optional[object] = None,
     eval_criteria: Optional[_EvalCriterionOrCriteria] = None,
     threshold_prob: Optional[float] = None,
+    epochs: Optional[int] = None,
     decouple_fn: Optional[_DecoupleFn] = None,
 ) -> Union[_TrainResult, _EvalResult, _TestResult]:
     """
@@ -373,6 +377,11 @@ def perform_one_epoch(
     # Set decoupling function to extract inputs (and optionally targets) from batch
     if decouple_fn is None:
         decouple_fn = decouple_batch_test if phase == "test" else decouple_batch_train
+
+    epochs_str = ""
+    if epochs is not None:
+        assert MODE, f"Param `epochs` ({epochs}) can only be provided in training phase."
+        epochs_str = f"/{epochs}"
 
     # Set model in training/eval mode as required
     model.train(mode=MODE)
@@ -437,6 +446,8 @@ def perform_one_epoch(
 
                 # Perform training
                 if phase == "train":
+                    outputs, targets = None, None  # Free up memory
+
                     # Backprop + clip gradients + take scheduler step
                     loss.backward()
                     nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -447,7 +458,7 @@ def perform_one_epoch(
                     # Print progess
                     if batch_idx in batches_to_print:
                         logger.info(
-                            f"Train Epoch: {epoch} [{num_examples_complete}/{num_examples} "
+                            f"Train Epoch: {epoch}{epochs_str} [{num_examples_complete}/{num_examples} "
                             f"({percent_batches_complete:.0f}%)]\tLoss: {loss_value:.6f}"
                         )
 
