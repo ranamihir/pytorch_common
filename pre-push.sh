@@ -6,7 +6,7 @@
 # `conda env create -f requirements-dev.yaml`
 # For running all the tests, you also need to have the `transformers` repo installed, otherwise
 # those will be skipped. This may be installed by running from within the `pytorch_common` env:
-# `pip install .[nlp]"`
+# `pip install ".[nlp]"`
 
 # Check for python breakpoints
 alias pythonfiles='find . -type f -name "*.py" | xargs git diff --cached --name-only $against'

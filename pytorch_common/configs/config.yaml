@@ -28,6 +28,8 @@ classification_type: binary
 # Loss criterion
 loss_criterion: cross-entropy
 # loss_kwargs: # kwargs for loss criterion
+  # reduction_train: "mean" # Reduction of training loss
+  # reduction_val: "mean" # Reduction of val loss
   # multilabel_reduction: "mean" # Must be provided for multilabel
   # alpha: 0.7
   # gamma: 0.2
@@ -65,10 +67,10 @@ assert_gpu: False
 # Training config
 device: "cuda:0" # Default device
 
-# For parallelizing model.
-# If empty, will only use one GPU
-# If -1, will parallelize across all available GPUs
-# otherwise specify a list of GPU IDs
-device_ids: -1
+# # For parallelizing model.
+# # If empty, will only use one GPU
+# # If -1, will parallelize across all available GPUs
+# # otherwise specify a list of GPU IDs
+# device_ids: -1
 
 seed: 0

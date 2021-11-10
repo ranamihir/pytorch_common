@@ -1,40 +1,339 @@
-from collections import OrderedDict
-from functools import partial
-
+"""
+To add a new loss / evaluation criterion, please see the instructions in metric_utils.py
+"""
 import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.metrics import accuracy_score, auc, f1_score, precision_score, recall_score, roc_curve
 
-from .types import Callable, Optional, Tuple, Union, _Config, _EvalCriterionOrCriteria, _Loss
-from .utils import convert_tensor_to_numpy
-
-REGRESSION_LOSS_CRITERIA = ["mse"]
-CLASSIFICATION_LOSS_CRITERIA = ["cross-entropy", "focal-loss"]
-LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA + CLASSIFICATION_LOSS_CRITERIA
-
-REGRESSION_EVAL_CRITERIA = ["mse"]
-CLASSIFICATION_EVAL_CRITERIA = ["accuracy", "precision", "recall", "f1", "auc"]
-EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
+from .metric_utils import EVAL_METRIC_FUNCTIONS, LOSS_CRITERIA, PREPROCESSING_FUNCTIONS, FocalLoss, canonicalize, match
+from .types import *
 
 
-def get_loss_eval_criteria(
-    config: _Config, reduction: Optional[str] = "mean", reduction_val: Optional[str] = None
-) -> Tuple[_Loss, _Loss, _EvalCriterionOrCriteria]:
+class EvalCriterion:
+    """
+    Base class for computation of all supported evaluation criteria.
+
+    It handles:
+      - Static criteria like 'accuracy', 'precision', 'mse', etc.
+      - Dynamic criteria like 'top_1_accuracy', 'top_10_accuracy', etc. on the fly
+    """
+
+    def __init__(
+        self,
+        criterion: Optional[str] = None,
+        eval_fn: Optional[Callable[[_TensorOrArray, _TensorOrArray], float]] = None,
+        name: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        :param criterion: Criterion name in config, e.g. 'top_5_accuracy'
+        :param eval_fn: Metric evaluating function
+        :param name: Canonical name, e.g. 'top_k_accuracy'
+        """
+        self.criterion = criterion
+        self.eval_fn = eval_fn
+        self._name = name
+        self.kwargs = kwargs
+
+    def __call__(self, *args, **kwargs) -> float:
+        """
+        Used in `EvalCriteria`.
+        """
+        return self.compute(*args, **kwargs)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(criterion={self.criterion}, name={self.name})"
+
+    def __eq__(self, eval_criterion: str) -> bool:
+        """
+        Used in `EvalCriteria.__contains__()`
+        for determining if a given `eval_criterion`
+        is supported or not.
+        """
+        return self.canonicalize(eval_criterion) is not None
+
+    def canonicalize(self, eval_criterion: str) -> bool:
+        """
+        Convert a given `eval_criterion` to its canonical name.
+        E.g. for 'top_1_accuracy', it would return 'top_k_accuracy'.
+        """
+        return canonicalize(eval_criterion, self.name, self.regex)
+
+    def match(self, eval_criterion: str) -> Optional[str]:
+        """
+        If a regex is provided (i.e., for dynamic criteria),
+        try to match to it with the given `eval_criterion`.
+        If a match is found, return the (first) group in the result.
+        """
+        return match(eval_criterion, self.regex)
+
+    @property
+    def name(self):
+        return self._name if self._name is not None else self.canonicalize(self.criterion)
+
+    @property
+    def regex(self):
+        return EVAL_METRIC_FUNCTIONS[self.name]["regex"]
+
+    def compute(self, y_predicted: torch.Tensor, y_true: torch.Tensor) -> float:
+        """
+        This function does the actual
+        evaluation metric computation.
+
+        Note: The inputs to this function
+        must be preprocessed. E.g. for accuracy,
+        `y_predicted` should already been hard
+        predictions rather than raw logits per class.
+
+        Used in `__call__`.
+        """
+        # Pass criterion for parsing dynamic criteria.
+        # E.g.: For 'top_5_accuracy', k=5 will be deduced
+        #       on the fly based on `self.criterion`.
+        if self.regex:
+            self.kwargs["criterion"] = self.criterion
+        return self.eval_fn(y_predicted, y_true, **self.kwargs)
+
+
+class EvalCriteria:
+    """
+    Collates all supported criteria for regression and classification.
+
+    Creates all `EvalCriterion` objects for
+    the given list of `eval_criteria` strings.
+
+    The idea is that once defined, all that's required
+    is to call an instance of this class, and that would
+    compute all evaluation metrics automatically in an
+    optimized manner.
+    """
+
+    REGRESSION_EVAL_CRITERIA = [k for k, v in EVAL_METRIC_FUNCTIONS.items() if v["model_type"] == "regression"]
+    CLASSIFICATION_EVAL_CRITERIA = [k for k, v in EVAL_METRIC_FUNCTIONS.items() if v["model_type"] == "classification"]
+    ALL_EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA + CLASSIFICATION_EVAL_CRITERIA
+
+    initialize = lambda _list: [EvalCriterion(name=name) for name in _list]
+    REGRESSION = initialize(REGRESSION_EVAL_CRITERIA)
+    CLASSIFICATION = initialize(CLASSIFICATION_EVAL_CRITERIA)
+    ALL = initialize(ALL_EVAL_CRITERIA)
+
+    def __init__(
+        self,
+        model_type: Optional[str] = None,
+        classification_type: Optional[str] = None,
+        eval_criteria: Optional[List[str]] = None,
+        **eval_criteria_kwargs: _StringDict,
+    ):
+        self.model_type = model_type
+        self.classification_type = classification_type
+        self.eval_criteria_kwargs = eval_criteria_kwargs
+        self._criteria = []
+        self.init_eval_criteria(eval_criteria)
+
+        self.check_multilabel()
+        self.create_all_eval_metrics()
+
+    def __call__(self, *args, **kwargs) -> float:
+        """
+        Called in `train_utils.perform_one_epoch()`
+        for all metric computation.
+        """
+        return self.compute(*args, **kwargs)
+
+    def __repr__(self) -> str:
+        return ", ".join([str(criterion) for criterion in self.criteria])
+
+    def __iter__(self):
+        """
+        Useful for iterating over
+        all eval criteria.
+        """
+        return iter(self.criteria)
+
+    def __getitem__(self, index: int) -> EvalCriterion:
+        """
+        Useful for iterating over
+        all eval criteria.
+        """
+        return self.criteria[index]
+
+    def __contains__(self, eval_criterion: str) -> bool:
+        """
+        Returns true of `eval_criterion` is
+        present in list of supported criteria.
+
+        Note that `==` works because of the defined
+        `__eq__` in `EvalCriterion`.
+        """
+        return any(eval_criterion == supported_criterion for supported_criterion in self.criteria)
+
+    @property
+    def names(self):
+        """
+        List of names of supported criteria.
+        """
+        return self.eval_criteria
+
+    @property
+    def criteria(self):
+        """
+        Get the list of specified
+        `EvalCriterion` objects.
+        """
+        return self._criteria
+
+    def init_eval_criteria(self, eval_criteria: Optional[List[str]] = None) -> None:
+        """
+        Define list of evaluation criteria strings
+        based on the provided list / model type.
+        """
+        if eval_criteria is not None:
+            self.eval_criteria = eval_criteria
+        elif self.model_type is None:
+            self.eval_criteria = self.ALL_EVAL_CRITERIA
+        elif self.model_type == "classification":
+            self.eval_criteria = self.CLASSIFICATION_EVAL_CRITERIA
+        elif self.model_type == "regression":
+            self.eval_criteria = self.REGRESSION_EVAL_CRITERIA
+        else:
+            raise ValueError
+
+    def compute(self, y_predicted: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
+        """
+        Returns a dict of names and computed evaluation
+        metric values for all specified criteria.
+
+        It is optimized to share the computation all
+        criteria that have the same preprocessing step.
+        """
+        if self.is_multilabel:
+            # Compute results for each class
+            results_per_class = [self.compute_per_class(y_predicted, y_true[..., i]) for i in range(y_true.shape[-1])]
+
+            # Aggregate results across all classes
+            results = {}
+            for criterion in results_per_class[0].keys():
+                results[criterion] = self.agg_func([results_class[criterion] for results_class in results_per_class])
+        else:
+            # Compute results directly if regression / not multilabel
+            results = self.compute_per_class(y_predicted, y_true)
+
+        return results
+
+    def compute_per_class(self, y_predicted: torch.Tensor, y_true: torch.Tensor) -> float:
+        """
+        Compute function for one class (or overall for regression problems).
+
+        Optimized so that computation is shared for metrics
+        that have a common preprocessing step.
+        E.g. accuracy, precision, etc. all compute the
+        highest probability class first before the actual
+        score computation.
+        """
+        results = {}
+        for preprocess_fn, supported_metrics in PREPROCESSING_FUNCTIONS.items():
+            metrics_to_compute = [metric_name for metric_name in supported_metrics if metric_name in self.criteria]
+            if metrics_to_compute:
+                preprocessed_input = preprocess_fn(y_predicted, y_true)  # Share preprocessing
+                for metric_name in metrics_to_compute:
+                    eval_metrics = [criterion for criterion in self.criteria if criterion.name == metric_name]
+                    for eval_metric in eval_metrics:
+                        results[eval_metric.criterion] = eval_metric(*preprocessed_input)
+        return results
+
+    def canonicalize(self, eval_criterion: str) -> bool:
+        """
+        Return the canonical name of `eval_criterion`
+        if supported, otherwise None.
+
+        E.g. `top_1_accuracy` would be
+        canonicalized to `top_k_accuracy`.
+        """
+        for criterion in self.criteria:
+            canonical_name = criterion.canonicalize(eval_criterion)
+            if canonical_name is not None:
+                return canonical_name
+        return None
+
+    def get_criterion(self, eval_criterion: str) -> bool:
+        """
+        Get the `EvalCriterion` object
+        for a specified `eval_criterion`.
+        """
+        criteria = [e for e in self.criteria if e.name == eval_criterion]
+        assert len(criteria) <= 1
+        return criteria[0] if len(criteria) else None
+
+    def check_multilabel(self):
+        """
+        Check if it's a multilabel setting.
+        If so, define the reduction and
+        aggregation functions.
+        """
+        self.is_multilabel = self.model_type == "classification" and self.classification_type == "multilabel"
+
+        if self.is_multilabel:
+            if not self.eval_criteria_kwargs.get("multilabel_reduction"):
+                raise ValueError("Param 'multilabel_reduction' must be provided.")
+            self.multilabel_reduction = self.eval_criteria_kwargs["multilabel_reduction"]
+            if self.multilabel_reduction == "none":
+                self.agg_func = np.array
+            elif self.multilabel_reduction == "mean":
+                self.agg_func = np.mean
+            else:
+                raise ValueError(
+                    f"Param 'multilabel_reduction' ('{self.multilabel_reduction}') must be one of ['mean', 'none']."
+                )
+
+    def create_all_eval_metrics(self) -> None:
+        """
+        Create and store all `EvalCriterion` objects.
+        """
+        for criterion in self.eval_criteria:
+            criterion_kwargs = self.eval_criteria_kwargs.get(criterion, {})
+            eval_metric = self.create_eval_metric(criterion, **criterion_kwargs)
+            self.criteria.append(eval_metric)
+
+    def create_eval_metric(self, eval_criterion: str, **kwargs) -> None:
+        """
+        Get the `EvalCriterion` object for a specified `criterion`.
+        :param kwargs: Misc kwargs for the eval criterion.
+                       Mostly used in multiclass settings. E.g.:
+                       - `average` for f1, precision, recall
+                       - `pos_label` for auc
+                       If it's a multilabel setting,
+                       `multilabel_reduction` must be provided:
+                        Type of multilabel_reduction to be
+                        performed on the list of metric values
+                        for each class.
+                        Choices: "sum" | "mean"
+        """
+        try:
+            canonical_name = None
+            for name in self.ALL_EVAL_CRITERIA:
+                canonical_name = canonicalize(eval_criterion, name, EVAL_METRIC_FUNCTIONS[name]["regex"])
+                if canonical_name is not None:
+                    break
+            eval_fn = EVAL_METRIC_FUNCTIONS[canonical_name]["eval_fn"]
+            return EvalCriterion(eval_criterion, eval_fn, canonical_name, **kwargs)
+        except KeyError:
+            raise ValueError(f"Param 'eval_criterion' ('{eval_criterion}') must be one of {self.names}.")
+
+
+def get_loss_eval_criteria(config: _Config) -> Tuple[_Loss, _Loss, _EvalCriterionOrCriteria]:
     """
     Define train and val loss and evaluation criteria.
-    :param reduction_val: If None, a common `reduction` will be used
-                          for both train and val losses, otherwise
-                          the specified one for val loss.
     """
+    train_loss_kwargs, val_loss_kwargs = config.loss_kwargs.copy(), config.loss_kwargs.copy()
+
     # Add/update train loss reduction and get criterion
-    train_loss_kwargs = {**config.loss_kwargs, "reduction": reduction}
+    train_loss_kwargs["reduction"] = train_loss_kwargs.pop("reduction_train", "mean")
+    train_loss_kwargs.pop("reduction_val", None)
     loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, **train_loss_kwargs)
 
     # Add/update val loss reduction and get criterion
-    if reduction_val is None:
-        reduction_val = reduction
-    val_loss_kwargs = {**config.loss_kwargs, "reduction": reduction_val}
+    val_loss_kwargs["reduction"] = val_loss_kwargs.pop("reduction_val", "mean")
+    val_loss_kwargs.pop("reduction_train", None)
     loss_criterion_val = get_loss_criterion(config, criterion=config.loss_criterion, **val_loss_kwargs)
 
     eval_criteria = get_eval_criteria(config, config.eval_criteria, **config.eval_criteria_kwargs)
@@ -49,24 +348,18 @@ def get_loss_criterion(config: _Config, criterion: Optional[str] = "cross-entrop
     return loss_criterion
 
 
-def get_eval_criteria(config: _Config, criteria: str, **kwargs) -> _EvalCriterionOrCriteria:
+def get_eval_criteria(config: _Config, eval_criteria: List[str], **kwargs) -> EvalCriteria:
     """
-    Get a dictionary of eval criterion functions.
+    Get the `EvalCriteria` object (comprising all eval
+    criteria definitions) based on the specified list.
     """
-    is_multilabel = config.model_type == "classification" and config.classification_type == "multilabel"
-    if is_multilabel:
-        if not kwargs.get("multilabel_reduction"):
-            raise ValueError("Param 'multilabel_reduction' must be provided.")
-        multilabel_reduction = kwargs["multilabel_reduction"]
-
-    eval_criteria_dict: _EvalCriterionOrCriteria = OrderedDict()
-    for criterion in criteria:
-        criterion_kwargs = kwargs.get(criterion, {})
-        if is_multilabel:
-            criterion_kwargs = {**criterion_kwargs, "multilabel_reduction": multilabel_reduction}
-        eval_fn = get_eval_criterion_function(config, criterion=criterion, **criterion_kwargs)
-        eval_criteria_dict[criterion] = eval_fn
-    return eval_criteria_dict
+    eval_criteria = EvalCriteria(
+        model_type=config.model_type,
+        classification_type=config.classification_type,
+        eval_criteria=eval_criteria,
+        **kwargs,
+    )
+    return eval_criteria
 
 
 def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cross-entropy", **kwargs) -> _Loss:
@@ -129,147 +422,3 @@ def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cro
                 dim=0,
             )
         )
-
-
-def get_eval_criterion_function(
-    config: _Config, criterion: Optional[str] = "accuracy", **kwargs
-) -> Callable[[torch.Tensor, torch.Tensor], Union[float, torch.Tensor]]:
-    """
-    Get the function for a given evaluation `criterion`.
-    :param kwargs: Misc kwargs for the eval criterion.
-                   Mostly used in multiclass settings. E.g. -
-                   - `average` for f1, precision, recall
-                   - `pos_label` for auc
-                   If it's a multilabel setting,
-                   `multilabel_reduction` must be provided:
-                    Type of multilabel_reduction to be
-                    performed on the list of metric values
-                    for each class.
-                    Choices: "sum" | "mean"
-    """
-    # Check for multilabel classification
-    if config.model_type == "classification" and config.classification_type == "multilabel":
-        multilabel_reduction = kwargs.pop("multilabel_reduction")
-        if multilabel_reduction == "none":
-            agg_func = np.array
-        elif multilabel_reduction == "mean":
-            agg_func = np.mean
-        else:
-            raise ValueError(
-                f"Param 'multilabel_reduction' ('{multilabel_reduction}') must be one of ['mean', 'none']."
-            )
-
-    # Get per-label eval criterion
-    if criterion in REGRESSION_EVAL_CRITERIA:
-        eval_criterion = partial(get_regression_eval_metric, criterion=criterion, **kwargs)
-    elif criterion in CLASSIFICATION_EVAL_CRITERIA:
-        eval_criterion = partial(get_class_eval_metric, criterion=criterion, **kwargs)
-    else:
-        raise ValueError(f"Param 'criterion' ('{criterion}') must be one of {EVAL_CRITERIA}.")
-
-    # Regression
-    if config.model_type == "regression":
-        return eval_criterion
-
-    # Binary / Multiclass classification
-    elif config.classification_type in ["binary", "multiclass"]:
-        return eval_criterion
-
-    # Multilabel classification
-    else:
-        return lambda output_hist, y_hist: agg_func(
-            [eval_criterion(output_hist, y_hist[..., i]) for i in range(y_hist.shape[-1])]
-        )
-
-
-def get_regression_eval_metric(
-    output_hist: torch.Tensor, y_true: torch.Tensor, criterion: Optional[str] = "mse", **kwargs
-) -> float:
-    """
-    Get the regression eval metric.
-    """
-    assert y_true.shape == output_hist.shape
-
-    criterion_fn_dict = {"mse": get_mse_loss}
-    return criterion_fn_dict[criterion](output_hist, y_true, **kwargs)
-
-
-def get_mse_loss(output_hist: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
-    """
-    Compute MSE loss.
-    """
-    assert y_true.shape == output_hist.shape
-    mse = nn.MSELoss(**kwargs)(output_hist, y_true).item()
-    return mse
-
-
-def get_class_eval_metric(
-    output_hist: torch.Tensor, y_true: torch.Tensor, criterion: Optional[str] = "accuracy", **kwargs
-) -> float:
-    """
-    Get eval criterion for a single class.
-
-    As required, get:
-      - class with max probability (for discrete metrics like accuracy etc.)
-      - probs for y=1 (for computing AUC)
-    and return the metric value for the given class.
-    """
-    y_predicted = output_hist[:, 1] if criterion == "auc" else output_hist.max(dim=-1)[1]
-    y_true, y_predicted = convert_tensor_to_numpy((y_true, y_predicted))
-    assert y_true.shape == y_predicted.shape
-    y_true = y_true.astype(int)
-
-    if criterion == "auc":
-        fpr, tpr, threshold = roc_curve(y_true, y_predicted.astype(float), **kwargs)
-        return auc(fpr, tpr)
-
-    # criterion is one of ["accuracy", "precision", "recall", "f1"]
-    criterion_fn_dict = {
-        "accuracy": accuracy_score,
-        "precision": precision_score,
-        "recall": recall_score,
-        "f1": f1_score,
-    }
-    return criterion_fn_dict[criterion](y_true, y_predicted.astype(int), **kwargs)
-
-
-class FocalLoss(nn.Module):
-    """
-    Implement the focal loss for binary classification (ignores regression).
-    Paper: https://arxiv.org/pdf/1708.02002.pdf
-    Code insipration: https://github.com/kuangliu/pytorch-retinanet/blob/master/loss.py
-    """
-
-    # TODO: Extend this to multiclass
-    def __init__(self, alpha: Optional[float] = 0.25, gamma: Optional[float] = 2):
-        super().__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-
-    def forward(self, outputs: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        """
-        Compute the focal loss between raw logits and binary targets.
-        :param outputs: (tensor) binary class probabilities of size (batch_size, 2)
-        :param y: (tensor) encoded target labels of size (batch_size)
-
-        :return (tensor) loss = FocalLoss(outputs, y)
-        """
-        probs1 = torch.sigmoid(outputs[:, 1])
-        targets = y.float()
-
-        # alpha balancing weights = alpha if y = 1 else (1-alpha)
-        w_alpha = torch.ones_like(targets, device=targets.device) * self.alpha
-        w_alpha = torch.where(torch.eq(targets, 1.0), w_alpha, 1.0 - w_alpha)
-
-        # focal weights = (1-p)^gamma if y = 1 else p^gamma
-        w_focal = torch.where(torch.eq(targets, 1.0), 1.0 - probs1, probs1)
-        w_focal = torch.pow(w_focal, self.gamma)
-
-        # Focal loss = w_alpha * w_focal * BCELoss
-        bce_loss = -(targets * probs1.log() + (1.0 - targets) * (1.0 - probs1).log())
-        focal_loss = w_alpha * w_focal * bce_loss
-
-        return focal_loss.mean()
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(alpha={self.alpha}, gamma={self.gamma})"

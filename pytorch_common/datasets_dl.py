@@ -361,7 +361,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
         numpy random state for reproducibility.
         """
         x = create_feature_from_index(index, self.in_dim)
-        y = torch.as_tensor(np.random.RandomState(index).randn(self.out_dim), dtype=torch.float)
+        y = torch.as_tensor(np.random.RandomState(index).randn(self.out_dim), dtype=torch.float32)
         return pd.Series([x, y])
 
 
