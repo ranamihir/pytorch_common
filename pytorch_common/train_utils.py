@@ -360,6 +360,12 @@ def perform_one_epoch(
     At a time, only one of training / evaluation / testing will be performed.
     For a given phase, all arguments that pertain to other phases will be ignored.
     """
+    def _print_memory(message: str) -> None:
+        if phase == "train":
+            import GPUtil
+            logger.info(f"Batch {batch_idx}, {message}:")
+            GPUtil.showUtilization()
+
     ALLOWED_PHASES = ["train", "eval", "test"]
 
     # Check presence of required arguments
@@ -418,6 +424,7 @@ def perform_one_epoch(
                 model.zero_grad()
 
             # Get model outputs
+            _print_memory("Before forward pass")
             outputs = get_model_outputs_only(model(inputs))
 
             # Store variables for logging
@@ -441,9 +448,11 @@ def perform_one_epoch(
 
             else:  # Perform training / evaluation
                 # Compute and store loss
+                _print_memory("After forward pass")
                 loss = loss_criterion(outputs, targets)
                 loss_value = loss.item()
                 loss_hist.append(loss_value)
+                _print_memory("After loss computation")
 
                 # Perform training
                 if phase == "train":
