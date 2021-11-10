@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader
 
 from pytorch_common import timing
 
+from .metrics import EvalCriteria
 from .types import *
 from .utils import (
     ModelTracker,
@@ -420,7 +421,7 @@ def perform_one_epoch(
             outputs = get_model_outputs_only(model(inputs))
 
             # Store variables for logging
-            num_examples_complete = (batch_idx + 1) * batch_size
+            num_examples_complete = min((batch_idx + 1) * batch_size, num_examples)
             percent_batches_complete = 100.0 * (batch_idx + 1) / num_batches
 
             # Store items for testing + print progress
@@ -477,9 +478,7 @@ def perform_one_epoch(
         targets_hist = torch.cat(targets_hist, dim=0)
 
         # Compute all evaluation criteria
-        eval_metrics = {
-            eval_criterion: eval_fn(outputs_hist, targets_hist) for eval_criterion, eval_fn in eval_criteria.items()
-        }
+        eval_metrics = eval_criteria(outputs_hist, targets_hist)
 
     else:  # Get outputs, predictions, probabilities
         outputs_hist = torch.stack(outputs_hist, dim=0)
@@ -845,16 +844,10 @@ class EarlyStopping:
     their params is optional.
     """
 
-    SUPPORTED_CRITERIA = ["mse", "accuracy", "precision", "recall", "f1", "auc"]
+    SUPPORTED_CRITERIA = EvalCriteria()
     SUPPORTED_MODES = {"minimize": 0.0, "maximize": 1.0}
-    CRITERIA_MODE_DICT = {
-        "mse": "minimize",
-        "accuracy": "maximize",
-        "precision": "maximize",
-        "recall": "maximize",
-        "f1": "maximize",
-        "auc": "maximize",
-    }
+    CRITERIA_MODE_DICT = {metric: "maximize" for metric in SUPPORTED_CRITERIA.names}  # Default mode is maximize
+    CRITERIA_MODE_DICT["mse"] = "minimize"  # Override to minimize for mse
     DEFAULT_PARAMS = {"min_delta": 0.2 * 1e-3, "patience": 5, "best_val_tol": 5e-3}
 
     def __init__(
@@ -877,7 +870,7 @@ class EarlyStopping:
         :param best_val_tol: Tolerance when comparing metric to best_val
                              This must be provided if `best_val` is provided
         """
-        self.criterion = criterion
+        self.criterion = self.SUPPORTED_CRITERIA.canonicalize(criterion)
         self._init_params(
             mode=mode,
             min_delta=min_delta,
@@ -901,7 +894,7 @@ class EarlyStopping:
         `best_val` and `best_val_tol`).
         """
         # Supported criterion
-        if self.criterion in self.SUPPORTED_CRITERIA:
+        if self.criterion and (self.criterion in self.SUPPORTED_CRITERIA):
             mode = self.CRITERIA_MODE_DICT[self.criterion]
             best_val = self.SUPPORTED_MODES[mode]
             params = {**self.DEFAULT_PARAMS, "mode": mode, "best_val": best_val}

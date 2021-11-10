@@ -13,7 +13,7 @@ from pytorch_common import train_utils, utils
 from pytorch_common.additional_configs import BaseDatasetConfig, BaseModelConfig
 from pytorch_common.config import Config, load_pytorch_common_config, set_pytorch_config
 from pytorch_common.datasets import create_dataset
-from pytorch_common.metrics import EVAL_CRITERIA, get_loss_eval_criteria
+from pytorch_common.metrics import EvalCriteria, get_loss_eval_criteria
 from pytorch_common.models import create_model
 from pytorch_common.types import (
     Any,
@@ -51,7 +51,7 @@ class TestTrainUtils(unittest.TestCase):
         """
         Test different early stopping criteria.
         """
-        for eval_criterion in EVAL_CRITERIA:
+        for eval_criterion in EvalCriteria().names:
             early_stopping = train_utils.EarlyStopping(eval_criterion)
         self._test_error(train_utils.EarlyStopping, "dummy_criterion")
 
@@ -288,7 +288,7 @@ class TestTrainUtils(unittest.TestCase):
             self.config.classification_type = "multilabel"
             self.config.loss_kwargs["multilabel_reduction"] = multilabel_reduction
             self.config.eval_criteria_kwargs["multilabel_reduction"] = multilabel_reduction
-        loss_criterion_train, loss_criterion_test, eval_criteria = get_loss_eval_criteria(self.config, reduction="mean")
+        loss_criterion_train, loss_criterion_test, eval_criteria = get_loss_eval_criteria(self.config)
 
         training_objects = {
             "train_loader": train_loader,

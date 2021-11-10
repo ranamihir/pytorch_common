@@ -7,12 +7,8 @@ from munch import Munch
 
 import pytorch_common
 
-from .metrics import (
-    CLASSIFICATION_EVAL_CRITERIA,
-    CLASSIFICATION_LOSS_CRITERIA,
-    REGRESSION_EVAL_CRITERIA,
-    REGRESSION_LOSS_CRITERIA,
-)
+from .metric_utils import CLASSIFICATION_LOSS_CRITERIA, REGRESSION_LOSS_CRITERIA
+from .metrics import EvalCriteria
 from .types import Optional, _Config, _StringDict
 from .utils import get_file_path, load_object, make_dirs, set_seed, setup_logging
 
@@ -113,6 +109,8 @@ def set_pytorch_config(config: _Config) -> None:
     assert (
         config.model_type == "classification" and config.classification_type in ["binary", "multiclass", "multilabel"]
     ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
+    if config.model_type == "regression":
+        config.classification_type = None
 
     # TODO: Remove this after extending FocalLoss
     if config.model_type == "classification" and config.loss_criterion == "focal-loss":
@@ -174,8 +172,8 @@ def set_loss_and_eval_criteria(config: _Config) -> None:
         assert config.early_stopping_criterion is not None
     else:
         if not hasattr(config, "early_stopping_criterion"):
-            default_stopping_criterion = "mse" if config.model_type == "regression" else "accuracy"
-            config.early_stopping_criterion = default_stopping_criterion
+            primary_criterion = "mse" if config.model_type == "regression" else "accuracy"
+            config.early_stopping_criterion = primary_criterion
     assert config.early_stopping_criterion in config.eval_criteria
 
 
@@ -187,23 +185,20 @@ def _check_loss_and_eval_criteria(config: _Config) -> None:
     """
     assert config.get("eval_criteria") and isinstance(config.eval_criteria, list)
 
-    if config.model_type == "classification":
-        LOSS_CRITERIA = CLASSIFICATION_LOSS_CRITERIA
-        EVAL_CRITERIA = CLASSIFICATION_EVAL_CRITERIA
-    else:
-        LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA
-        EVAL_CRITERIA = REGRESSION_EVAL_CRITERIA
+    loss_criteria = CLASSIFICATION_LOSS_CRITERIA if config.model_type == "classification" else REGRESSION_LOSS_CRITERIA
 
-    assert config.loss_criterion in LOSS_CRITERIA, (
+    assert config.loss_criterion in loss_criteria, (
         f"Loss criterion ('{config.loss_criterion}') "
         f"for `model_type=='classification' must be one"
-        f" of {LOSS_CRITERIA}."
+        f" of {loss_criteria}."
     )
+
+    supported_criteria = EvalCriteria(model_type=config.model_type)
     for eval_criterion in config.eval_criteria:
-        assert eval_criterion in EVAL_CRITERIA, (
+        assert eval_criterion in supported_criteria, (
             f"Eval criterion ('{eval_criterion}') for "
-            f"`model_type=='classification'` must be one"
-            f" of {EVAL_CRITERIA}."
+            f"`model_type=='{config.model_type}'` must be one"
+            f" of {supported_criteria.names}."
         )
 
 
