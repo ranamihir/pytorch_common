@@ -27,7 +27,6 @@ from .utils import (
     send_optimizer_to_device,
     setup_logging,
 )
-from pytorch_memlab import LineProfiler
 
 logger = setup_logging(__name__)
 
@@ -361,6 +360,13 @@ def perform_one_epoch(
     At a time, only one of training / evaluation / testing will be performed.
     For a given phase, all arguments that pertain to other phases will be ignored.
     """
+    def _print_memory(message: str) -> None:
+        if phase == "train":
+            import GPUtil
+
+            logger.info(f"Batch {batch_idx}, {message}:")
+            GPUtil.showUtilization()
+
     ALLOWED_PHASES = ["train", "eval", "test"]
 
     # Check presence of required arguments
@@ -407,32 +413,73 @@ def perform_one_epoch(
     # functions, e.g. `evaluate_epoch()` (because of decorator), but just being sure.
     with torch.set_grad_enabled(MODE):
         for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
-            with LineProfiler(perform_one_step) as prof:
-                perform_one_step(
-                    phase=phase,
-                    model=model,
-                    batch=batch,
-                    device=device,
-                    loss_criterion=loss_criterion,
-                    epoch=epoch,
-                    optimizer=optimizer,
-                    scheduler=scheduler,
-                    threshold_prob=threshold_prob,
-                    decouple_fn=decouple_fn,
-                    loss_hist=loss_hist,
-                    targets_hist=targets_hist,
-                    outputs_hist=outputs_hist,
-                    preds_hist=preds_hist,
-                    probs_hist=probs_hist,
-                    batches_to_print=batches_to_print,
-                    epochs_str=epochs_str,
-                    num_batches=num_batches,
-                    num_examples=num_examples,
-                    batch_size=batch_size,
-                    batch_idx=batch_idx,
-                )
-            if phase == "train":
-                logger.info(prof.display())
+            torch.cuda.empty_cache()  # Goes OOM without this
+
+            # Get inputs for testing
+            if phase == "test":
+                inputs = send_batch_to_device(decouple_fn(batch), device)
+            else:  # Get inputs and targets for training/evaluation
+                inputs, targets = send_batch_to_device(decouple_fn(batch), device)
+            del batch  # Free up memory
+
+            # Get model outputs
+            _print_memory("Before forward pass")
+            outputs = get_model_outputs_only(model(inputs))
+            del inputs  # Free up memory
+
+            # Store variables for logging
+            num_examples_complete = min((batch_idx + 1) * batch_size, num_examples)
+            percent_batches_complete = 100.0 * (batch_idx + 1) / num_batches
+
+            # Store items for testing + print progress
+            if phase == "test":
+                outputs = send_batch_to_device(outputs, "cpu")
+                outputs_hist.extend(outputs)
+
+                # Get class predictions and probabilities
+                if model.model_type == "classification":
+                    preds, probs = model.predict_proba(outputs, threshold_prob)
+                    preds_hist.extend(preds)
+                    probs_hist.extend(probs)
+
+                # Print progess
+                if batch_idx in batches_to_print:
+                    logger.info(f"{num_examples_complete}/{num_examples} ({percent_batches_complete:.0f}%) complete.")
+
+            else:  # Perform training / evaluation
+                # Compute and store loss
+                _print_memory("After forward pass")
+                loss = loss_criterion(outputs, targets)
+                loss_value = loss.item()
+                loss_hist.append(loss_value)
+                _print_memory("After loss computation")
+
+                # Perform training
+                if phase == "train":
+                    del outputs, targets  # Free up memory
+
+                    # Reset gradients back to zero
+                    optimizer.zero_grad()
+                    model.zero_grad()
+
+                    # Backprop + clip gradients + take scheduler step
+                    loss.backward()
+                    nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                    optimizer.step()
+                    if scheduler is not None:
+                        take_scheduler_step(scheduler, loss_value)
+
+                    # Print progess
+                    if batch_idx in batches_to_print:
+                        logger.info(
+                            f"Train Epoch: {epoch}{epochs_str} [{num_examples_complete}/{num_examples} "
+                            f"({percent_batches_complete:.0f}%)]\tLoss: {loss_value:.6f}"
+                        )
+
+                else:  # Store items for evaluation
+                    outputs, targets = send_batch_to_device((outputs, targets), "cpu")
+                    outputs_hist.append(outputs)
+                    targets_hist.append(targets)
 
     # Reset gradients back to zero
     if phase == "train":
@@ -459,93 +506,6 @@ def perform_one_epoch(
         return loss_hist, eval_metrics, outputs_hist, targets_hist
     else:
         return outputs_hist, preds_hist, probs_hist
-
-
-def perform_one_step(
-    phase: str,
-    model: nn.Module,
-    batch: _TensorOrTensors,
-    device: _Device,
-    loss_criterion: Optional[_Loss],
-    epoch: Optional[int],
-    optimizer: Optional[Optimizer],
-    scheduler: Optional[object],
-    threshold_prob: Optional[float],
-    decouple_fn: Optional[_DecoupleFn],
-    loss_hist: List[float],
-    targets_hist: _TensorOrTensors,
-    outputs_hist: _TensorOrTensors,
-    preds_hist: _TensorOrTensors,
-    probs_hist: _TensorOrTensors,
-    batches_to_print: np.ndarray,
-    epochs_str: str,
-    num_batches: int,
-    num_examples: int,
-    batch_size: int,
-    batch_idx: int,
-) -> None:
-    # Get inputs for testing
-    if phase == "test":
-        inputs = send_batch_to_device(decouple_fn(batch), device)
-    else:  # Get inputs and targets for training/evaluation
-        inputs, targets = send_batch_to_device(decouple_fn(batch), device)
-    del batch  # Free up memory
-
-    # Get model outputs
-    outputs = get_model_outputs_only(model(inputs))
-    del inputs  # Free up memory
-
-    # Store variables for logging
-    num_examples_complete = min((batch_idx + 1) * batch_size, num_examples)
-    percent_batches_complete = 100.0 * (batch_idx + 1) / num_batches
-
-    # Store items for testing + print progress
-    if phase == "test":
-        outputs = send_batch_to_device(outputs, "cpu")
-        outputs_hist.extend(outputs)
-
-        # Get class predictions and probabilities
-        if model.model_type == "classification":
-            preds, probs = model.predict_proba(outputs, threshold_prob)
-            preds_hist.extend(preds)
-            probs_hist.extend(probs)
-
-        # Print progess
-        if batch_idx in batches_to_print:
-            logger.info(f"{num_examples_complete}/{num_examples} ({percent_batches_complete:.0f}%) complete.")
-
-    else:  # Perform training / evaluation
-        # Compute and store loss
-        loss = loss_criterion(outputs, targets)
-        loss_value = loss.item()
-        loss_hist.append(loss_value)
-
-        # Perform training
-        if phase == "train":
-            del outputs, targets  # Free up memory
-
-            # Reset gradients back to zero
-            optimizer.zero_grad()
-            model.zero_grad()
-
-            # Backprop + clip gradients + take scheduler step
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            if scheduler is not None:
-                take_scheduler_step(scheduler, loss_value)
-
-            # Print progess
-            if batch_idx in batches_to_print:
-                logger.info(
-                    f"Train Epoch: {epoch}{epochs_str} [{num_examples_complete}/{num_examples} "
-                    f"({percent_batches_complete:.0f}%)]\tLoss: {loss_value:.6f}"
-                )
-
-        else:  # Store items for evaluation
-            outputs, targets = send_batch_to_device((outputs, targets), "cpu")
-            outputs_hist.append(outputs)
-            targets_hist.append(targets)
 
 
 def decouple_batch_train(batch: _Batch) -> Tuple[_Batch]:
