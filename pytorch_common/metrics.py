@@ -5,7 +5,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from .metric_utils import EVAL_METRIC_FUNCTIONS, LOSS_CRITERIA, PREPROCESSING_FUNCTIONS, FocalLoss, canonicalize, match
+from .metric_utils import (
+    EVAL_METRIC_FUNCTIONS,
+    LOSS_CRITERIA,
+    PREPROCESSING_FUNCTIONS,
+    FocalLoss,
+    canonicalize,
+    match,
+    top_k_accuracy_scores,
+)
 from .types import *
 
 
@@ -232,12 +240,26 @@ class EvalCriteria:
         """
         results = {}
         for preprocess_fn, supported_metrics in PREPROCESSING_FUNCTIONS.items():
-            metrics_to_compute = [metric_name for metric_name in supported_metrics if metric_name in self.criteria]
-            if metrics_to_compute:
+            metrics_in_group = [metric_name for metric_name in supported_metrics if metric_name in self.criteria]
+            if metrics_in_group:
                 preprocessed_input = preprocess_fn(y_predicted, y_true)  # Share preprocessing
-                for metric_name in metrics_to_compute:
+                for metric_name in metrics_in_group:
+                    # Get eval metrics to be computed in this group
                     eval_metrics = [criterion for criterion in self.criteria if criterion.name == metric_name]
+
+                    # Separate out all top_k_accuracy-based metrics
+                    top_k_accuracy_metrics, other_metrics = [], []
                     for eval_metric in eval_metrics:
+                        top_k_accuracy_metrics.append(
+                            eval_metric
+                        ) if eval_metric.name == "top_k_accuracy" else other_metrics.append(eval_metric)
+
+                    # Compute all top_k_accuracy-based metrics together (for efficiency)
+                    for eval_metric in top_k_accuracy_metrics:
+                        top_k_accuracy_scores(top_k_accuracy_metrics, results, *preprocessed_input)
+
+                    # Compute all other metrics as normal
+                    for eval_metric in other_metrics:
                         results[eval_metric.criterion] = eval_metric(*preprocessed_input)
         return results
 

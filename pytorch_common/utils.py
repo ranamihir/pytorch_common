@@ -147,7 +147,13 @@ def print_dataframe(data: pd.DataFrame) -> None:
     logger.info(f"\nHead of data:\n{data.head(10)}\n")
     logger.info(f"\nShape of data: {data.shape}\n")
     logger.info(f"\nColumns:\n{data.columns}\n")
-    logger.info(f"\nSummary statistics:\n{data.describe()}\n")
+
+    # This returns errors at times for unknown data types
+    try:
+        logger.info(f"\nSummary statistics:\n{data.describe()}\n")
+    except TypeError:
+        logger.warning("TypeError: Could not compute `.describe()` successfully.")
+        pass
 
 
 def save_plot(

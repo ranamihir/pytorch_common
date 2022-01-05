@@ -58,6 +58,7 @@ def correct_argument_order(func: Callable) -> Callable:
     return corrected_func
 
 
+@torch.no_grad()
 def get_mse_loss(y_predicted: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
     """
     Compute MSE loss.
@@ -75,6 +76,41 @@ def auc_score(y_predicted: torch.Tensor, y_true: torch.Tensor, **kwargs) -> floa
     return auc(fpr, tpr)
 
 
+@torch.no_grad()
+def top_k_accuracy_scores(
+    eval_metrics: List[object], results: _StringDict, y_predicted: torch.Tensor, y_true: torch.Tensor, **kwargs
+) -> None:
+    """
+    A batch implementation of `top_k_accuracy_score()`.
+
+    It takes all top_k_accuracy-based metrics as input,
+    and computes the respective metrics efficiently.
+    If done separately, the top-k indices would need
+    to be computed separately for each k, while here
+    it happens only once.
+    """
+    assert len(y_predicted) == len(y_true)
+
+    ks = []
+    for eval_metric in eval_metrics:
+        k = int(match(eval_metric.criterion, TOP_K_ACCURACY_REGEX))  # Extract k
+        ks.append(k)
+
+    max_k = max(ks)
+    _, top_indices = torch.topk(y_predicted, max_k, dim=1)  # Compute the top `max_k` predicted classes
+    top_indices = top_indices.t()  # Transpose for mathematical convenience
+    correct_max_k = top_indices.eq(
+        y_true.long().view(1, -1).expand_as(top_indices)
+    )  # Get correct predictions in top max_k
+
+    # Compute top-k accuracy for all k's
+    for i, k in enumerate(ks):
+        correct_k = correct_max_k[:k].reshape(-1).float().sum(dim=0, keepdim=True)  # Get correct predictions in top k
+        top_k_accuracy = correct_k / len(y_true)  # Divide by batch size (because of transpose earlier)
+        results[eval_metrics[i].criterion] = top_k_accuracy.item()
+
+
+@torch.no_grad()
 def top_k_accuracy_score(y_predicted: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
     """
     Compute the top-k accuracy score
@@ -82,7 +118,14 @@ def top_k_accuracy_score(y_predicted: torch.Tensor, y_true: torch.Tensor, **kwar
 
     Conversion to numpy is expensive in this
     case. Stick to using PyTorch tensors.
+
+    Note: This function is not recommended if you have
+          more than one k that this is to be computed
+          for. Please use the much more efficient
+          `top_k_accuracy_scores()` in that case.
     """
+    assert len(y_predicted) == len(y_true)
+
     k = int(match(kwargs["criterion"], TOP_K_ACCURACY_REGEX))  # Extract k
     _, topk_indices = torch.topk(y_predicted, k, dim=1)  # Compute the top-k predicted classes
     correct_examples = torch.eq(y_true[..., None, ...].long(), topk_indices).any(dim=1)
@@ -191,7 +234,7 @@ EVAL_METRIC_FUNCTIONS = {
     },
     "auc": {"preprocess_fn": prob_class1, "eval_fn": auc_score, "model_type": "classification"},
     "top_k_accuracy": {
-        "eval_fn": top_k_accuracy_score,
+        "eval_fn": top_k_accuracy_score,  # Not actually used (in favor of `top_k_accuracy_scores()` for efficiecy)
         "regex": TOP_K_ACCURACY_REGEX,
         "model_type": "classification",
     },

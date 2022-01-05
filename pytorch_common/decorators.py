@@ -43,9 +43,9 @@ def timing_with_param(*parameter_names) -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
-            start = time.time()
+            start = time.perf_counter()
             result = func(*args, **kwargs)
-            end = time.time()
+            end = time.perf_counter()
             elapsed = end - start
             elapsed_human = human_time_interval(elapsed)
 
@@ -54,7 +54,7 @@ def timing_with_param(*parameter_names) -> Callable:
             logged_param_str = f" {logged_param}" if logged_param else ""
 
             module_name, function_name = func.__module__, func.__qualname__
-            PRINT_FUNC(f"Function '{module_name}.{function_name}{logged_param_str}' took {elapsed_human}")
+            PRINT_FUNC(f"Function '{module_name}.{function_name}{logged_param_str}' took {elapsed_human}.")
             return result
 
         return wrapper
