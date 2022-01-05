@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections import OrderedDict
 from itertools import islice
 
@@ -47,7 +48,7 @@ def train_model(
     scheduler: Optional[object] = None,
     early_stopping: Optional[EarlyStopping] = None,
     config_info_dict: Optional[_StringDict] = None,
-    start_epoch: Optional[int] = 0,
+    checkpoint_file: Optional[str] = None,
     decouple_fn_train: Optional[_DecoupleFnTrain] = None,
     decouple_fn_eval: Optional[_DecoupleFnTrain] = None,
 ) -> _StringDict:
@@ -55,8 +56,8 @@ def train_model(
     Perform the entire model training routine.
       - `epochs` is deliberately not derived directly from config
         so as to be able to change it on the fly without modifying config.
-      - `start_epoch` may be provided if a trained checkpoint is loaded
-        into the model and training is to be resumed from that point.
+      - `checkpoint_file` may be provided if a trained checkpoint is to be
+        loaded into the model and training is to be resumed from that point.
       - `decouple_fn_train` and `decouple_fn_eval` are functions which
         take in the batch and return the separated out inputs
         (and targets for training/evaluation).
@@ -82,9 +83,9 @@ def train_model(
                              about the config which will be used to
                              generate a unique string for the
                              checkpoint name
-    :param start_epoch: May be set to the last trained epoch
-                        if training is resumed from an
-                        earlier saved checkpoint
+    :param checkpoint_file: Name of trained checkpoint file
+                            if training is to be resumed from
+                            that point
     :param decouple_fn_train: Decoupling function to extract
                               inputs and targets from a batch
                               during training
@@ -95,6 +96,24 @@ def train_model(
     # Otherwise derive from config
     if epochs is None:
         epochs = config.epochs
+
+    # Load trained model if required
+    start_epoch = 0
+    if checkpoint_file is not None:
+        logger.info("Loading previously saved checkpoint for resuming training...")
+        checkpoint = load_model(
+            model=model,
+            config=config,
+            checkpoint_file=checkpoint_file,
+            optimizer=optimizer,
+            scheduler=scheduler,
+        )
+        model = checkpoint["model"]
+        train_logger, val_logger = checkpoint["train_logger"], checkpoint["val_logger"]
+        optimizer, scheduler = checkpoint["optimizer"], checkpoint["scheduler"]
+        start_epoch = checkpoint["epoch"]
+        del checkpoint  # Free up memory
+        logger.info("Done.")
 
     best_epoch, stop_epoch = 0, start_epoch
     best_checkpoint_file = ""
@@ -214,7 +233,7 @@ def train_model(
             checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
             best_model = checkpoint["model"]
             optimizer, scheduler = checkpoint["optimizer"], checkpoint["scheduler"]
-            checkpoint = None  # Free up memory
+            del checkpoint  # Free up memory
             save_model(
                 best_model,
                 config,
@@ -360,6 +379,7 @@ def perform_one_epoch(
     At a time, only one of training / evaluation / testing will be performed.
     For a given phase, all arguments that pertain to other phases will be ignored.
     """
+
     ALLOWED_PHASES = ["train", "eval", "test"]
 
     # Check presence of required arguments
@@ -406,11 +426,14 @@ def perform_one_epoch(
     # functions, e.g. `evaluate_epoch()` (because of decorator), but just being sure.
     with torch.set_grad_enabled(MODE):
         for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
+            torch.cuda.empty_cache()  # Often goes OOM without this
+
             # Get inputs for testing
             if phase == "test":
                 inputs = send_batch_to_device(decouple_fn(batch), device)
             else:  # Get inputs and targets for training/evaluation
                 inputs, targets = send_batch_to_device(decouple_fn(batch), device)
+            del batch  # Free up memory
 
             # Reset gradients to zero
             if phase == "train":
@@ -419,6 +442,7 @@ def perform_one_epoch(
 
             # Get model outputs
             outputs = get_model_outputs_only(model(inputs))
+            del inputs  # Free up memory
 
             # Store variables for logging
             num_examples_complete = min((batch_idx + 1) * batch_size, num_examples)
@@ -447,7 +471,7 @@ def perform_one_epoch(
 
                 # Perform training
                 if phase == "train":
-                    outputs, targets = None, None  # Free up memory
+                    del outputs, targets  # Free up memory
 
                     # Backprop + clip gradients + take scheduler step
                     loss.backward()
@@ -455,6 +479,7 @@ def perform_one_epoch(
                     optimizer.step()
                     if scheduler is not None:
                         take_scheduler_step(scheduler, loss_value)
+                    del loss  # Free up memory
 
                     # Print progess
                     if batch_idx in batches_to_print:
@@ -643,7 +668,6 @@ def load_model(
     checkpoint_file: str,
     optimizer: Optional[Optimizer] = None,
     scheduler: Optional[object] = None,
-    checkpoint_type: Optional[str] = "state",
 ) -> _StringDict:
     """
     Load the checkpoint at a given epoch.
@@ -667,12 +691,9 @@ def load_model(
                   only its state dict is to be updated.
     :param checkpoint_file: Name of the checkpoint present in
                             `config.checkpoint_dir`
-    :param checkpoint_type: Type of checkpoint to load
-                            Choices = "state" | "model"
-                            Default = "state"
     """
-    # Validate checkpoint_type
-    validate_checkpoint_type(checkpoint_type, checkpoint_file)
+    # Extract checkpoint type from the file name provided
+    checkpoint_type = get_checkpoint_type_from_file(checkpoint_file)
 
     checkpoint_path = get_file_path(config.checkpoint_dir, checkpoint_file)
     if os.path.isfile(checkpoint_path):
@@ -699,13 +720,14 @@ def load_model(
         config = checkpoint["config"]
 
         # Extract last trained epoch from checkpoint file
-        epoch_trained = int(os.path.splitext(checkpoint_file)[0].split("-epoch_")[-1])
+        epoch_trained = int(re.search(r"-epoch_(?P<epoch>[0-9]+)", checkpoint_file).group("epoch"))
 
         # Verify consistency of last epoch trained
-        assert epoch_trained == checkpoint["epoch"], (
-            f"Mismatch between epoch specified in checkpoint path ('{epoch_trained}'), "
-            f"epoch specified at saving time ('{checkpoint['epoch']}')."
-        )
+        if epoch_trained != checkpoint["epoch"]:
+            logger.warning(
+                f"Mismatch between epoch specified in checkpoint path ('{epoch_trained}'), "
+                f"epoch specified at saving time ('{checkpoint['epoch']}')."
+            )
 
         # Load train / val loggers if provided
         train_logger, val_logger = checkpoint.get("train_logger"), checkpoint.get("val_logger")
@@ -812,26 +834,29 @@ def remove_model(
         logger.info("Done.")
 
 
-def validate_checkpoint_type(checkpoint_type: str, checkpoint_file: Optional[str] = None) -> None:
+def get_checkpoint_type_from_file(checkpoint_file: str) -> str:
     """
-    Check that the passed `checkpoint_type`
-    is valid and matches that obtained from
-    `checkpoint_file`, if provided.
+    Extract the checkpoint type from the file name provided.
+    """
+    checkpoint_type = None
+    try:
+        checkpoint_type = re.search(r"checkpoint-(?P<checkpoint_type>\b\w+\b)-", checkpoint_file).group(
+            "checkpoint_type"
+        )
+    finally:
+        validate_checkpoint_type(checkpoint_type)
+    return checkpoint_type
+
+
+def validate_checkpoint_type(checkpoint_type: str) -> None:
+    """
+    Check that the passed `checkpoint_type` is valid.
     """
     ALLOWED_CHECKPOINT_TYPES = ["state", "model"]
-    assert (
-        checkpoint_type in ALLOWED_CHECKPOINT_TYPES
-    ), f"Param 'checkpoint_type' ('{checkpoint_type}') must be one of {ALLOWED_CHECKPOINT_TYPES}."
-
-    # Check that provided checkpoint_type matches that of checkpoint_file
-    if checkpoint_file is not None:
-        file_checkpoint_type = checkpoint_file.split("-", 3)[1]
-        assert file_checkpoint_type == checkpoint_type, (
-            f"The type of checkpoint provided in param "
-            f"'checkpoint_type' ('{checkpoint_type}') does "
-            f"not match that obtained from the model at "
-            f"'{checkpoint_file}' ('{file_checkpoint_type}')."
-        )
+    assert checkpoint_type in ALLOWED_CHECKPOINT_TYPES, (
+        f"'checkpoint_type' ('{checkpoint_type}') not understood (likely "
+        f"from the file name provided). It must be one of {ALLOWED_CHECKPOINT_TYPES}."
+    )
 
 
 class EarlyStopping:

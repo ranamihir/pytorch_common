@@ -105,18 +105,8 @@ def set_pytorch_config(config: _Config) -> None:
     # Fix seed
     set_seed(config.seed)
 
-    # Check for model and classification type
-    assert (
-        config.model_type == "classification" and config.classification_type in ["binary", "multiclass", "multilabel"]
-    ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
-    if config.model_type == "regression":
-        config.classification_type = None
-
-    # TODO: Remove this after extending FocalLoss
-    if config.model_type == "classification" and config.loss_criterion == "focal-loss":
-        assert (
-            config.classification_type == "binary"
-        ), "FocalLoss is currently only supported for binary classification."
+    # Check miscellaneous configurations
+    check_and_set_misc_config(config)
 
     # Ensure GPU availability as some models are prohibitively slow on CPU
     if config.assert_gpu:
@@ -186,7 +176,6 @@ def _check_loss_and_eval_criteria(config: _Config) -> None:
     assert config.get("eval_criteria") and isinstance(config.eval_criteria, list)
 
     loss_criteria = CLASSIFICATION_LOSS_CRITERIA if config.model_type == "classification" else REGRESSION_LOSS_CRITERIA
-
     assert config.loss_criterion in loss_criteria, (
         f"Loss criterion ('{config.loss_criterion}') "
         f"for `model_type=='classification' must be one"
@@ -306,3 +295,29 @@ def set_all_batch_sizes(config: _Config) -> None:
 
         # Set per-GPU and total batch size for mode
         set_mode_batch_size(mode, batch_size_to_set)
+
+
+def check_and_set_misc_config(config: _Config) -> None:
+    """
+    Check all miscellaneous configurations, e.g.:
+      - model_type
+      - classification_type
+    """
+    # Check for model and classification type
+    assert (
+        config.model_type == "classification" and config.classification_type in ["binary", "multiclass", "multilabel"]
+    ) or (config.model_type == "regression" and not hasattr(config, "classification_type"))
+
+    # Set classification_type to None if regression
+    if config.model_type == "regression":
+        config.classification_type = None
+
+    # TODO: Remove this after extending FocalLoss
+    if config.model_type == "classification" and config.loss_criterion == "focal-loss":
+        assert (
+            config.classification_type == "binary"
+        ), "FocalLoss is currently only supported for binary classification."
+
+    # Used for dataloader sampling
+    config.num_batches = config.get("num_batches", None)
+    config.percentage = config.get("percentage", None)
