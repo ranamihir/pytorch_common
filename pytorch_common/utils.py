@@ -66,6 +66,34 @@ def remove_dir(dir_path: str, force: Optional[bool] = False) -> None:
             os.rmdir(dir_path)
 
 
+class LogFormatter(logging.Formatter):
+    """
+    Custom class for formatting logs properly, e.g. sets:
+      - format of the logs
+      - appropriate color for each logging level
+    """
+
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    log_format = "%(asctime)s: %(levelname)s: %(filename)s: %(funcName)s: %(message)s"
+
+    FORMATS = {
+        logging.DEBUG: f"{grey}{log_format}{reset}",
+        logging.INFO: f"{grey}{log_format}{reset}",
+        logging.WARNING: f"{yellow}{log_format}{reset}",
+        logging.ERROR: f"{red}{log_format}{reset}",
+        logging.CRITICAL: f"{bold_red}{log_format}{reset}",
+    }
+
+    def format(self, record: logging.LogRecord) -> logging.LogRecord:
+        log_format = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_format)
+        return formatter.format(record)
+
+
 def setup_logging(name: str, log_dir: Optional[str] = None) -> logging.Logger:
     """
     Configures logging format to write to both stdout
@@ -80,9 +108,6 @@ def setup_logging(name: str, log_dir: Optional[str] = None) -> logging.Logger:
     # Solution found at: https://rcaguilar.wordpress.com/2012/02/07/when-python-logging-isnt/
     if logging.root:
         del logging.root.handlers[:]
-
-    LOG_FORMAT = "%(asctime)s: %(levelname)s: %(filename)s: %(funcName)s: %(message)s"
-    formatter = logging.Formatter(LOG_FORMAT)
 
     logger = logging.getLogger(name)
     logger.setLevel("INFO")
@@ -99,6 +124,8 @@ def setup_logging(name: str, log_dir: Optional[str] = None) -> logging.Logger:
         log_handlers.append(logging.FileHandler(file_path))
 
     # Configure all logging to log info messages and higher
+    # Also set appropriate color for each logging level
+    formatter = LogFormatter()
     for handler in log_handlers:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
@@ -140,20 +167,26 @@ def set_seed(seed: Optional[int] = 0) -> None:
     torch.cuda.manual_seed_all(seed)  # Safe to call even if no GPU available
 
 
-def print_dataframe(data: pd.DataFrame) -> None:
+def print_dataframe(data: pd.DataFrame, summary: Optional[bool] = True) -> None:
     """
     Print useful summary statistics of a dataframe.
+
+    :param summary: Whether to print summary statistics of DF
+                    NOTE: This can often be time / memory
+                    consuming for very big DFs; if so, set
+                    this argument to False.
     """
     logger.info(f"\nHead of data:\n{data.head(10)}\n")
     logger.info(f"\nShape of data: {data.shape}\n")
     logger.info(f"\nColumns:\n{data.columns}\n")
 
     # This returns errors at times for unknown data types
-    try:
-        logger.info(f"\nSummary statistics:\n{data.describe()}\n")
-    except TypeError:
-        logger.warning("TypeError: Could not compute `.describe()` successfully.")
-        pass
+    if summary:
+        try:
+            logger.info(f"\nSummary statistics:\n{data.describe()}\n")
+        except TypeError:
+            logger.warning("TypeError: Could not compute `.describe()` successfully.")
+            pass
 
 
 def save_plot(
@@ -449,7 +482,9 @@ def send_model_to_device(model: nn.Module, device: _Device, device_ids: Optional
     return model
 
 
-def send_batch_to_device(batch: _Batch, device: _Device, non_blocking: Optional[bool] = True) -> _Batch:
+def send_batch_to_device(
+    batch: _Batch, device: _Device, non_blocking: Optional[bool] = True, verbose: Optional[bool] = True
+) -> _Batch:
     """
     Send batch to given device.
 
@@ -458,6 +493,7 @@ def send_batch_to_device(batch: _Batch, device: _Device, non_blocking: Optional[
                          with respect to the host. For other cases,
                          this argument has no effect.
                          For explanation, see: https://stackoverflow.com/a/55564072
+    :param verbose: Whether to print the warning message or not
 
     Useful when the batch tuple is of variable lengths.
     Specifically,
@@ -487,9 +523,10 @@ def send_batch_to_device(batch: _Batch, device: _Device, non_blocking: Optional[
         return batch.to(device=device, non_blocking=non_blocking)
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)(send_batch_to_device(e, device, non_blocking) for e in batch)
+        return type(batch)(send_batch_to_device(e, device, non_blocking, verbose) for e in batch)
     else:  # Structure/type of batch unknown
-        logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
+        if verbose:
+            logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
 
@@ -504,24 +541,29 @@ def send_optimizer_to_device(optimizer: Optimizer, device: _Device) -> Optimizer
     return optimizer
 
 
-def convert_tensor_to_numpy(batch: _Batch) -> _Batch:
+def convert_tensor_to_numpy(batch: _Batch, verbose: Optional[bool] = True) -> _Batch:
     """
     Convert torch tensor(s) on any device to numpy array(s).
     Similar to `send_batch_to_device()`, can take a
     `torch.Tensor` or a tuple/list of them as input.
+
+    :param verbose: Whether to print the warning message or not
     """
     if torch.is_tensor(batch):
-        return send_batch_to_device(batch, "cpu").detach().numpy()
+        if batch.is_cuda:
+            return send_batch_to_device(batch, "cpu").detach().numpy()
+        return np.asarray(batch)  # Attempt to avoid creating a copy
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)(convert_tensor_to_numpy(e) for e in batch)
+        return type(batch)(convert_tensor_to_numpy(e, verbose) for e in batch)
     else:  # Structure/type of batch unknown
-        logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
+        if verbose:
+            logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
 
 def convert_numpy_to_tensor(
-    batch: _Batch, device: Optional[_Device] = None, non_blocking: Optional[bool] = True
+    batch: _Batch, device: Optional[_Device] = None, non_blocking: Optional[bool] = True, verbose: Optional[bool] = True
 ) -> _Batch:
     """
     Convert numpy array(s) to torch tensor(s) and
@@ -529,6 +571,8 @@ def convert_numpy_to_tensor(
     Inverse operation of `convert_tensor_to_numpy()`,
     and similar to it, can take a np.ndarray or a
     tuple/list of them as input.
+
+    :param verbose: Whether to print the warning message or not
     """
     if isinstance(batch, np.ndarray):
         batch = torch.as_tensor(batch)
@@ -539,9 +583,10 @@ def convert_numpy_to_tensor(
         )
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
-        return type(batch)(convert_numpy_to_tensor(e, device, non_blocking) for e in batch)
+        return type(batch)(convert_numpy_to_tensor(e, device, non_blocking, verbose) for e in batch)
     else:  # Structure/type of batch unknown
-        logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
+        if verbose:
+            logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
 
 
@@ -724,6 +769,7 @@ class ModelTracker:
         self.loss_hist, self.eval_metrics_hist = OrderedDict(), OrderedDict()
         for eval_criterion in self.eval_criteria:
             self.eval_metrics_hist[eval_criterion] = OrderedDict()
+        self.best_epoch = 0
 
     def add_losses(self, losses: List[float], epoch: Optional[int] = -1) -> None:
         """

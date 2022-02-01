@@ -59,11 +59,11 @@ class TestMetrics(unittest.TestCase):
                 }
                 if loss_criterion == "focal-loss":
                     # FocalLoss only compatible with binary classification
-                    self._test_error(self._get_loss_eval_criteria, dictionary, error=ValueError)
+                    self._test_error(self._get_loss_eval_criteria, ValueError, dictionary)
                 else:
                     # Param `multilabel_reduction` required for multilabel classification
                     if classification_type == "multilabel":
-                        self._test_error(self._get_loss_eval_criteria, dictionary, error=ValueError)
+                        self._test_error(self._get_loss_eval_criteria, ValueError, dictionary)
                         for key in ["loss_kwargs", "eval_criteria_kwargs"]:
                             dictionary[key] = {"multilabel_reduction": "mean"}
                     self._get_loss_eval_criteria(dictionary)
@@ -138,14 +138,14 @@ class TestMetrics(unittest.TestCase):
         for metric, value in eval_metrics.items():
             np.testing.assert_allclose(value, true_values[metric], atol=1e-3)
 
-    def _test_error(self, func: Callable[[Any], None], args, error=AssertionError) -> None:
+    def _test_error(self, func: Callable[[Any], None], error=AssertionError, *args, **kwargs) -> None:
         """
         Generic code to assert that `error`
         is raised when calling a function
-        `func` with arguments `args`.
+        `func` with arguments `args` and `kwargs`.
         """
         with self.assertRaises(error):
-            func(args)
+            func(*args, **kwargs)
 
     def _get_merged_dict(self, dictionary: Optional[Dict] = None) -> Dict:
         """

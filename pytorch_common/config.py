@@ -321,3 +321,21 @@ def check_and_set_misc_config(config: _Config) -> None:
     # Used for dataloader sampling
     config.num_batches = config.get("num_batches", None)
     config.percentage = config.get("percentage", None)
+
+    # Check correct params for sample weighting
+    error_message = (
+        "The `reduction` ({reduction}) for the loss criterion must "
+        "be set to 'none' if you want to use sample weighting."
+    )
+    if config.sample_weighting_train:
+        assert config.loss_kwargs["reduction_train"] == "none", error_message.format(
+            reduction=config.loss_kwargs.get("reduction_train", "mean")
+        )
+    if config.sample_weighting_eval:
+        assert config.loss_kwargs["reduction_val"] == "none", error_message.format(
+            reduction=config.loss_kwargs.get("reduction_val", "mean")
+        )
+        logger.warning(
+            "You have turned on sample weights for evaluation (`sample_weighting_eval`). Most use "
+            "cases don't need this parameter -- make sure you have a strong argument for using it."
+        )

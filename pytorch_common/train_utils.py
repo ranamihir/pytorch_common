@@ -37,18 +37,20 @@ def train_model(
     model: nn.Module,
     config: _Config,
     train_loader: DataLoader,
-    val_loader: DataLoader,
     optimizer: Optimizer,
     loss_criterion_train: _Loss,
     loss_criterion_eval: _Loss,
     eval_criteria: _EvalCriterionOrCriteria,
     train_logger: ModelTracker,
-    val_logger: ModelTracker,
+    val_loader: Optional[DataLoader] = None,
+    val_logger: Optional[ModelTracker] = None,
     epochs: Optional[int] = None,
     scheduler: Optional[object] = None,
     early_stopping: Optional[EarlyStopping] = None,
     config_info_dict: Optional[_StringDict] = None,
     checkpoint_file: Optional[str] = None,
+    sample_weighting_train: Optional[bool] = False,
+    sample_weighting_eval: Optional[bool] = False,
     decouple_fn_train: Optional[_DecoupleFnTrain] = None,
     decouple_fn_eval: Optional[_DecoupleFnTrain] = None,
 ) -> _StringDict:
@@ -61,8 +63,8 @@ def train_model(
       - `decouple_fn_train` and `decouple_fn_eval` are functions which
         take in the batch and return the separated out inputs
         (and targets for training/evaluation).
-        They may be specified if this process deviates from the
-        default behavior (see `decouple_batch_train`).
+        They may be specified if this process deviates from the default
+        behavior (see `decouple_batch_train() for more details`).
 
     NOTE: Training may be paused at any time with a keyboard interrupt.
           However, please avoid interrupting after an epoch is finished
@@ -79,6 +81,10 @@ def train_model(
                          on training set
     :param val_logger: Logger for performance metrics
                        on validation set
+                       NOTE: Set to None for no evaluation. Useful
+                             for retraining from scratch on all data.
+                             Must also not provide param `val_loader`
+                             in that case.
     :param config_info_dict: Dict comprising additional information
                              about the config which will be used to
                              generate a unique string for the
@@ -86,6 +92,16 @@ def train_model(
     :param checkpoint_file: Name of trained checkpoint file
                             if training is to be resumed from
                             that point
+    :param sample_weighting_train: Set to True if sample weights are
+                                   to be used during training
+                                   See `perform_one_epoch()` for more details.
+    :param sample_weighting_eval: Set to True if sample weights are
+                                  to be used during evaluation
+                                  NOTE: Most use cases don't need sample
+                                        weights for evaluation. Make sure
+                                        you have a strong argument for
+                                        using this parameter.
+                                  See `perform_one_epoch()` for more details.
     :param decouple_fn_train: Decoupling function to extract
                               inputs and targets from a batch
                               during training
@@ -97,8 +113,18 @@ def train_model(
     if epochs is None:
         epochs = config.epochs
 
+    # Either both `val_loader` and `val_logger` must be provided or none (for no evaluation)
+    assert not ((val_loader is None) ^ (val_logger is None))
+    do_evaluation = val_loader is not None
+
+    # Throw error if ReduceLROnPlateau scheduler is used
+    if (
+        config.use_scheduler_after_epoch or config.use_scheduler_after_step
+    ) and scheduler.__class__.__name__ == "ReduceLROnPlateau":
+        raise ValueError("Scheduler `ReduceLROnPlateau` is currently not supported.")
+
     # Load trained model if required
-    start_epoch = 0
+    start_epoch, best_epoch = 0, 0
     if checkpoint_file is not None:
         logger.info("Loading previously saved checkpoint for resuming training...")
         checkpoint = load_model(
@@ -109,19 +135,22 @@ def train_model(
             scheduler=scheduler,
         )
         model = checkpoint["model"]
-        train_logger, val_logger = checkpoint["train_logger"], checkpoint["val_logger"]
+        train_logger = checkpoint["train_logger"]
+        if do_evaluation:
+            val_logger = checkpoint["val_logger"]
+            best_epoch = val_logger.best_epoch
         optimizer, scheduler = checkpoint["optimizer"], checkpoint["scheduler"]
         start_epoch = checkpoint["epoch"]
         del checkpoint  # Free up memory
         logger.info("Done.")
 
-    best_epoch, stop_epoch = 0, start_epoch
-    best_checkpoint_file = ""
+    stop_epoch = start_epoch
+    best_checkpoint_file, last_checkpoint_file = "", ""
     best_model: Optional[nn.Module] = None
     for epoch in range(1 + start_epoch, 1 + start_epoch + epochs):
         try:
             # Train epoch
-            train_losses = train_epoch(
+            train_train_result = train_epoch(
                 model=model,
                 dataloader=train_loader,
                 device=config.device,
@@ -130,72 +159,79 @@ def train_model(
                 optimizer=optimizer,
                 scheduler=scheduler if config.use_scheduler_after_step else None,
                 epochs=epochs,
+                sample_weighting=sample_weighting_train,
                 decouple_fn=decouple_fn_train,
             )
 
             # Evaluate on training set
-            _, eval_metrics_train, _, _ = evaluate_epoch(
+            train_eval_result = evaluate_epoch(
                 model=model,
                 dataloader=train_loader,
                 device=config.device,
                 loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
+                sample_weighting=sample_weighting_eval,
                 decouple_fn=decouple_fn_eval,
+                return_keys=[],
             )
             # Add train losses+eval metrics, and log them
-            train_logger.add_and_log_metrics(train_losses, eval_metrics_train)
-
-            # Evaluate on val set
-            val_losses, eval_metrics_val, _, _ = evaluate_epoch(
-                model=model,
-                dataloader=val_loader,
-                device=config.device,
-                loss_criterion=loss_criterion_eval,
-                eval_criteria=eval_criteria,
-                decouple_fn=decouple_fn_eval,
-            )
-            # Add val losses+eval metrics, and log them
-            val_logger.add_and_log_metrics(val_losses, eval_metrics_val)
+            train_logger.add_and_log_metrics(train_train_result["losses"], train_eval_result["eval_metrics"])
 
             # Take scheduler step
             if config.use_scheduler_after_epoch:
-                take_scheduler_step(scheduler, np.mean(val_losses))
+                scheduler.step()
 
-            # Get early stopping metric
-            early_stopping_metric = val_logger.get_early_stopping_metric()
+            # Evaluate on val set
+            if do_evaluation:
+                val_result = evaluate_epoch(
+                    model=model,
+                    dataloader=val_loader,
+                    device=config.device,
+                    loss_criterion=loss_criterion_eval,
+                    eval_criteria=eval_criteria,
+                    sample_weighting=sample_weighting_eval,
+                    decouple_fn=decouple_fn_eval,
+                    return_keys=[],
+                )
+                # Add val losses+eval metrics, and log them
+                val_logger.add_and_log_metrics(val_result["losses"], val_result["eval_metrics"])
 
-            # Set best epoch
-            # Check if current epoch better than previous best based
-            # on early stopping (if used) or all epoch history
-            if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric)) or (
-                not config.use_early_stopping and epoch == val_logger.get_overall_best_epoch()
-            ):
-                logger.info("Computing best epoch and adding to validation logger...")
-                val_logger.set_best_epoch(epoch)
-                logger.info("Done.")
+                # Get early stopping metric
+                early_stopping_metric = val_logger.get_early_stopping_metric()
 
-                # Replace model checkpoint if required
-                if not config.disable_checkpointing:
-                    logger.info("Replacing current best model checkpoint...")
-                    best_checkpoint_file = save_model(
-                        model,
-                        config,
-                        epoch,
-                        train_logger,
-                        val_logger,
-                        optimizer,
-                        scheduler,
-                        config_info_dict,
-                    )
-                    remove_model(config, best_epoch, config_info_dict)
-                    best_epoch = epoch
+                # Set best epoch
+                # Check if current epoch better than previous best based
+                # on early stopping (if used) or all epoch history
+                if (config.use_early_stopping and early_stopping.is_better(early_stopping_metric)) or (
+                    not config.use_early_stopping and epoch == val_logger.get_overall_best_epoch()
+                ):
+                    logger.info("Computing best epoch and adding to validation logger...")
+                    val_logger.set_best_epoch(epoch)
                     logger.info("Done.")
 
-            # Quit training if stopping criterion met
-            if config.use_early_stopping and early_stopping.stop(early_stopping_metric):
-                stop_epoch = epoch
-                logger.info(f"Stopping early after {stop_epoch} epochs.")
-                break
+                    # Replace model checkpoint if required
+                    if not config.disable_checkpointing:
+                        logger.info("Replacing current best model checkpoint...")
+                        best_checkpoint_file = save_model(
+                            model,
+                            config,
+                            epoch,
+                            train_logger,
+                            val_logger,
+                            optimizer,
+                            scheduler,
+                            config_info_dict,
+                        )
+                        remove_model(config, best_epoch, config_info_dict)
+                        logger.info("Done.")
+
+                    best_epoch = epoch  # Update best epoch
+
+                # Quit training if stopping criterion met
+                if config.use_early_stopping and early_stopping.stop(early_stopping_metric):
+                    stop_epoch = epoch
+                    logger.info(f"Stopping early after {stop_epoch} epochs.")
+                    break
 
             stop_epoch = epoch  # Update last epoch trained
         except KeyboardInterrupt:  # Option to quit training with keyboard interrupt
@@ -206,7 +242,7 @@ def train_model(
     # Save the model checkpoints
     if not config.disable_checkpointing:
         logger.info("Dumping model and results...")
-        save_model(
+        last_checkpoint_file = save_model(
             model,
             config,
             stop_epoch,
@@ -229,7 +265,8 @@ def train_model(
             config_info_dict,
             checkpoint_type="model",
         )
-        if best_checkpoint_file != "":
+
+        if do_evaluation and best_checkpoint_file != "":
             checkpoint = load_model(model.copy(), config, best_checkpoint_file, optimizer, scheduler)
             best_model = checkpoint["model"]
             optimizer, scheduler = checkpoint["optimizer"], checkpoint["scheduler"]
@@ -245,19 +282,21 @@ def train_model(
                 config_info_dict,
                 checkpoint_type="model",
             )
+
         logger.info("Done.")
 
     return_dict = {
         "model": model,
-        "best_model": best_model if best_model is not None else model,
+        "best_model": best_model if (do_evaluation and best_model) is not None else model,
         "train_logger": train_logger,
         "val_logger": val_logger,
         "optimizer": optimizer,
         "scheduler": scheduler,
         "stop_epoch": stop_epoch,
-        "best_epoch": best_epoch,
-        "best_checkpoint_file": best_checkpoint_file,
+        "best_epoch": best_epoch if do_evaluation else stop_epoch,
+        "best_checkpoint_file": best_checkpoint_file if do_evaluation else last_checkpoint_file,
     }
+
     return return_dict
 
 
@@ -270,8 +309,9 @@ def train_epoch(
     optimizer: Optimizer,
     scheduler: Optional[object] = None,
     epochs: Optional[int] = None,
+    sample_weighting: Optional[bool] = False,
     decouple_fn: Optional[_DecoupleFnTrain] = None,
-) -> _TrainResult:
+) -> _StringDict:
     """
     Perform one training epoch and return the loss per example
     for each iteration.
@@ -287,6 +327,7 @@ def train_epoch(
         optimizer=optimizer,
         scheduler=scheduler,
         epochs=epochs,
+        sample_weighting=sample_weighting,
         decouple_fn=decouple_fn,
     )
 
@@ -298,8 +339,10 @@ def evaluate_epoch(
     device: _Device,
     loss_criterion: _Loss,
     eval_criteria: _EvalCriterionOrCriteria,
+    sample_weighting: Optional[bool] = False,
     decouple_fn: Optional[_DecoupleFnTrain] = None,
-) -> _EvalResult:
+    return_keys: Optional[List[str]] = None,
+) -> _StringDict:
     """
     Perform one evaluation epoch and return the loss per example
     for each epoch, all eval criteria, raw model outputs, and
@@ -313,7 +356,9 @@ def evaluate_epoch(
         device=device,
         loss_criterion=loss_criterion,
         eval_criteria=eval_criteria,
+        sample_weighting=sample_weighting,
         decouple_fn=decouple_fn,
+        return_keys=return_keys,
     )
 
 
@@ -324,7 +369,8 @@ def get_all_predictions(
     device: _Device,
     threshold_prob: Optional[float] = None,
     decouple_fn: Optional[_DecoupleFnTest] = None,
-) -> _TestResult:
+    return_keys: Optional[List[str]] = None,
+) -> _StringDict:
     """
     Make predictions on entire dataset and return raw outputs
     and optionally class predictions and probabilities if it's
@@ -338,6 +384,7 @@ def get_all_predictions(
         device=device,
         threshold_prob=threshold_prob,
         decouple_fn=decouple_fn,
+        return_keys=return_keys,
     )
 
 
@@ -354,8 +401,10 @@ def perform_one_epoch(
     eval_criteria: Optional[_EvalCriterionOrCriteria] = None,
     threshold_prob: Optional[float] = None,
     epochs: Optional[int] = None,
+    sample_weighting: Optional[bool] = False,
     decouple_fn: Optional[_DecoupleFn] = None,
-) -> Union[_TrainResult, _EvalResult, _TestResult]:
+    return_keys: Optional[List[str]] = None,
+) -> _StringDict:
     """
     Common loop for one training / evaluation / testing epoch on the entire dataset.
       - For training, returns the loss per example for each iteration.
@@ -368,6 +417,22 @@ def perform_one_epoch(
                   Choices = "train" | "eval" | "test"
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
                       after each batch step/iteration (e.g. CyclicLR), otherwise None
+    :param sample_weighting: Whether sample weighting is enabled or not.
+                             NOTE: To use this feature, you must provide the weights
+                                   in the dataloader decoupling function. See
+                                   `decouple_batch_train()` for more details.
+    :param return_keys: Additional objects to return in the return dictionary.
+                        - For `phase="train"`, this argument will be ignored and
+                          the losses will always be returned.
+                        - For `phase="eval"`, the losses and evaluation metrics
+                          will always be returned. Additionally, you may specify
+                          any of `["outputs", "targets"]` in this argument.
+                        - For `phase="test"`, you may specify any of
+                          `["outputs", "probs", "preds"]` in this argument,
+                          otherwise an empty dictionary will be returned.
+                        If None, all applicable additional keys will be
+                        returned by default.
+                        If an empty list, no additional keys will be returned.
 
     If `phase=="train"`, params `optimizer` and `epoch` must be provided.
     If `phase=="eval"`, param `eval_criteria` must be provided.
@@ -380,10 +445,57 @@ def perform_one_epoch(
     For a given phase, all arguments that pertain to other phases will be ignored.
     """
 
+    def _get_return_key_dict() -> _StringDict:
+        """
+        Ensure all return keys are expected
+        and return a boolean dictionary of
+        all keys for the current phase.
+        """
+        # Set values for mandatory keys to True
+        _return_keys = {"losses": True, "eval_metrics": True}
+
+        if return_keys is not None:
+            if IS_TRAINING:
+                logger.warning(
+                    f"You have specified param `return_keys` ({return_keys}) in training phase, but it "
+                    f"can only be provided in evaluation or testing phase. This argument will be ignored."
+                )
+            else:
+                _return_keys.update({k: False for k in ALLOWED_RETURN_KEYS[phase]})
+                for k in return_keys:
+                    if k not in ALLOWED_RETURN_KEYS[phase]:
+                        raise ValueError(
+                            f"Param 'return_keys' must only comprise keys from {ALLOWED_RETURN_KEYS[phase]}. Got '{k}'."
+                        )
+                    _return_keys[k] = True
+
+                if (phase == "test") and not len(return_keys):
+                    raise ValueError(
+                        "At least one key must be specified in param `return_keys` for making predictions."
+                    )
+        elif not IS_TRAINING:
+            _return_keys.update({k: True for k in ALLOWED_RETURN_KEYS[phase]})
+
+        return _return_keys
+
+    def _drop_unnecessary_keys(return_dict: _StringDict, all_keys: List[str], return_keys: _StringDict) -> _StringDict:
+        """
+        Retain only the keys in `return_dict`
+        that are present in `all_keys` and have
+        the value in `return_keys` as True.
+        """
+        keys_to_keep = set(all_keys).intersection(set([k for k, v in return_keys.items() if v]))
+        for k in list(return_dict):  # Need `list()` to keep set of keys unchanged after deleting below
+            if k not in keys_to_keep:
+                del return_dict[k]
+        return return_dict
+
     ALLOWED_PHASES = ["train", "eval", "test"]
+    ALLOWED_RETURN_KEYS = {"eval": ["outputs", "targets"], "test": ["outputs", "probs", "preds"]}
+    IS_TRAINING = phase == "train"  # Mode for retaining gradients / graph
 
     # Check presence of required arguments
-    if phase == "train":
+    if IS_TRAINING:
         for param_name, param in zip(["epoch", "optimizer", "loss_criterion"], [epoch, optimizer, loss_criterion]):
             assert param is not None, f"Param '{param_name}' must not be None for training."
     elif phase == "eval":
@@ -392,20 +504,20 @@ def perform_one_epoch(
     elif phase != "test":
         raise ValueError(f"Param 'phase' ('{phase}') must be one of {ALLOWED_PHASES}.")
 
-    # Mode for retaining gradients / graph
-    MODE = phase == "train"
+    # Get bool dict of return keys
+    _return_keys = _get_return_key_dict()
 
-    # Set decoupling function to extract inputs (and optionally targets) from batch
+    # Set decoupling function to extract inputs (and optionally targets and sample weights) from batch
     if decouple_fn is None:
         decouple_fn = decouple_batch_test if phase == "test" else decouple_batch_train
 
     epochs_str = ""
     if epochs is not None:
-        assert MODE, f"Param `epochs` ({epochs}) can only be provided in training phase."
+        assert IS_TRAINING, f"Param `epochs` ({epochs}) can only be provided in training phase."
         epochs_str = f"/{epochs}"
 
     # Set model in training/eval mode as required
-    model.train(mode=MODE)
+    model.train(mode=IS_TRAINING)
 
     # Get required dataloader params
     num_batches, num_examples = len(dataloader), len(dataloader.dataset)
@@ -415,28 +527,28 @@ def perform_one_epoch(
     batches_to_print = np.unique(np.linspace(0, num_batches, num=50, endpoint=True, dtype=int))
 
     # Store all required items to be returned
-    loss_hist: List[float] = []
-    targets_hist: _TensorOrTensors = []
-    outputs_hist: _TensorOrTensors = []
-    preds_hist: _TensorOrTensors = []
-    probs_hist: _TensorOrTensors = []
+    return_dict = {"losses": [], "targets": [], "outputs": [], "probs": [], "preds": []}
 
     # Enable gradient computation if training to be performed else disable it.
     # Technically not required if this function is called from other supported
     # functions, e.g. `evaluate_epoch()` (because of decorator), but just being sure.
-    with torch.set_grad_enabled(MODE):
+    with torch.set_grad_enabled(IS_TRAINING):
         for batch_idx, batch in enumerate(islice(dataloader, num_batches)):
             torch.cuda.empty_cache()  # Often goes OOM without this
 
             # Get inputs for testing
             if phase == "test":
                 inputs = send_batch_to_device(decouple_fn(batch), device)
-            else:  # Get inputs and targets for training/evaluation
-                inputs, targets = send_batch_to_device(decouple_fn(batch), device)
+            else:  # Get inputs, targets, and optionally sample weights for training/evaluation
+                batch = send_batch_to_device(decouple_fn(batch, sample_weighting=sample_weighting), device)
+                if sample_weighting:
+                    inputs, targets, sample_weights = batch
+                else:
+                    inputs, targets = batch
             del batch  # Free up memory
 
             # Reset gradients to zero
-            if phase == "train":
+            if IS_TRAINING:
                 optimizer.zero_grad()
                 model.zero_grad()
 
@@ -451,13 +563,17 @@ def perform_one_epoch(
             # Store items for testing + print progress
             if phase == "test":
                 outputs = send_batch_to_device(outputs, "cpu")
-                outputs_hist.extend(outputs)
+                if _return_keys["outputs"]:
+                    return_dict["outputs"].extend(outputs)
 
                 # Get class predictions and probabilities
-                if model.model_type == "classification":
-                    preds, probs = model.predict_proba(outputs, threshold_prob)
-                    preds_hist.extend(preds)
-                    probs_hist.extend(probs)
+                if (model.model_type == "classification") and (_return_keys["probs"] or _return_keys["preds"]):
+                    classification_result = model.predict_proba(
+                        outputs, threshold_prob, return_probs=_return_keys["probs"], return_preds=_return_keys["preds"]
+                    )
+                    for k in ["probs", "preds"]:
+                        if _return_keys[k]:
+                            return_dict[k].extend(classification_result[k])
 
                 # Print progess
                 if batch_idx in batches_to_print:
@@ -466,11 +582,13 @@ def perform_one_epoch(
             else:  # Perform training / evaluation
                 # Compute and store loss
                 loss = loss_criterion(outputs, targets)
+                if sample_weighting:
+                    loss = (loss * sample_weights / sample_weights.sum()).sum()
                 loss_value = loss.item()
-                loss_hist.append(loss_value)
+                return_dict["losses"].append(loss_value)
 
                 # Perform training
-                if phase == "train":
+                if IS_TRAINING:
                     del outputs, targets  # Free up memory
 
                     # Backprop + clip gradients + take scheduler step
@@ -478,7 +596,7 @@ def perform_one_epoch(
                     nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                     optimizer.step()
                     if scheduler is not None:
-                        take_scheduler_step(scheduler, loss_value)
+                        scheduler.step()
                     del loss  # Free up memory
 
                     # Print progess
@@ -490,49 +608,63 @@ def perform_one_epoch(
 
                 else:  # Store items for evaluation
                     outputs, targets = send_batch_to_device((outputs, targets), "cpu")
-                    outputs_hist.append(outputs)
-                    targets_hist.append(targets)
+                    return_dict["outputs"].append(outputs)
+                    return_dict["targets"].append(targets)
 
     # Reset gradients back to zero
-    if phase == "train":
+    if IS_TRAINING:
         optimizer.zero_grad()
         model.zero_grad()
 
     elif phase == "eval":  # Perform evaluation on whole dataset
-        outputs_hist = torch.cat(outputs_hist, dim=0)
-        targets_hist = torch.cat(targets_hist, dim=0)
+        for k in ["outputs", "targets"]:
+            return_dict[k] = torch.cat(return_dict[k], dim=0)
 
         # Compute all evaluation criteria
-        eval_metrics = eval_criteria(outputs_hist, targets_hist)
+        eval_metrics = eval_criteria(return_dict["outputs"], return_dict["targets"])
 
     else:  # Get outputs, predictions, probabilities
-        outputs_hist = torch.stack(outputs_hist, dim=0)
+        stack = lambda history: torch.stack(history, dim=0)
+        if _return_keys["outputs"]:
+            return_dict["outputs"] = stack(return_dict["outputs"])
         if model.model_type == "classification":
-            preds_hist = torch.stack(preds_hist, dim=0)
-            probs_hist = torch.stack(probs_hist, dim=0)
+            for k in ["probs", "preds"]:
+                if _return_keys[k]:
+                    return_dict[k] = stack(return_dict[k])
 
     # Return necessary items
-    if phase == "train":
-        return loss_hist
+    if IS_TRAINING:
+        _drop_unnecessary_keys(return_dict, ["losses"], _return_keys)
     elif phase == "eval":
-        return loss_hist, eval_metrics, outputs_hist, targets_hist
+        _drop_unnecessary_keys(return_dict, ["losses"] + ALLOWED_RETURN_KEYS["eval"], _return_keys)
+        if _return_keys["eval_metrics"]:
+            return_dict["eval_metrics"] = eval_metrics
     else:
-        return outputs_hist, preds_hist, probs_hist
+        _drop_unnecessary_keys(return_dict, ALLOWED_RETURN_KEYS["test"], _return_keys)
+
+    return return_dict
 
 
-def decouple_batch_train(batch: _Batch) -> Tuple[_Batch]:
+def decouple_batch_train(batch: _Batch, sample_weighting: Optional[bool] = False) -> Tuple[_Batch]:
     """
     Separate out batch into inputs and targets
     by assuming they're the first two elements
-    in the batch, and return them.
+    in the batch.
+    If sample weights are to be used, they
+    will assume the third index.
+
     Used commonly during training/evaluation.
 
     This is required because often other things
     are also passed in the batch for debugging.
     """
-    # Assume first two elements of
-    # batch are (inputs, targets)
+    # Assume first two elements of batch are (inputs, targets)
     inputs, targets = batch[:2]
+
+    # Third is sample weights if required
+    if sample_weighting:
+        sample_weights = batch[2]
+        return inputs, targets, sample_weights
     return inputs, targets
 
 
@@ -550,23 +682,6 @@ def decouple_batch_test(batch: _Batch) -> _Batch:
     if isinstance(batch, (list, tuple)):
         return batch[0]
     return batch
-
-
-def take_scheduler_step(scheduler: object, val_metric: Optional[float] = None) -> None:
-    """
-    Take a scheduler step.
-    Some schedulers, e.g. `ReduceLROnPlateau`, require
-    the validation metric to take a step, while (most)
-    others don't.
-    """
-    REQUIRE_VAL_METRIC = ["ReduceLROnPlateau"]
-
-    scheduler_name = scheduler.__class__.__name__
-    if scheduler_name in REQUIRE_VAL_METRIC:
-        assert val_metric is not None, f"Param 'val_metric' must be provided for '{scheduler_name}' scheduler."
-        scheduler.step(val_metric)
-    else:
-        scheduler.step()
 
 
 def save_model(

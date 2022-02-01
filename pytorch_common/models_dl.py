@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .additional_configs import BaseModelConfig
-from .types import Dict, Optional, Tuple, Union, _ModelOrModels
+from .types import Dict, Optional, Tuple, Union, _ModelOrModels, _StringDict
 from .utils import (
     copy_model,
     get_model_device,
@@ -147,40 +147,63 @@ class BasePyTorchModel(nn.Module):
 
     @torch.no_grad()
     def predict_proba(
-        self, outputs: torch.Tensor, threshold: Optional[float] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self,
+        outputs: torch.Tensor,
+        threshold: Optional[float] = None,
+        return_probs: Optional[bool] = True,
+        return_preds: Optional[bool] = True,
+    ) -> _StringDict:
         """
         Returns predicted labels and probabilities
         for `model_type = "classification"`.
         :param outputs: Raw model output logits
         :param threshold: Threshold probability to compute
                           hard label predictions.
+        :param return_probs: Whether to return probabilities
+        :param return_preds: Whether to return hard predictions
+
         :return preds: Predicted classes
         :return probs: Predicted probabilities of each class
         """
+        if not (return_probs or return_preds):
+            logger.warning("You must set at least one of `return_probs` or `return_preds` as True.")
+            return
+
         if self.model_type != "classification" and threshold is not None:
             raise ValueError(f"Param 'threshold' ('{threshold}') can only be provided for classification models.")
 
-        probs = F.softmax(outputs, dim=-1)  # Get probabilities of each class
-        num_classes = probs.shape[-1]
+        # Get probabilities of each class
+        return_dict = {"probs": F.softmax(outputs, dim=-1).type(torch.float16), "preds": None}
 
-        # Get predictions based on provided threshold
-        if threshold is not None:
-            device = probs.device
-            pos_tensor = torch.as_tensor(1, device=device)
-            neg_tensor = torch.as_tensor(0, device=device)
-            labels_for_class_i = lambda i: torch.where(probs[..., i] >= threshold, pos_tensor, neg_tensor)
-            if num_classes == 2:  # Only get labels for class 1 if binary classification
-                preds = labels_for_class_i(1)
-            else:  # Get labels for each class if multiclass classification
-                preds = torch.stack([labels_for_class_i(i) for i in range(num_classes)], dim=1).max(dim=-1)[1]
-        else:
-            # Get class with max probability (same as threshold=0.5)
-            preds = probs.max(dim=-1)[1]
+        num_classes = return_dict["probs"].shape[-1]
+        if return_preds:
+            # Get predictions based on provided threshold
+            if threshold is not None:
+                device = return_dict["probs"].device
+                pos_tensor = torch.as_tensor(1, device=device)
+                neg_tensor = torch.as_tensor(0, device=device)
+                labels_for_class_i = lambda i: torch.where(
+                    return_dict["probs"][..., i] >= threshold, pos_tensor, neg_tensor
+                )
+                if num_classes == 2:  # Only get labels for class 1 if binary classification
+                    return_dict["preds"] = labels_for_class_i(1)
+                else:  # Get labels for each class if multiclass classification
+                    return_dict["preds"] = torch.stack([labels_for_class_i(i) for i in range(num_classes)], dim=1).max(
+                        dim=-1
+                    )[1]
+            else:
+                # Get class with max probability (same as threshold=0.5)
+                return_dict["preds"] = return_dict["probs"].max(dim=-1)[1]
 
         if num_classes == 2:  # Only get probs for class 1 if binary classification
-            probs = probs[..., 1]
-        return preds, probs
+            return_dict["probs"] = return_dict["probs"][..., 1]
+
+        # Delete unnecessary keys and return
+        if not return_probs:
+            del return_dict["probs"]
+        if not return_preds:
+            del return_dict["preds"]
+        return return_dict
 
     def copy(self) -> nn.Module:
         """
