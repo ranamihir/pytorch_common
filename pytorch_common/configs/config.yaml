@@ -34,6 +34,10 @@ loss_criterion: cross-entropy
   # alpha: 0.7
   # gamma: 0.2
 
+# Set to True if you want to use sample weights in training and/or evaluation
+sample_weighting_train: False
+sample_weighting_eval: False
+
 # Evaluation criteria
 eval_criteria:
   - "accuracy"

@@ -53,7 +53,7 @@ class TestTrainUtils(unittest.TestCase):
         """
         for eval_criterion in EvalCriteria().names:
             early_stopping = train_utils.EarlyStopping(eval_criterion)
-        self._test_error(train_utils.EarlyStopping, "dummy_criterion")
+        self._test_error(train_utils.EarlyStopping, criterion="dummy_criterion")
 
     def test_all_models(self, **kwargs):
         """
@@ -75,6 +75,9 @@ class TestTrainUtils(unittest.TestCase):
                 self._test_partial_saving_loading_model(loss_criterion, eval_criterion, **model_kwargs)
                 self._test_full_saving_loading_model(loss_criterion, eval_criterion, **model_kwargs)
                 self._test_train_model(loss_criterion, eval_criterion, **kwargs)
+                self._test_train_return_keys(loss_criterion, eval_criterion, **kwargs)
+                self._test_eval_return_keys(loss_criterion, eval_criterion, **kwargs)
+                self._test_prediction_return_keys(loss_criterion, eval_criterion, **kwargs)
                 self._test_get_all_predictions(loss_criterion, eval_criterion, **kwargs)
 
     def _get_all_combination_kwargs(self):
@@ -152,8 +155,8 @@ class TestTrainUtils(unittest.TestCase):
         # one obtained from saving and then loading the model
         model_state_dict_orig = model.state_dict()
         checkpoint_file = train_utils.save_model(model, self.config, 1)
-        return_dict = train_utils.load_model(model, self.config, checkpoint_file)
-        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig, return_dict["model"].state_dict()))
+        checkpoint = train_utils.load_model(model, self.config, checkpoint_file)
+        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig, checkpoint["model"].state_dict()))
 
     def _test_full_saving_loading_model(self, loss_criterion: str, eval_criterion: str, **model_kwargs) -> None:
         """
@@ -170,30 +173,121 @@ class TestTrainUtils(unittest.TestCase):
         # one obtained from saving and then loading the model
         model_state_dict_orig = model.state_dict()
         checkpoint_file = train_utils.save_model(model, self.config, 1, train_logger, val_logger, optimizer, scheduler)
-        return_dict = train_utils.load_model(model, self.config, checkpoint_file, optimizer, scheduler)
-        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig, return_dict["model"].state_dict()))
+        checkpoint = train_utils.load_model(model, self.config, checkpoint_file, optimizer, scheduler)
+        self.assertTrue(utils.compare_model_state_dicts(model_state_dict_orig, checkpoint["model"].state_dict()))
 
     def _test_train_model(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
         """
         Test the whole training routine of a model.
         """
         # Get all training objects
-        return_dict = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
+        training_objects = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
 
         # Train model
         train_utils.train_model(
-            return_dict["model"],
+            training_objects["model"],
             self.config,
-            return_dict["train_loader"],
-            return_dict["val_loader"],
-            return_dict["optimizer"],
-            return_dict["loss_criterion_train"],
-            return_dict["loss_criterion_test"],
-            return_dict["eval_criteria"],
-            return_dict["train_logger"],
-            return_dict["val_logger"],
+            training_objects["train_loader"],
+            training_objects["optimizer"],
+            training_objects["loss_criterion_train"],
+            training_objects["loss_criterion_test"],
+            training_objects["eval_criteria"],
+            training_objects["train_logger"],
+            training_objects["val_loader"],
+            training_objects["val_logger"],
             self.config.epochs,
-            return_dict["scheduler"],
+            training_objects["scheduler"],
+        )
+
+        # Rerain model without evaluation
+        train_utils.train_model(
+            training_objects["model"],
+            self.config,
+            training_objects["train_loader"],
+            training_objects["optimizer"],
+            training_objects["loss_criterion_train"],
+            training_objects["loss_criterion_test"],
+            training_objects["eval_criteria"],
+            training_objects["train_logger"],
+            val_loader=None,
+            val_logger=None,
+            epochs=self.config.epochs,
+            scheduler=training_objects["scheduler"],
+        )
+
+    def _test_train_return_keys(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
+        """
+        Test the keys returned by `train_utils.train_epoch()`.
+        """
+        # Get all training objects
+        training_objects = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
+
+        # Training epoch
+        return_dict = train_utils.train_epoch(
+            model=training_objects["model"],
+            dataloader=training_objects["train_loader"],
+            device=self.config.device,
+            loss_criterion=training_objects["loss_criterion_train"],
+            epoch=0,
+            optimizer=training_objects["optimizer"],
+            epochs=self.config.epochs,
+        )
+        self.assertEqual(sorted(list(return_dict)), ["losses"])
+
+    def _test_eval_return_keys(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
+        """
+        Test the keys returned by `train_utils.evaluate_epoch()`.
+        """
+        # Get all training objects
+        training_objects = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
+
+        true_return_keys = ["losses", "eval_metrics"]
+
+        # Evaluation epoch
+        for return_keys in [[], None, ["outputs"]]:
+            return_dict = train_utils.evaluate_epoch(
+                model=training_objects["model"],
+                dataloader=training_objects["train_loader"],
+                device=self.config.device,
+                loss_criterion=training_objects["loss_criterion_train"],
+                eval_criteria=training_objects["eval_criteria"],
+                return_keys=return_keys,
+            )
+            if return_keys is None:
+                additional_keys = ["outputs", "targets"]
+            else:
+                additional_keys = return_keys
+            self.assertEqual(sorted(list(return_dict)), sorted(true_return_keys + additional_keys))
+
+    def _test_prediction_return_keys(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
+        """
+        Test the keys returned by `train_utils.get_all_predictions()`.
+        """
+        # Get all training objects
+        training_objects = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
+
+        # Get all predictions
+        for return_keys in [None, ["probs"]]:
+            return_dict = train_utils.get_all_predictions(
+                model=training_objects["model"],
+                dataloader=training_objects["train_loader"],
+                device=self.config.device,
+                return_keys=return_keys,
+            )
+            if return_keys is None:
+                additional_keys = ["outputs", "probs", "preds"]
+            else:
+                additional_keys = return_keys
+            self.assertEqual(sorted(list(return_dict)), sorted(additional_keys))
+
+        # Get all predictions
+        self._test_error(
+            train_utils.get_all_predictions,
+            ValueError,
+            model=training_objects["model"],
+            dataloader=training_objects["train_loader"],
+            device=self.config.device,
+            return_keys=[],
         )
 
     def _test_get_all_predictions(self, loss_criterion: str, eval_criterion: str, **kwargs) -> None:
@@ -201,30 +295,30 @@ class TestTrainUtils(unittest.TestCase):
         Test the routine of obtaining predictions from a model.
         """
         # Get all training objects
-        return_dict = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
+        training_objects = self._get_training_objects(loss_criterion, eval_criterion, **kwargs)
 
         # Get all predictions
-        outputs_val, preds_val, probs_val = train_utils.get_all_predictions(
-            return_dict["model"], return_dict["val_loader"], self.config.device
+        return_dict = train_utils.get_all_predictions(
+            training_objects["model"], training_objects["val_loader"], self.config.device
         )
         train_utils.get_all_predictions(
-            return_dict["model"], return_dict["val_loader"], self.config.device, threshold_prob=0.8
+            training_objects["model"], training_objects["val_loader"], self.config.device, threshold_prob=0.8
         )
 
         # Ensure shape of predictions is correct
-        self.assertEqual(len(outputs_val), len(return_dict["val_loader"].dataset))
-        if return_dict["model"].model_type == "classification":
-            for results in [preds_val, probs_val]:
-                self.assertEqual(len(results), len(return_dict["val_loader"].dataset))
+        self.assertEqual(len(return_dict["outputs"]), len(training_objects["val_loader"].dataset))
+        if training_objects["model"].model_type == "classification":
+            for results in [return_dict["preds"], return_dict["probs"]]:
+                self.assertEqual(len(results), len(training_objects["val_loader"].dataset))
 
-    def _test_error(self, func: Callable[[Any], None], args, error=AssertionError) -> None:
+    def _test_error(self, func: Callable[[Any], None], error=AssertionError, *args, **kwargs) -> None:
         """
         Generic code to assert that `error`
         is raised when calling a function
-        `func` with arguments `args`.
+        `func` with arguments `args` and `kwargs`.
         """
         with self.assertRaises(error):
-            func(args)
+            func(*args, **kwargs)
 
     @classmethod
     def _load_config(cls, dictionary: Optional[Dict] = None) -> Config:

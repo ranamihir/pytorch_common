@@ -29,9 +29,6 @@ __all__ = [
     "_TensorOrTensors",
     "_ModelOrModels",
     "_EvalCriterionOrCriteria",
-    "_TrainResult",
-    "_EvalResult",
-    "_TestResult",
     "_DecoupleFnTrain",
     "_DecoupleFnTest",
     "_DecoupleFn",
@@ -49,10 +46,6 @@ _TensorsOrArrays = Union[Iterable[torch.Tensor], Iterable[np.ndarray]]
 _TensorOrTensors = Union[torch.Tensor, Iterable[torch.Tensor]]
 _ModelOrModels = Union[nn.Module, Iterable[nn.Module]]
 _EvalCriterionOrCriteria = Union[Dict[str, Callable], Dict[str, Iterable[Callable]]]
-
-_TrainResult = List[float]
-_EvalResult = Tuple[List[float], Dict[str, float], torch.Tensor, torch.Tensor]
-_TestResult = Iterable[torch.Tensor]
 
 _DecoupleFnTrain = Callable[[_Batch], Tuple[_Batch]]
 _DecoupleFnTest = Callable[[_Batch], _Batch]
