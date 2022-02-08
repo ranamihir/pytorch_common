@@ -840,8 +840,8 @@ def load_model(
         # Verify consistency of last epoch trained
         if epoch_trained != checkpoint["epoch"]:
             logger.warning(
-                f"Mismatch between epoch specified in checkpoint path ('{epoch_trained}'), "
-                f"epoch specified at saving time ('{checkpoint['epoch']}')."
+                f"Mismatch between epoch specified in checkpoint path ({epoch_trained}) "
+                f"and epoch specified at saving time ({checkpoint['epoch']})."
             )
 
         # Load train / val loggers if provided
@@ -992,7 +992,7 @@ class EarlyStopping:
 
     def __init__(
         self,
-        criterion: Optional[str] = "f1",
+        criterion: Optional[str] = "accuracy",
         mode: Optional[str] = None,
         min_delta: Optional[float] = None,
         patience: Optional[int] = None,
