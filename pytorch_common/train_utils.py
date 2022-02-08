@@ -287,7 +287,7 @@ def train_model(
 
     return_dict = {
         "model": model,
-        "best_model": best_model if (do_evaluation and best_model) is not None else model,
+        "best_model": best_model if (do_evaluation and best_model is not None) else model,
         "train_logger": train_logger,
         "val_logger": val_logger,
         "optimizer": optimizer,
