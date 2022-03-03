@@ -46,7 +46,7 @@ class TestConfig(unittest.TestCase):
 
     def test_set_loss_and_eval_criteria(self):
         """
-        Test different loss/eval criteria configurations.
+        Test different loss / eval criteria configurations.
         """
         # Test incompatible settings
         self._test_config_error({"model_type": "regression", "loss_criterion": "accuracy"})

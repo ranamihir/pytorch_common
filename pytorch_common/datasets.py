@@ -60,7 +60,7 @@ def create_dataloader(dataset: Dataset, config: _Config, is_train: Optional[bool
             logger.info(f"Sampling {percentage}% of whole dataset.")
             sampled_indices = np.random.choice(range(n), size=int(percentage * n))
 
-        dataset.data = dataset.data.iloc[sampled_indices]
+        dataset.data = dataset.data.iloc[sampled_indices].reset_index(drop=True)
         logger.info("Done.")
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=8, pin_memory=True)

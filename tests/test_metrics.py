@@ -10,11 +10,9 @@ from pytorch_common.types import (
     Any,
     Callable,
     Dict,
-    Iterable,
     List,
     Optional,
     Tuple,
-    Union,
     _EvalCriterionOrCriteria,
     _Loss,
     _StringDict,
@@ -49,7 +47,7 @@ class TestMetrics(unittest.TestCase):
             self._get_loss_eval_criteria({"loss_criterion": loss_criterion, "eval_criteria": eval_criteria})
 
         # Ensure inter-compatibility of supported loss and
-        # eval criteria for multiclass/multilabel classification
+        # eval criteria for multiclass / multilabel classification
         for loss_criterion in metrics.LOSS_CRITERIA:
             for classification_type in ["multiclass", "multilabel"]:
                 dictionary = {

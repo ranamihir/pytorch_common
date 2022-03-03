@@ -7,13 +7,13 @@ import torch
 from pytorch_common import utils
 from pytorch_common.additional_configs import BaseModelConfig
 from pytorch_common.models import create_model
-from pytorch_common.types import Callable, Dict, List, Optional, Tuple, Union, _Batch
+from pytorch_common.types import Callable, Dict, List, Optional, Union, _Batch
 
 
 class TestUtils(unittest.TestCase):
     def test_file_handling(self):
         """
-        Test saving/loading of different
+        Test saving / loading of different
         files (pickle, dill, yaml).
         """
 
@@ -24,7 +24,7 @@ class TestUtils(unittest.TestCase):
             module: Optional[str] = "pickle",
         ) -> None:
             """
-            Test saving/loading of a
+            Test saving / loading of a
             file with a given `module`.
             """
             # Save the file
@@ -232,7 +232,7 @@ class TestUtils(unittest.TestCase):
         **kwargs,
     ) -> _Batch:
         """
-        Construct a numpy/torch batch of shape
+        Construct a numpy / torch batch of shape
         which forces recursion in type conversion.
         """
         a_ = batch_type(a, **kwargs)

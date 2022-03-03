@@ -19,12 +19,8 @@ from pytorch_common.types import (
     Any,
     Callable,
     Dict,
-    Iterable,
-    List,
     Optional,
     Tuple,
-    Union,
-    _EvalCriterionOrCriteria,
     _StringDict,
 )
 
@@ -59,7 +55,7 @@ class TestTrainUtils(unittest.TestCase):
         """
         Test all models for all compatible
         datasets by:
-          - ensuring that saving/loading model works
+          - ensuring that saving / loading model works
           - performing the whole training routine
           - getting all predictions at test time
         """
@@ -362,7 +358,7 @@ class TestTrainUtils(unittest.TestCase):
 
         multilabel_reduction = dataset_kwargs.pop("multilabel_reduction", None)
 
-        # Get training/validation dataloaders
+        # Get training / validation dataloaders
         train_loader, val_loader = self._get_dataloaders(**dataset_kwargs)
 
         # Get model
@@ -374,10 +370,10 @@ class TestTrainUtils(unittest.TestCase):
         # Get scheduler
         scheduler = self._get_scheduler(optimizer)
 
-        # Get training/validation loggers
+        # Get training / validation loggers
         train_logger, val_logger = self._get_loggers(loss_criterion, eval_criterion)
 
-        # Get training/testing loss and eval criteria
+        # Get training / testing loss and eval criteria
         if multilabel_reduction is not None:
             self.config.classification_type = "multilabel"
             self.config.loss_kwargs["multilabel_reduction"] = multilabel_reduction

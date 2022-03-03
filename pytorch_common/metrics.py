@@ -22,8 +22,8 @@ class EvalCriterion:
     Base class for computation of all supported evaluation criteria.
 
     It handles:
-      - Static criteria like 'accuracy', 'precision', 'mse', etc.
-      - Dynamic criteria like 'top_1_accuracy', 'top_10_accuracy', etc. on the fly
+      - Static criteria like `"accuracy"`, `"precision"`, `"mse"`, etc.
+      - Dynamic criteria like `"top_1_accuracy"`, `"top_10_accuracy"`, etc. (on the fly)
     """
 
     def __init__(
@@ -34,9 +34,9 @@ class EvalCriterion:
         **kwargs,
     ):
         """
-        :param criterion: Criterion name in config, e.g. 'top_5_accuracy'
+        :param criterion: Criterion name in config, e.g. `"top_5_accuracy"`
         :param eval_fn: Metric evaluating function
-        :param name: Canonical name, e.g. 'top_k_accuracy'
+        :param name: Canonical name, e.g. `"top_k_accuracy"`
         """
         self.criterion = criterion
         self.eval_fn = eval_fn
@@ -63,7 +63,7 @@ class EvalCriterion:
     def canonicalize(self, eval_criterion: str) -> bool:
         """
         Convert a given `eval_criterion` to its canonical name.
-        E.g. for 'top_1_accuracy', it would return 'top_k_accuracy'.
+        E.g. for `"top_1`_accuracy"`, it would return `"top_k_accuracy"`.
         """
         return canonicalize(eval_criterion, self.name, self.regex)
 
@@ -88,7 +88,7 @@ class EvalCriterion:
         This function does the actual
         evaluation metric computation.
 
-        Note: The inputs to this function
+        NOTE: The inputs to this function
         must be preprocessed. E.g. for accuracy,
         `y_predicted` should already been hard
         predictions rather than raw logits per class.
@@ -96,7 +96,7 @@ class EvalCriterion:
         Used in `__call__`.
         """
         # Pass criterion for parsing dynamic criteria.
-        # E.g.: For 'top_5_accuracy', k=5 will be deduced
+        # E.g.: For "top_5_accuracy", k=5 will be deduced
         #       on the fly based on `self.criterion`.
         if self.regex:
             self.kwargs["criterion"] = self.criterion
@@ -170,7 +170,7 @@ class EvalCriteria:
         Returns true of `eval_criterion` is
         present in list of supported criteria.
 
-        Note that `==` works because of the defined
+        NOTE that `==` works because of the defined
         `__eq__` in `EvalCriterion`.
         """
         return any(eval_criterion == supported_criterion for supported_criterion in self.criteria)
@@ -268,8 +268,8 @@ class EvalCriteria:
         Return the canonical name of `eval_criterion`
         if supported, otherwise None.
 
-        E.g. `top_1_accuracy` would be
-        canonicalized to `top_k_accuracy`.
+        E.g. `"top_1_accuracy"` would be
+        canonicalized to `"top_k_accuracy"`.
         """
         for criterion in self.criteria:
             canonical_name = criterion.canonicalize(eval_criterion)
@@ -319,6 +319,7 @@ class EvalCriteria:
     def create_eval_metric(self, eval_criterion: str, **kwargs) -> None:
         """
         Get the `EvalCriterion` object for a specified `criterion`.
+
         :param kwargs: Misc kwargs for the eval criterion.
                        Mostly used in multiclass settings. E.g.:
                        - `average` for f1, precision, recall
@@ -328,7 +329,7 @@ class EvalCriteria:
                         Type of multilabel_reduction to be
                         performed on the list of metric values
                         for each class.
-                        Choices: "sum" | "mean"
+                        Choices: `"sum"` | `"mean"`
         """
         try:
             canonical_name = None
@@ -348,12 +349,12 @@ def get_loss_eval_criteria(config: _Config) -> Tuple[_Loss, _Loss, _EvalCriterio
     """
     train_loss_kwargs, val_loss_kwargs = config.loss_kwargs.copy(), config.loss_kwargs.copy()
 
-    # Add/update train loss reduction and get criterion
+    # Add / update train loss reduction and get criterion
     train_loss_kwargs["reduction"] = train_loss_kwargs.pop("reduction_train", "mean")
     train_loss_kwargs.pop("reduction_val", None)
     loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, **train_loss_kwargs)
 
-    # Add/update val loss reduction and get criterion
+    # Add / update val loss reduction and get criterion
     val_loss_kwargs["reduction"] = val_loss_kwargs.pop("reduction_val", "mean")
     val_loss_kwargs.pop("reduction_train", None)
     loss_criterion_val = get_loss_criterion(config, criterion=config.loss_criterion, **val_loss_kwargs)
@@ -387,6 +388,7 @@ def get_eval_criteria(config: _Config, eval_criteria: List[str], **kwargs) -> Ev
 def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cross-entropy", **kwargs) -> _Loss:
     """
     Get the function for a given loss `criterion`.
+
     :param kwargs: Misc kwargs for the loss. E.g.:
                    - `dim` for CrossEntropyLoss
                    - `alpha` and `gamma` for FocalLoss.
@@ -395,7 +397,7 @@ def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cro
                     Type of multilabel reduction to be
                     performed on the list of losses for
                     each class.
-                    Choices: "sum" | "mean"
+                    Choices: `"sum"` | `"mean"`
     """
     # Check for multilabel classification
     if config.model_type == "classification":

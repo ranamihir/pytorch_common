@@ -241,7 +241,7 @@ def check_and_set_devices(config: _Config) -> None:
 
 def set_all_batch_sizes(config: _Config) -> None:
     """
-    Properly set train/eval/test batch sizes.
+    Properly set train / eval / test batch sizes.
     The setting should be such that:
       - either only `batch_size_per_gpu` is provided,
         in which case the same batch size will be
@@ -302,6 +302,7 @@ def check_and_set_misc_config(config: _Config) -> None:
     Check all miscellaneous configurations, e.g.:
       - model_type
       - classification_type
+      - sample weighting params, etc.
     """
     # Check for model and classification type
     assert (

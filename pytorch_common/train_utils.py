@@ -13,7 +13,7 @@ import torch.nn as nn
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
-from pytorch_common import timing
+from . import timing
 
 from .metrics import EvalCriteria
 from .types import *
@@ -62,15 +62,15 @@ def train_model(
         loaded into the model and training is to be resumed from that point.
       - `decouple_fn_train` and `decouple_fn_eval` are functions which
         take in the batch and return the separated out inputs
-        (and targets for training/evaluation).
+        (and targets for training / evaluation).
         They may be specified if this process deviates from the default
-        behavior (see `decouple_batch_train() for more details`).
+        behavior (see `decouple_batch_train()` for more details).
 
     NOTE: Training may be paused at any time with a keyboard interrupt.
           However, please avoid interrupting after an epoch is finished
           and before the next one begins, e.g. during saving a
           checkpoint, as it may cause issues while loading the model.
-          Instead pause it during training/evaluation within an epoch.
+          Instead pause it during training / evaluation within an epoch.
 
     :param loss_criterion_train: Training loss criterion
     :param loss_criterion_eval: Evaluation loss criterion
@@ -113,7 +113,7 @@ def train_model(
     if epochs is None:
         epochs = config.epochs
 
-    # Either both `val_loader` and `val_logger` must be provided or none (for no evaluation)
+    # Either both `val_loader` and `val_logger` must be provided or neither (for no evaluation)
     assert not ((val_loader is None) ^ (val_logger is None))
     do_evaluation = val_loader is not None
 
@@ -414,9 +414,9 @@ def perform_one_epoch(
         and probabilities if it's a classification model.
 
     :param phase: Type of pass to perform over data
-                  Choices = "train" | "eval" | "test"
+                  Choices = `"train"` | `"eval"` | `"test"`
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
-                      after each batch step/iteration (e.g. CyclicLR), otherwise None
+                      after each batch step / iteration (e.g. CyclicLR), otherwise None
     :param sample_weighting: Whether sample weighting is enabled or not.
                              NOTE: To use this feature, you must provide the weights
                                    in the dataloader decoupling function. See
@@ -427,7 +427,7 @@ def perform_one_epoch(
                         - For `phase="eval"`, the losses and evaluation metrics
                           will always be returned. Additionally, you may specify
                           any of `["outputs", "targets"]` in this argument.
-                        - For `phase="test"`, you may specify any of
+                        - For `phase=="test"`, you may specify any of
                           `["outputs", "probs", "preds"]` in this argument,
                           otherwise an empty dictionary will be returned.
                         If None, all applicable additional keys will be
@@ -516,7 +516,7 @@ def perform_one_epoch(
         assert IS_TRAINING, f"Param `epochs` ({epochs}) can only be provided in training phase."
         epochs_str = f"/{epochs}"
 
-    # Set model in training/eval mode as required
+    # Set model in training / eval mode as required
     model.train(mode=IS_TRAINING)
 
     # Get required dataloader params
@@ -539,7 +539,7 @@ def perform_one_epoch(
             # Get inputs for testing
             if phase == "test":
                 inputs = send_batch_to_device(decouple_fn(batch), device)
-            else:  # Get inputs, targets, and optionally sample weights for training/evaluation
+            else:  # Get inputs, targets, and optionally sample weights for training / evaluation
                 batch = send_batch_to_device(decouple_fn(batch, sample_weighting=sample_weighting), device)
                 if sample_weighting:
                     inputs, targets, sample_weights = batch
@@ -653,7 +653,7 @@ def decouple_batch_train(batch: _Batch, sample_weighting: Optional[bool] = False
     If sample weights are to be used, they
     will assume the third index.
 
-    Used commonly during training/evaluation.
+    Used commonly during training / evaluation.
 
     This is required because often other things
     are also passed in the batch for debugging.
@@ -710,9 +710,10 @@ def save_model(
         - Optimizer and scheduler state dicts (if provided)
 
     :param checkpoint_type: Type of checkpoint to load
-                            Choices = "state" | "model"
-                            Default = "state"
-    :returns name of checkpoint file
+                            Choices = `"state"` | `"model"`
+                            Default = `"state"`
+
+    :return Name of checkpoint file
     """
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
@@ -789,7 +790,7 @@ def load_model(
     It can load either:
       - the entire model
       - or just its state dict into a pre-defined model
-        Note: Input model should be pre-defined in this case.
+        NOTE: Input model should be pre-defined in this case.
               This routine only updates its state.
     Additionally, it loads the following variables:
         - Current training config
@@ -798,7 +799,7 @@ def load_model(
           losses and eval metrics so far
         - Optimizer and scheduler (if provided) state dicts
 
-    Note: Input optimizer and scheduler should be pre-defined
+    NOTE: Input optimizer and scheduler should be pre-defined
           if their states are to be updated.
 
     :param model: Must be None if the whole model is to be loaded,
@@ -898,7 +899,7 @@ def load_optimizer_and_scheduler(
         obj: Union[Optimizer, object], key: str = "optimizer"
     ) -> Union[Optional[Optimizer], Optional[object]]:
         """
-        Properly load state dict of optimizer/scheduler.
+        Properly load state dict of optimizer / scheduler.
         """
         state_dict = checkpoint.get(key)
         if state_dict is not None:
@@ -926,7 +927,7 @@ def remove_model(
     checkpoint_type: Optional[str] = "state",
 ) -> None:
     """
-    Remove a checkpoint/model at a given epoch.
+    Remove a checkpoint / model at a given epoch.
     Used in early stopping if better performance
     is observed at a subsequent epoch.
 
@@ -935,8 +936,8 @@ def remove_model(
                              generate a unique string for the
                              checkpoint name
     :param checkpoint_type: Type of checkpoint to load
-                            Choices = "state" | "model"
-                            Default = "state"
+                            Choices = `"state"` | `"model"`
+                            Default = `"state"`
     """
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
@@ -1003,7 +1004,7 @@ class EarlyStopping:
         :param criterion: Name of early stopping criterion
                           If criterion is supported ineherently, you may choose to
                           not provide any of the other params and use the default ones.
-        :param mode: Whether to "maximize" or "minimize" the `criterion`
+        :param mode: Whether to `"maximize"` or `"minimize"` the `criterion`
         :param min_delta: Minimum difference in metric required to prevent early stopping
         :param patience: No. of epochs (or steps) over which to monitor early stopping
         :param best_val: Best possible value of metric (if any)
@@ -1058,9 +1059,9 @@ class EarlyStopping:
 
     def _validate_params(self):
         """
-        Check validity of mode of optimization.
+        Check the validity of mode of optimization.
         """
-        supported_modes = self.SUPPORTED_MODES.keys()
+        supported_modes = list(self.SUPPORTED_MODES)
         if self.mode not in supported_modes:
             raise ValueError(f"Param 'mode' ('{self.mode}') must be one of {supported_modes}.")
         if self.best_val is not None and self.best_val_tol is None:

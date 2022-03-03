@@ -6,6 +6,7 @@ Useful Decorators
 Decorators are a useful way to save some typing and automate common tasks,
 such as timing function execution or debugging dataframe sizes.
 """
+import builtins
 import inspect
 import time
 import traceback
@@ -16,12 +17,7 @@ from .utils import human_time_interval, setup_logging
 
 logger = setup_logging(__name__)
 
-try:
-    __IPYTHON__
-except NameError:
-    PRINT_FUNC = logger.info
-else:
-    PRINT_FUNC = print
+PRINT_FUNC = logger.info if hasattr(builtins, "__IPYTHON__") else print
 
 __all__ = ["timing", "timing_with_param", "retry_if_exception", "monkey_patch_class_method"]
 

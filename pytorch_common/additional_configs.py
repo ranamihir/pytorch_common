@@ -31,7 +31,7 @@ class BaseDatasetConfig(Munch):
         Return a `BaseDatasetConfig` object with
         same attribute values.
         Useful if different configs are
-        required, e.g. for train/val datasets.
+        required, e.g. for train / val datasets.
         """
         if deep:
             return deepcopy(self)

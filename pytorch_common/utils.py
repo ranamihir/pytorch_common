@@ -10,6 +10,7 @@ import sys
 import time
 from collections import OrderedDict
 from copy import deepcopy
+from types import ModuleType
 
 import dill
 import numpy as np
@@ -137,6 +138,7 @@ def human_time_interval(time_seconds: float) -> str:
     """
     Converts a time interval in seconds to a human-friendly
     representation in hours, minutes, seconds and milliseconds.
+
     :param time_seconds: time in seconds (float)
 
     >>> human_time_interval(13301.1)
@@ -199,6 +201,7 @@ def save_plot(
 ) -> None:
     """
     Save a high-quality plot created by matplotlib.
+
     :param plot_name: Plot name, e.g. "accuracy-vs-epochs"
     :param ext: file extension
     """
@@ -214,8 +217,8 @@ def save_object(obj: Any, primary_path: str, file_name: Optional[str] = None, mo
     object using different `module`s, e.g. pickle,
     dill, and yaml.
 
-    Note: See `get_file_path()` for details on how
-          how to set `primary_path` and `file_name`.
+    NOTE: See `get_file_path()` for details on how
+          to set `primary_path` and `file_name`.
     """
     file_path = get_file_path(primary_path, file_name)
     logger.info(f"Saving '{file_path}'...")
@@ -228,7 +231,7 @@ def save_object(obj: Any, primary_path: str, file_name: Optional[str] = None, mo
 
 def save_pickle(obj: Any, file_path: str, module: Optional[str] = "pickle") -> None:
     """
-    This is a defensive way to write (pickle/dill).dump,
+    This is a defensive way to write `{pickle|dill}.dump`,
     allowing for very large files on all platforms.
     """
     pickle_module = get_pickle_module(module)
@@ -242,7 +245,7 @@ def save_pickle(obj: Any, file_path: str, module: Optional[str] = "pickle") -> N
 
 def save_yaml(obj: Dict, file_path: str) -> None:
     """
-    Save a given dictionary as a yaml file.
+    Save a given dictionary as a YAML file.
     """
     assert isinstance(obj, dict), "Only `dict` objects can be stored as YAML files."
     with open(file_path, "w") as f_out:
@@ -252,11 +255,11 @@ def save_yaml(obj: Dict, file_path: str) -> None:
 def load_object(primary_path: str, file_name: Optional[str] = None, module: Optional[str] = "pickle") -> Any:
     """
     This is a generic function to load any given
-    object using different `module`s, e.g. pickle,
-    dill, and yaml.
+    object using different `module`s, e.g. `pickle`,
+    `dill`, and `yaml`.
 
-    Note: See `get_file_path()` for details on how
-          how to set `primary_path` and `file_name`.
+    NOTE: See `get_file_path()` for details on how
+          to set `primary_path` and `file_name`.
     """
     file_path = get_file_path(primary_path, file_name)
     logger.info(f"Loading '{file_path}'...")
@@ -273,7 +276,7 @@ def load_object(primary_path: str, file_name: Optional[str] = None, module: Opti
 
 def load_pickle(file_path: str, module: Optional[str] = "pickle") -> Any:
     """
-    This is a defensive way to write (pickle/dill).load,
+    This is a defensive way to write `{pickle|dill}.load`,
     allowing for very large files on all platforms.
 
     This function is intended to be called inside
@@ -293,7 +296,7 @@ def load_pickle(file_path: str, module: Optional[str] = "pickle") -> Any:
 
 def load_yaml(file_path: str) -> Dict:
     """
-    Load a given yaml file.
+    Load a given YAML file.
 
     Return an empty dictionary if file is empty.
 
@@ -310,8 +313,8 @@ def remove_object(primary_path: str, file_name: Optional[str] = None) -> None:
     """
     Remove a given object if it exists.
 
-    Note: See `get_file_path()` for details on how
-          how to set `primary_path` and `file_name`.
+    NOTE: See `get_file_path()` for details on how
+          to set `primary_path` and `file_name`.
     """
     file_path = get_file_path(primary_path, file_name)
     if os.path.isfile(file_path):
@@ -322,7 +325,7 @@ def remove_object(primary_path: str, file_name: Optional[str] = None) -> None:
 
 def get_file_path(primary_path: str, file_name: Optional[str] = None) -> str:
     """
-    Generate appropriate full file path:
+    Generate the full file path appropriately:
       - If `file_name` is None, it's assumed that the full
         path to the file is provided in `primary_path`.
       - Otherwise, it's assumed that `primary_path` is the
@@ -332,10 +335,11 @@ def get_file_path(primary_path: str, file_name: Optional[str] = None) -> str:
     return primary_path if file_name is None else os.path.join(primary_path, file_name)
 
 
-def get_pickle_module(pickle_module: Optional[str] = "pickle") -> Union[pickle, dill]:
+def get_pickle_module(pickle_module: Optional[str] = "pickle") -> ModuleType:
     """
     Return the correct module for pickling.
-    :param pickle_module: must be one of ["pickle", "dill"]
+
+    :param pickle_module: must be one of `["pickle", "dill"]`
     """
     if not pickle_module in ["pickle", "dill"]:
         raise ValueError(f"Param 'pickle_module' ('{pickle_module}') must be one of ['pickle', 'dill'].")
@@ -344,7 +348,7 @@ def get_pickle_module(pickle_module: Optional[str] = "pickle") -> Union[pickle, 
 
 def delete_model(model: nn.Module) -> None:
     """
-    Delete model and free GPU memory.
+    Delete the model and free GPU memory.
     """
     model = None
     torch.cuda.empty_cache()
@@ -356,6 +360,7 @@ def get_string_from_dict(config_info_dict: Optional[_StringDict] = None) -> str:
     The dictionary will always be sorted by key first so that if
     the order of items is changed but the dictionary is essentially
     still the same, the string returned remains unchanged.
+
     E.g.:
     >>> get_string_from_dict({"size": 100, "lr": 1e-3})
     "lr_0.001-size_100"
@@ -376,14 +381,16 @@ def get_unique_config_name(primary_name: str, config_info_dict: Optional[_String
 
     The name will comprise the `primary_name` followed by a
     hash value uniquely generated from the `config_info_dict`.
+
     :param primary_name: Primary name of the object being stored.
     :param config_info_dict: An optional dict provided containing
                              information about current config.
 
     E.g.:
     `subcategory_classifier-3d02e8616cbeab37bc1bb972ecf02882`
-    Each attribute in `config_info_dict` is in the "{name}_{value}"
-    format (lowercased), separated from one another by a hyphen.
+    Each attribute in `config_info_dict` is in the `"{name}_{value}"`
+    format (lower-cased), separated from one another by a hyphen.
+
     If a hyphen exists in the value (e.g. LR), it's converted to
     an underscore. Finally, this string is passed into a hash
     function to generate a unique ID for this configuration.
@@ -408,6 +415,7 @@ def get_checkpoint_name(
     """
     Returns the appropriate name of checkpoint file
     by generating a unique ID from the config.
+
     :param checkpoint_type: Type of checkpoint ("state" | "model")
     :param config_info_dict: An optional dict provided containing
                              information about current config.
@@ -454,7 +462,7 @@ def send_model_to_device(model: nn.Module, device: _Device, device_ids: Optional
     Send a model to specified device.
     Will also parallelize model if required.
 
-    Note: `model.to()` is an inplace operation, so it will move the
+    NOTE: `model.to()` is an inplace operation, so it will move the
           original model to the desired device. If the original model
           is to be retained on the original device, and a copy is to
           be moved to the desired device(s) and returned, make sure to
@@ -462,7 +470,8 @@ def send_model_to_device(model: nn.Module, device: _Device, device_ids: Optional
           model is not inherited from `BasePyTorchModel`) to this function.
     """
     logger.info(f"Setting default device for model to {device}...")
-    # Note: `model.to()` doesn't work as desired if model is
+
+    # NOTE: `model.to()` doesn't work as desired if model is
     # parallelized (model is still wrapped inside
     # `module`); therefore must do `model.module.to()`
     model = model.module.to(device) if hasattr(model, "module") else model.to(device)
@@ -486,7 +495,7 @@ def send_batch_to_device(
     batch: _Batch, device: _Device, non_blocking: Optional[bool] = True, verbose: Optional[bool] = True
 ) -> _Batch:
     """
-    Send batch to given device.
+    Send batch to the given device.
 
     :param non_blocking: If True and this copy is between CPU
                          and GPU, the copy may occur asynchronously
@@ -496,10 +505,10 @@ def send_batch_to_device(
     :param verbose: Whether to print the warning message or not
 
     Useful when the batch tuple is of variable lengths.
-    Specifically,
-        - In regular multiclass setting:
+    E.g.:
+        - In a regular multiclass setting:
             batch = (product_embedding, y)
-        - In one-hot encoded multiclass / multilabel setting (e.g. ABSANet):
+        - In a one-hot encoded multiclass / multilabel setting (e.g. ABSANet):
             batch = ( (product_embedding, label_embedding), y )
     This function will recursively send all tensors to the
     device retaining the original structure of the batch.
@@ -518,13 +527,13 @@ def send_batch_to_device(
         True
     """
     if torch.is_tensor(batch):
-        if compare_devices(batch.device, device):  #  Avoid copy/transfer if already on given device
+        if compare_devices(batch.device, device):  #  Avoid copy / transfer if already on given device
             return batch
         return batch.to(device=device, non_blocking=non_blocking)
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(send_batch_to_device(e, device, non_blocking, verbose) for e in batch)
-    else:  # Structure/type of batch unknown
+    else:  # Structure / type of batch unknown
         if verbose:
             logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
@@ -545,7 +554,7 @@ def convert_tensor_to_numpy(batch: _Batch, verbose: Optional[bool] = True) -> _B
     """
     Convert torch tensor(s) on any device to numpy array(s).
     Similar to `send_batch_to_device()`, can take a
-    `torch.Tensor` or a tuple/list of them as input.
+    `torch.Tensor` or a tuple / list of them as input.
 
     :param verbose: Whether to print the warning message or not
     """
@@ -556,7 +565,7 @@ def convert_tensor_to_numpy(batch: _Batch, verbose: Optional[bool] = True) -> _B
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(convert_tensor_to_numpy(e, verbose) for e in batch)
-    else:  # Structure/type of batch unknown
+    else:  # Structure / type of batch unknown
         if verbose:
             logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
@@ -570,7 +579,7 @@ def convert_numpy_to_tensor(
     optionally sends them to the desired device.
     Inverse operation of `convert_tensor_to_numpy()`,
     and similar to it, can take a np.ndarray or a
-    tuple/list of them as input.
+    tuple / list of them as input.
 
     :param verbose: Whether to print the warning message or not
     """
@@ -584,7 +593,7 @@ def convert_numpy_to_tensor(
     elif isinstance(batch, (list, tuple)):
         # Retain same data type as original
         return type(batch)(convert_numpy_to_tensor(e, device, non_blocking, verbose) for e in batch)
-    else:  # Structure/type of batch unknown
+    else:  # Structure / type of batch unknown
         if verbose:
             logger.warning(f"Type '{type(batch)}' not understood. Returning variable as-is.")
         return batch
@@ -594,7 +603,7 @@ def compare_tensors_or_arrays(batch_a: _Batch, batch_b: _Batch) -> bool:
     """
     Compare the contents of two batches.
     Each batch may be of type `np.ndarray` or
-    `torch.Tensor` or a list/tuple of them.
+    `torch.Tensor` or a list / tuple of them.
 
     Will return True if the types of the two
     batches are different but contents are the same.
@@ -608,10 +617,10 @@ def compare_tensors_or_arrays(batch_a: _Batch, batch_b: _Batch) -> bool:
         return np.all(batch_a == batch_b)
     elif isinstance(batch_a, (list, tuple)) and isinstance(batch_b, (list, tuple)):
         return all(compare_tensors_or_arrays(a, b) for a, b in zip(batch_a, batch_b))
-    else:  # Structure/type of batch unknown
+    else:  # Structure / type of batch unknown
         raise TypeError(
             f"Types of each batch '({type(batch_a)}, {type(batch_b)})' must "
-            f"be `np.ndarray`, `torch.Tensor` or a list/tuple of them."
+            f"be `np.ndarray`, `torch.Tensor` or a list / tuple of them."
         )
 
 
@@ -648,13 +657,13 @@ def is_batch_on_gpu(batch: _Batch) -> bool:
     Check if a `batch` is on a GPU.
 
     Similar to `send_batch_to_device()`, can take a
-    `torch.Tensor` or a tuple/list of them as input.
+    `torch.Tensor` or a tuple / list of them as input.
     """
     if torch.is_tensor(batch):
         return batch.is_cuda
     elif isinstance(batch, (list, tuple)):
         return all(is_batch_on_gpu(e) for e in batch)
-    else:  # Structure/type of batch unknown
+    else:  # Structure / type of batch unknown
         raise TypeError(f"Type '{type(batch)}' not understood.")
 
 
@@ -700,7 +709,7 @@ def get_next_parameter(model: nn.Module) -> _TensorOrTensors:
         return next(model.parameters())
     except StopIteration:  # For nn.DataParallel compatibility in PyTorch 1.5
 
-        def find_tensor_attributes(module: nn.Module) -> List[Tuple[str, Tensor]]:
+        def find_tensor_attributes(module: nn.Module) -> List[Tuple[str, torch.Tensor]]:
             tuples = [(k, v) for k, v in module.__dict__.items() if torch.is_tensor(v)]
             return tuples
 
@@ -711,7 +720,7 @@ def get_next_parameter(model: nn.Module) -> _TensorOrTensors:
 
 def compare_devices(device1, device2):
     """
-    Return True if the given devices
+    Return `True` if the given devices
     are the same, otherwise False.
     """
     if any(device is None for device in (device1, device2)):
@@ -748,7 +757,7 @@ def get_model_performance_trackers(config: _Config) -> Tuple[ModelTracker, Model
 
 class ModelTracker:
     """
-    Class for tracking model's progress.
+    Class for tracking a model's progress.
 
     Use this for keeping track of the loss and
     any evaluation metrics (accuracy, f1, etc.)
@@ -756,6 +765,9 @@ class ModelTracker:
     """
 
     def __init__(self, config: _Config, is_train: Optional[bool] = True):
+        """
+        :param is_train: If this tracker is to be used for training or evaluation.
+        """
         self.eval_criteria = config.eval_criteria
         self.is_train = is_train
         if not is_train:
@@ -764,7 +776,7 @@ class ModelTracker:
 
     def _init_progress_trackers(self):
         """
-        Initialize the loss/eval_criteria tracking dictionaries.
+        Initialize the loss / eval criteria tracking dictionaries.
         """
         self.loss_hist, self.eval_metrics_hist = OrderedDict(), OrderedDict()
         for eval_criterion in self.eval_criteria:
@@ -774,6 +786,7 @@ class ModelTracker:
     def add_losses(self, losses: List[float], epoch: Optional[int] = -1) -> None:
         """
         Store the losses at a given epoch.
+
         :param epoch: If not provided, will store
                       at the next epoch.
         """
@@ -787,6 +800,7 @@ class ModelTracker:
     ) -> Union[List[float], OrderedDict[str, List[float]]]:
         """
         Get the loss history.
+
         :param epoch: If provided, returns the list
                       of losses at that epoch,
                       otherwise the whole dictionary.
@@ -812,6 +826,7 @@ class ModelTracker:
     def add_eval_metrics(self, eval_metrics: Dict[str, float], epoch: Optional[int] = -1) -> None:
         """
         Store the eval_metrics at a given epoch.
+
         :param epoch: If not provided, will store
                       at the next epoch.
         """
@@ -827,6 +842,7 @@ class ModelTracker:
     ) -> Union[float, List[float], OrderedDict[str, Union[float, List[float]]]]:
         """
         Get the evaluation metrics history.
+
         :param eval_criterion: The criterion whose history
                                is to be returned.
         :param epoch: The epoch for which the history
@@ -834,13 +850,13 @@ class ModelTracker:
         - If both params are provided, the value at that epoch
           is returned.
         - If only eval_criterion is provided:
-            - If `flatten=False`, a dictionary of values
+            - If `flatten==False`, a dictionary of values
               at each epoch is returned
-            - If `flatten=True`, the values across all
+            - If `flatten==True`, the values across all
               epochs are flattened into a single list
         - If only `epoch` is provided, a dictionary of values
           for each criterion at that epoch is returned.
-        If `epoch=-1`, returns list of losses at last epoch.
+        If `epoch==-1`, returns list of losses at last epoch.
         """
         epoch = self._get_correct_epoch(epoch, "eval_metrics")
         if eval_criterion is not None:
@@ -859,6 +875,7 @@ class ModelTracker:
         """
         Get the entire eval_metrics history across all
         epochs flattened into one list for each eval_criterion.
+
         :param eval_criterion: If provided, only the list of
                                history for that eval_criterion
                                is returned.
@@ -898,9 +915,8 @@ class ModelTracker:
 
     def add_metrics(self, losses: List[float], eval_metrics: Dict[str, float], epoch: Optional[int] = -1) -> None:
         """
-        Shorthand function to add losses
-        and eval metrics at the end of
-        a given epoch.
+        Shorthand function to add losses and eval
+        metrics at the end of a given epoch.
         """
         self.add_losses(losses, epoch)
         self.add_eval_metrics(eval_metrics, epoch)
@@ -994,7 +1010,7 @@ class ModelTracker:
 
     def _get_correct_epoch(self, epoch: int, hist_type: str) -> int:
         """
-        If `epoch=-1`, returns the last epoch for
+        If `epoch==-1`, returns the last epoch for
         which history is currently stored, otherwise
         the epoch itself.
         """
@@ -1005,7 +1021,7 @@ class ModelTracker:
 
     def _get_next_epoch(self, epoch: int, hist_type: str) -> int:
         """
-        If `epoch=-1`, returns the next epoch for
+        If `epoch==-1`, returns the next epoch for
         which history is to be stored, otherwise
         the epoch itself.
         """
@@ -1073,7 +1089,7 @@ class SequencePooler(nn.Module):
 
     def _bert_pooler(self, x):
         """
-        **NOTE**: The sentence/sequence vector obtained
+        **NOTE**: The sentence / sequence vector obtained
         from BERT does NOT correspond to the [CLS] vector.
         It takes as input this vector and then runs a small
         network on top of it to give the "pooled" sequence output.
