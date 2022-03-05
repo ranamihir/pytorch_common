@@ -20,3 +20,4 @@ dependencies:
     - dill==0.3.4
     - munch==2.5.0
     - locket==0.2.0
+    - bumpversion==0.6.0
