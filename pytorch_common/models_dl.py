@@ -169,8 +169,8 @@ class BasePyTorchModel(nn.Module):
         """
         if not (return_probs or return_preds):
             logger.warning(
-                f"You must set at least one of `return_probs` ({return_probs}) "
-                f"or `return_preds` ({return_preds}) as True."
+                f"At least one of `return_probs` ({return_probs}) or "
+                f"`return_preds` ({return_preds}) must be set as True."
             )
             return
 

@@ -8,6 +8,7 @@ import torch.nn as nn
 from .metric_utils import (
     EVAL_METRIC_FUNCTIONS,
     LOSS_CRITERIA,
+    LOSS_REDUCTIONS,
     PREPROCESSING_FUNCTIONS,
     FocalLoss,
     canonicalize,
@@ -220,7 +221,7 @@ class EvalCriteria:
 
             # Aggregate results across all classes
             results = {}
-            for criterion in results_per_class[0].keys():
+            for criterion in results_per_class[0]:
                 results[criterion] = self.agg_func([results_class[criterion] for results_class in results_per_class])
         else:
             # Compute results directly if regression / not multilabel
@@ -349,13 +350,29 @@ def get_loss_eval_criteria(config: _Config) -> Tuple[_Loss, _Loss, _EvalCriterio
     """
     train_loss_kwargs, val_loss_kwargs = config.loss_kwargs.copy(), config.loss_kwargs.copy()
 
+    # Check correct params for sample weighting
+    error_message = (
+        "The `reduction` ('{reduction}') for {phase} loss criterion must be "
+        "one of {allowed_reductions} if you want to use sample weighting."
+    )
+    if config.sample_weighting_train:
+        assert config.loss_kwargs["reduction_train"] in LOSS_REDUCTIONS, error_message.format(
+            reduction=config.loss_kwargs.get("reduction_train"), phase="training", allowed_reductions=LOSS_REDUCTIONS
+        )
+    if config.sample_weighting_eval:
+        assert config.loss_kwargs["reduction_val"] in LOSS_REDUCTIONS, error_message.format(
+            reduction=config.loss_kwargs.get("reduction_val"), phase="evaluation", allowed_reductions=LOSS_REDUCTIONS
+        )
+
     # Add / update train loss reduction and get criterion
-    train_loss_kwargs["reduction"] = train_loss_kwargs.pop("reduction_train", "mean")
+    reduction_train = train_loss_kwargs.pop("reduction_train", "mean")
+    train_loss_kwargs["reduction"] = "none" if config.sample_weighting_train else reduction_train
     train_loss_kwargs.pop("reduction_val", None)
     loss_criterion_train = get_loss_criterion(config, criterion=config.loss_criterion, **train_loss_kwargs)
 
     # Add / update val loss reduction and get criterion
-    val_loss_kwargs["reduction"] = val_loss_kwargs.pop("reduction_val", "mean")
+    reduction_val = val_loss_kwargs.pop("reduction_val", "mean")
+    val_loss_kwargs["reduction"] = "none" if config.sample_weighting_eval else reduction_val
     val_loss_kwargs.pop("reduction_train", None)
     loss_criterion_val = get_loss_criterion(config, criterion=config.loss_criterion, **val_loss_kwargs)
 
@@ -416,7 +433,7 @@ def get_loss_criterion_function(config: _Config, criterion: Optional[str] = "cro
                 agg_func = torch.mean
             else:
                 raise ValueError(
-                    f"Param 'multilabel_reduction' ('{multilabel_reduction}') must be one of ['sum', 'mean']."
+                    f"Param 'multilabel_reduction' ('{multilabel_reduction}') must be one of {LOSS_REDUCTIONS}."
                 )
 
     # Get per-label loss

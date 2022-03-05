@@ -281,6 +281,7 @@ class DummyMultiClassDataset(BasePyTorchDataset):
 
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
+        self.config = config
         self.size = config.size
         self.dim = config.dim
         self.num_classes = config.num_classes
@@ -313,6 +314,7 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
 
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
+        self.config = config
         self.size = config.size
         self.dim = config.dim
         self.num_classes = config.num_classes
@@ -345,6 +347,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
 
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
+        self.config = config
         self.size = config.size
         self.in_dim = config.in_dim
         self.out_dim = config.out_dim

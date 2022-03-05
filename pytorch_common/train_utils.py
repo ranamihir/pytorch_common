@@ -14,8 +14,7 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
 from . import timing
-
-from .metrics import EvalCriteria
+from .metrics import LOSS_REDUCTIONS, EvalCriteria
 from .types import *
 from .utils import (
     ModelTracker,
@@ -123,6 +122,10 @@ def train_model(
     ) and scheduler.__class__.__name__ == "ReduceLROnPlateau":
         raise ValueError("Scheduler `ReduceLROnPlateau` is currently not supported.")
 
+    # Get loss reduction parameters if using sample weighting
+    loss_reduction_train = config.loss_kwargs.get("reduction_train", "mean") if config.sample_weighting_train else None
+    loss_reduction_eval = config.loss_kwargs.get("reduction_val", "mean") if config.sample_weighting_eval else None
+
     # Load trained model if required
     start_epoch, best_epoch = 0, 0
     if checkpoint_file is not None:
@@ -160,6 +163,7 @@ def train_model(
                 scheduler=scheduler if config.use_scheduler_after_step else None,
                 epochs=epochs,
                 sample_weighting=sample_weighting_train,
+                loss_reduction=loss_reduction_train,
                 decouple_fn=decouple_fn_train,
             )
 
@@ -171,6 +175,7 @@ def train_model(
                 loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
                 sample_weighting=sample_weighting_eval,
+                loss_reduction=loss_reduction_eval,
                 decouple_fn=decouple_fn_eval,
                 return_keys=[],
             )
@@ -190,6 +195,7 @@ def train_model(
                     loss_criterion=loss_criterion_eval,
                     eval_criteria=eval_criteria,
                     sample_weighting=sample_weighting_eval,
+                    loss_reduction=loss_reduction_eval,
                     decouple_fn=decouple_fn_eval,
                     return_keys=[],
                 )
@@ -310,6 +316,7 @@ def train_epoch(
     scheduler: Optional[object] = None,
     epochs: Optional[int] = None,
     sample_weighting: Optional[bool] = False,
+    loss_reduction: Optional[str] = None,
     decouple_fn: Optional[_DecoupleFnTrain] = None,
 ) -> _StringDict:
     """
@@ -328,6 +335,7 @@ def train_epoch(
         scheduler=scheduler,
         epochs=epochs,
         sample_weighting=sample_weighting,
+        loss_reduction=loss_reduction,
         decouple_fn=decouple_fn,
     )
 
@@ -340,6 +348,7 @@ def evaluate_epoch(
     loss_criterion: _Loss,
     eval_criteria: _EvalCriterionOrCriteria,
     sample_weighting: Optional[bool] = False,
+    loss_reduction: Optional[str] = None,
     decouple_fn: Optional[_DecoupleFnTrain] = None,
     return_keys: Optional[List[str]] = None,
 ) -> _StringDict:
@@ -357,6 +366,7 @@ def evaluate_epoch(
         loss_criterion=loss_criterion,
         eval_criteria=eval_criteria,
         sample_weighting=sample_weighting,
+        loss_reduction=loss_reduction,
         decouple_fn=decouple_fn,
         return_keys=return_keys,
     )
@@ -402,6 +412,7 @@ def perform_one_epoch(
     threshold_prob: Optional[float] = None,
     epochs: Optional[int] = None,
     sample_weighting: Optional[bool] = False,
+    loss_reduction: Optional[str] = None,
     decouple_fn: Optional[_DecoupleFn] = None,
     return_keys: Optional[List[str]] = None,
 ) -> _StringDict:
@@ -421,6 +432,12 @@ def perform_one_epoch(
                              NOTE: To use this feature, you must provide the weights
                                    in the dataloader decoupling function. See
                                    `decouple_batch_train()` for more details.
+    :param loss_reduction: The reduction to apply to the element-wise losses
+                           if using sample weighting.
+                           Choices: `"mean"` | `"sum"`
+                           NOTE: This parameter is ignored if not using sample
+                                 weighting, since the `loss_criterion` will
+                                 already factor in the reduction in that case.
     :param return_keys: Additional objects to return in the return dictionary.
                         - For `phase="train"`, this argument will be ignored and
                           the losses will always be returned.
@@ -504,6 +521,15 @@ def perform_one_epoch(
     elif phase != "test":
         raise ValueError(f"Param 'phase' ('{phase}') must be one of {ALLOWED_PHASES}.")
 
+    # Get loss reduction function if using sample weighting
+    if sample_weighting:
+        assert loss_reduction in LOSS_REDUCTIONS, (
+            f"The `reduction` ('{loss_reduction}') for the loss criterion must "
+            f"be one of {LOSS_REDUCTIONS} if you want to use sample weighting."
+        )
+        loss_reduction_dict = {"mean": torch.mean, "sum": torch.sum}
+        loss_reduction_fn = loss_reduction_dict[loss_reduction]
+
     # Get bool dict of return keys
     _return_keys = _get_return_key_dict()
 
@@ -583,7 +609,7 @@ def perform_one_epoch(
                 # Compute and store loss
                 loss = loss_criterion(outputs, targets)
                 if sample_weighting:
-                    loss = (loss * sample_weights / sample_weights.sum()).sum()
+                    loss = loss_reduction_fn(loss * sample_weights / sample_weights.sum())
                 loss_value = loss.item()
                 return_dict["losses"].append(loss_value)
 
@@ -1046,7 +1072,7 @@ class EarlyStopping:
         else:
             # Non-default params must be provided for unsupported criteria
             for k, v in kwargs.items():
-                if k not in self.DEFAULT_PARAMS.keys():
+                if k not in self.DEFAULT_PARAMS:
                     assert v is not None, (
                         f"The only criteria currently supported by "
                         f"default are {self.SUPPORTED_CRITERIA}, "

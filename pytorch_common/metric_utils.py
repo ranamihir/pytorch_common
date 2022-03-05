@@ -205,6 +205,7 @@ class FocalLoss(nn.Module):
 # See the top for instructions on how
 REGRESSION_LOSS_CRITERIA = ["mse"]
 CLASSIFICATION_LOSS_CRITERIA = ["cross-entropy", "focal-loss"]
+LOSS_REDUCTIONS = ["mean", "sum"]
 LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA + CLASSIFICATION_LOSS_CRITERIA
 
 # Add your choice of eval criterion here

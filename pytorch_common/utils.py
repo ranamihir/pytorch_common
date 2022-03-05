@@ -987,15 +987,15 @@ class ModelTracker:
         """
         List of epochs for which loss history is stored.
         """
-        return list(self.loss_hist.keys())
+        return list(self.loss_hist)
 
     @property
     def _epochs_eval_metrics(self) -> List[int]:
         """
         List of epochs for which eval metrics history is stored.
         """
-        k = list(self.eval_metrics_hist.keys())[0]  # Any random metric
-        return list(self.eval_metrics_hist[k].keys())
+        k = list(self.eval_metrics_hist)[0]  # Any random metric
+        return list(self.eval_metrics_hist[k])
 
     @property
     def epochs(self) -> List[int]:
@@ -1074,7 +1074,7 @@ class SequencePooler(nn.Module):
         }
 
         # Use default pooler if not supported
-        if model_type in self.POOLER_MAPPING.keys():
+        if model_type in self.POOLER_MAPPING:
             self.model_type = model_type
             self.pooler = self.POOLER_MAPPING[self.model_type]
         else:
