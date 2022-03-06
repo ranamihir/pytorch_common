@@ -1,11 +1,9 @@
-from copy import deepcopy
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from .additional_configs import BaseModelConfig
-from .types import Dict, Optional, Tuple, Union, _ModelOrModels, _StringDict
+from .types import Dict, Optional, Union, _ModelOrModels, _StringDict
 from .utils import (
     copy_model,
     get_model_device,
@@ -21,7 +19,7 @@ logger = setup_logging(__name__)
 
 class BasePyTorchModel(nn.Module):
     """
-    Generic PyTorch Model implementing useful methods.
+    Generic PyTorch model implementing useful methods.
     """
 
     def __init__(self, model_type: Optional[str] = "classification"):
@@ -50,15 +48,15 @@ class BasePyTorchModel(nn.Module):
     @property
     def device(self) -> torch.device:
         """
-        The device on which the module is.
+        The device on which the model / module is.
         """
         return get_model_device(self)
 
     @property
     def dtype(self) -> torch.dtype:
         """
-        The dtype of the module (assuming that all
-        the module parameters have the same dtype).
+        The data type of the module (assuming that all
+        the module parameters have the same type).
         """
         return get_model_dtype(self)
 
@@ -86,10 +84,11 @@ class BasePyTorchModel(nn.Module):
     ) -> None:
         """
         Call this function in the child model class.
+
         :param init_weights: bool, whether to initialize weights
         :param models_to_init: See `initialize_weights()`
 
-        **NOTE**: If your model is/includes a pretrained model,
+        **NOTE**: If your model is / includes a pretrained model,
                   make sure to set `init_weights=False` when
                   calling this function, otherwise the pretrained
                   model will also be reinitialized.
@@ -113,11 +112,12 @@ class BasePyTorchModel(nn.Module):
         """
         If `models_to_init` is provided, it will only
         initialize their weights, otherwise whole model's.
+
         :param models_to_init: Model(s) to be initialized.
                                Can take the following values:
                                - None, will initialize self
                                - list or object of type
-                                 `nn.Module`/`BasePyTorchModel`,
+                                 `nn.Module` / `BasePyTorchModel`,
                                  will initialize their weights
         """
         if models_to_init is None:
@@ -131,7 +131,8 @@ class BasePyTorchModel(nn.Module):
         """
         Initialize weights for all Conv2d, BatchNorm2d,
         Linear, and Embedding layers.
-        # TODO: Improve init schemes / params
+
+        TODO: Improve init schemes / params
         """
         for m in model.modules():
             if isinstance(m, nn.Conv2d):
@@ -155,7 +156,8 @@ class BasePyTorchModel(nn.Module):
     ) -> _StringDict:
         """
         Returns predicted labels and probabilities
-        for `model_type = "classification"`.
+        for `model_type=="classification"`.
+
         :param outputs: Raw model output logits
         :param threshold: Threshold probability to compute
                           hard label predictions.
@@ -166,14 +168,17 @@ class BasePyTorchModel(nn.Module):
         :return probs: Predicted probabilities of each class
         """
         if not (return_probs or return_preds):
-            logger.warning("You must set at least one of `return_probs` or `return_preds` as True.")
+            logger.warning(
+                f"At least one of `return_probs` ({return_probs}) or "
+                f"`return_preds` ({return_preds}) must be set as True."
+            )
             return
 
         if self.model_type != "classification" and threshold is not None:
             raise ValueError(f"Param 'threshold' ('{threshold}') can only be provided for classification models.")
 
         # Get probabilities of each class
-        return_dict = {"probs": F.softmax(outputs, dim=-1).type(torch.float16), "preds": None}
+        return_dict = {"probs": F.softmax(outputs, dim=-1), "preds": None}
 
         num_classes = return_dict["probs"].shape[-1]
         if return_preds:
@@ -229,13 +234,14 @@ class BasePyTorchModel(nn.Module):
         """
         Freeze or unfreeze the given `models`, i.e.,
         all their children will / won't have gradients.
+
         :param models: Models / modules to freeze / unfreeze
                        Can take the following values:
                        - None, will alter self
                        - list or object of type
-                         `nn.Module`/`BasePyTorchModel`,
+                         `nn.Module` / `BasePyTorchModel`,
                          will alter their state
-        :freeze: Whether to freeze or unfreeze (bool)
+        :param freeze: Whether to freeze or unfreeze (bool)
         """
         if models is None:
             models = self  # Base model
@@ -243,7 +249,7 @@ class BasePyTorchModel(nn.Module):
             models = [models]
         for model in models:
             self._change_frozen_state_for_one_model(model, freeze)
-        get_trainable_params(self)  # Re-print number of trainable/total parameters
+        get_trainable_params(self)  # Re-print number of trainable / total parameters
 
     def _change_frozen_state_for_one_model(
         self, model: Optional[nn.Module] = None, freeze: Optional[bool] = True
@@ -251,13 +257,14 @@ class BasePyTorchModel(nn.Module):
         """
         Freeze or unfreeze a given `model`, i.e.,
         all its children will / won't have gradients.
+
         :param model: Model / module to freeze / unfreeze
                       Can take the following values:
                       - None, will alter self
                       - object of type `nn.Module` /
                         `BasePyTorchModel`, will
                         alter its state
-        :freeze: Whether to freeze or unfreeze (bool)
+        :param freeze: Whether to freeze or unfreeze (bool)
         """
         # Extract model name from class if not present already (for `transformers` models)
         model_name = getattr(model, "__name__", model.__class__.__name__)

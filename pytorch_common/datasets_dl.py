@@ -43,12 +43,12 @@ class BasePyTorchDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def print_dataset(self) -> None:
+    def print_dataset(self, *args, **kwargs) -> None:
         """
         Print useful summary statistics of the dataset.
         """
         logger.info("\n" + "-" * 40)
-        print_dataframe(self.data)
+        print_dataframe(self.data, *args, **kwargs)
 
         if self.target_col in self.data.columns:
             value_counts = self.data[self.target_col].value_counts()
@@ -63,7 +63,7 @@ class BasePyTorchDataset(Dataset):
         underlying methods are modified, you might need to
         re-serialize the object and then save it again.
 
-        Note: See `utils.save_object()` for available arguments.
+        NOTE: See `utils.save_object()` for available arguments.
         """
         save_object(self, *args, **kwargs)
 
@@ -75,7 +75,7 @@ class BasePyTorchDataset(Dataset):
         underlying methods are modified, you might need to save
         the object after re-serialization and then load it again.
 
-        Note: See `utils.load_object()` for available arguments.
+        NOTE: See `utils.load_object()` for available arguments.
         """
         dataset = load_object(*args, **kwargs)
         return dataset
@@ -85,7 +85,7 @@ class BasePyTorchDataset(Dataset):
         """
         Remove the dataset at the given path.
 
-        Note: See `utils.remove_object()` for available arguments.
+        NOTE: See `utils.remove_object()` for available arguments.
         """
         remove_object(*args, **kwargs)
 
@@ -106,7 +106,8 @@ class BasePyTorchDataset(Dataset):
         column: Optional[str] = None,
     ) -> None:
         """
-        Generic function for under-/over-sampling a given class.
+        Generic function for under- / over-sampling a given class.
+
         :param oversampling_factor: Factor by which to oversample
                                     the given class.
                                     The final count of the class will be
@@ -121,7 +122,7 @@ class BasePyTorchDataset(Dataset):
         :param column: Column on which to perform sampling.
                        Defaults to `self.target_col` if None provided.
 
-        Note: At a time, only one of `oversampling_factor` or `undersampling_factor` may be provided.
+        NOTE: At a time, only one of `oversampling_factor` or `undersampling_factor` may be provided.
         """
         ERROR_MSG = "One of `oversampling_factor` or `undersampling_factor` must be provided."
 
@@ -148,6 +149,7 @@ class BasePyTorchDataset(Dataset):
     ) -> None:
         """
         Oversample a given class.
+
         :param oversampling_factor: Factor by which to oversample
                                     the given class.
                                     The final count of the class will be
@@ -177,6 +179,7 @@ class BasePyTorchDataset(Dataset):
     ) -> None:
         """
         Undersample a given class.
+
         :param undersampling_factor: Factor by which to undersample
                                      the given class.
                                      The final count of the class will be
@@ -206,15 +209,16 @@ class BasePyTorchDataset(Dataset):
     ) -> Tuple[Union[float, str], int, List[int]]:
         """
         Get the label, counts, and indices of each class.
-        Used for under-/over-sampling.
-        :param class_to_sample: Class (label) to over-/under-sample.
+        Used for under- / over-sampling.
+
+        :param class_to_sample: Class (label) to over- / under-sample.
                                 Samples majority class by default.
         :param column: Column on which to perform sampling.
                        Defaults to `self.target_col` if None provided.
         :param minority: Whether to sample the minority or majority class.
                          Only used if param `class_to_sample` is not provided.
         """
-        # Note: Do NOT have a mixed dtype `column` with the same
+        # NOTE: Do NOT have a mixed dtype `column` with the same
         #       value appearing as both a string and a non-string.
         #       E.g. 1 and "1".
         #       Sampling `column` is always converted to string first before
@@ -235,7 +239,7 @@ class BasePyTorchDataset(Dataset):
         # Get all class counts
         value_counts = str_column.value_counts(sort=True, ascending=False)
 
-        # If class not specified, take majority/minority class by default
+        # If class not specified, take majority / minority class by default
         if class_to_sample is None:
             class_label = value_counts.index.tolist()[-1 if minority else 0]
         else:
@@ -277,6 +281,7 @@ class DummyMultiClassDataset(BasePyTorchDataset):
 
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
+        self.config = config
         self.size = config.size
         self.dim = config.dim
         self.num_classes = config.num_classes
@@ -309,6 +314,7 @@ class DummyMultiLabelDataset(BasePyTorchDataset):
 
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
+        self.config = config
         self.size = config.size
         self.dim = config.dim
         self.num_classes = config.num_classes
@@ -341,6 +347,7 @@ class DummyRegressionDataset(BasePyTorchDataset):
 
     def __init__(self, config: BasePyTorchDataset):
         super().__init__()
+        self.config = config
         self.size = config.size
         self.in_dim = config.in_dim
         self.out_dim = config.out_dim

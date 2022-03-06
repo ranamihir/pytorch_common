@@ -6,19 +6,7 @@ from munch import Munch
 from sklearn.metrics import accuracy_score, auc, f1_score, mean_squared_error, precision_score, recall_score, roc_curve
 
 from pytorch_common import metrics
-from pytorch_common.types import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    _EvalCriterionOrCriteria,
-    _Loss,
-    _StringDict,
-)
+from pytorch_common.types import Any, Callable, List, Optional, Tuple, _EvalCriterionOrCriteria, _Loss, _StringDict
 from pytorch_common.utils import compare_tensors_or_arrays
 
 
@@ -35,6 +23,8 @@ class TestMetrics(unittest.TestCase):
             "loss_kwargs": {},
             "eval_criteria": ["accuracy"],
             "eval_criteria_kwargs": {},
+            "sample_weighting_train": False,
+            "sample_weighting_eval": False,
         }
 
     def test_loss_eval_criteria(self):
@@ -46,10 +36,10 @@ class TestMetrics(unittest.TestCase):
         # Ensure inter-compatibility of all supported
         # loss and eval criteria for binary classification
         for loss_criterion in metrics.LOSS_CRITERIA:
-            self._get_loss_eval_criteria({"loss_criterion": loss_criterion, "eval_criteria": eval_criteria})
+            self._get_loss_eval_criteria(loss_criterion=loss_criterion, eval_criteria=eval_criteria)
 
         # Ensure inter-compatibility of supported loss and
-        # eval criteria for multiclass/multilabel classification
+        # eval criteria for multiclass / multilabel classification
         for loss_criterion in metrics.LOSS_CRITERIA:
             for classification_type in ["multiclass", "multilabel"]:
                 dictionary = {
@@ -59,14 +49,26 @@ class TestMetrics(unittest.TestCase):
                 }
                 if loss_criterion == "focal-loss":
                     # FocalLoss only compatible with binary classification
-                    self._test_error(self._get_loss_eval_criteria, ValueError, dictionary)
+                    self._test_error(self._get_loss_eval_criteria, ValueError, **dictionary)
                 else:
                     # Param `multilabel_reduction` required for multilabel classification
                     if classification_type == "multilabel":
-                        self._test_error(self._get_loss_eval_criteria, ValueError, dictionary)
+                        self._test_error(self._get_loss_eval_criteria, ValueError, **dictionary)
                         for key in ["loss_kwargs", "eval_criteria_kwargs"]:
                             dictionary[key] = {"multilabel_reduction": "mean"}
-                    self._get_loss_eval_criteria(dictionary)
+                    self._get_loss_eval_criteria(**dictionary)
+
+        # Ensure loss reduction is correctly specified if using sample weighting
+        for mode in ["train", "val"]:
+            mode_ = "eval" if mode == "val" else mode
+            kwargs = {f"sample_weighting_{mode_}": True, "loss_kwargs": {}, "eval_criteria": eval_criteria}
+            for loss_reduction in metrics.LOSS_REDUCTIONS:  # Test valid configurations
+                kwargs["loss_kwargs"][f"reduction_{mode}"] = loss_reduction
+                self._get_loss_eval_criteria(**kwargs)
+            for loss_reduction in ["dummy", None]:  # Test invalid configurations
+                kwargs["loss_kwargs"][f"reduction_{mode}"] = loss_reduction
+                self._test_error(self._get_loss_eval_criteria, AssertionError, **kwargs)
+            kwargs[f"sample_weighting_{mode_}"] = False
 
     def test_regression_metrics(self):
         """
@@ -106,13 +108,13 @@ class TestMetrics(unittest.TestCase):
         eval_criteria.remove("top_k_accuracy")
         self._test_metrics(predictions, targets, eval_criteria, true_values)
 
-    def _get_loss_eval_criteria(self, dictionary: Dict) -> Tuple[_Loss, _Loss, _EvalCriterionOrCriteria]:
+    def _get_loss_eval_criteria(self, **kwargs) -> Tuple[_Loss, _Loss, _EvalCriterionOrCriteria]:
         """
         Load the default config, override it
-        with `dictionary`, and get the loss
+        with `kwargs`, and get the loss
         and eval criteria with this config.
         """
-        config = Munch(self._get_merged_dict(dictionary))
+        config = Munch(self._get_merged_dict(**kwargs))
         return metrics.get_loss_eval_criteria(config)
 
     def _test_metrics(
@@ -131,7 +133,7 @@ class TestMetrics(unittest.TestCase):
         targets = torch.as_tensor(targets).float()
 
         # Get all eval metrics
-        _, _, eval_criteria = self._get_loss_eval_criteria({"eval_criteria": eval_criteria})
+        _, _, eval_criteria = self._get_loss_eval_criteria(eval_criteria=eval_criteria)
         eval_metrics = eval_criteria(predictions, targets)
 
         # Test that computed metrics match true values
@@ -147,14 +149,12 @@ class TestMetrics(unittest.TestCase):
         with self.assertRaises(error):
             func(*args, **kwargs)
 
-    def _get_merged_dict(self, dictionary: Optional[Dict] = None) -> Dict:
+    def _get_merged_dict(self, **kwargs) -> _StringDict:
         """
         Override default config with
-        `dictionary` if provided.
+        `kwargs` if provided.
         """
-        if dictionary is None:
-            return self.config.copy()
-        return {**self.config, **dictionary}
+        return {**self.config, **kwargs}
 
 
 if __name__ == "__main__":

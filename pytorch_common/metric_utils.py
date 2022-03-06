@@ -10,7 +10,6 @@ To add a new evaluation criterion:
 """
 import re
 
-import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.metrics import accuracy_score, auc, f1_score, precision_score, recall_score, roc_curve
@@ -83,7 +82,7 @@ def top_k_accuracy_scores(
     """
     A batch implementation of `top_k_accuracy_score()`.
 
-    It takes all top_k_accuracy-based metrics as input,
+    It takes all top-k accuracy-based metrics as input,
     and computes the respective metrics efficiently.
     If done separately, the top-k indices would need
     to be computed separately for each k, while here
@@ -119,7 +118,7 @@ def top_k_accuracy_score(y_predicted: torch.Tensor, y_true: torch.Tensor, **kwar
     Conversion to numpy is expensive in this
     case. Stick to using PyTorch tensors.
 
-    Note: This function is not recommended if you have
+    NOTE: This function is not recommended if you have
           more than one k that this is to be computed
           for. Please use the much more efficient
           `top_k_accuracy_scores()` in that case.
@@ -175,6 +174,7 @@ class FocalLoss(nn.Module):
     def forward(self, outputs: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         Compute the focal loss between raw logits and binary targets.
+
         :param outputs: (tensor) binary class probabilities of size (batch_size, 2)
         :param y: (tensor) encoded target labels of size (batch_size)
 
@@ -205,11 +205,12 @@ class FocalLoss(nn.Module):
 # See the top for instructions on how
 REGRESSION_LOSS_CRITERIA = ["mse"]
 CLASSIFICATION_LOSS_CRITERIA = ["cross-entropy", "focal-loss"]
+LOSS_REDUCTIONS = ["mean", "sum"]
 LOSS_CRITERIA = REGRESSION_LOSS_CRITERIA + CLASSIFICATION_LOSS_CRITERIA
 
 # Add your choice of eval criterion here
 # See the top for instructions on how
-# Note: sklearn metrics seem to be compatible with torch tensors on their own
+# NOTE: sklearn metrics seem to be compatible with torch tensors on their own
 EVAL_METRIC_FUNCTIONS = {
     "mse": {"eval_fn": get_mse_loss, "model_type": "regression"},
     "accuracy": {

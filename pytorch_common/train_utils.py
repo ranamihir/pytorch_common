@@ -13,9 +13,8 @@ import torch.nn as nn
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
-from pytorch_common import timing
-
-from .metrics import EvalCriteria
+from . import timing
+from .metrics import LOSS_REDUCTIONS, EvalCriteria
 from .types import *
 from .utils import (
     ModelTracker,
@@ -62,15 +61,15 @@ def train_model(
         loaded into the model and training is to be resumed from that point.
       - `decouple_fn_train` and `decouple_fn_eval` are functions which
         take in the batch and return the separated out inputs
-        (and targets for training/evaluation).
+        (and targets for training / evaluation).
         They may be specified if this process deviates from the default
-        behavior (see `decouple_batch_train() for more details`).
+        behavior (see `decouple_batch_train()` for more details).
 
     NOTE: Training may be paused at any time with a keyboard interrupt.
           However, please avoid interrupting after an epoch is finished
           and before the next one begins, e.g. during saving a
           checkpoint, as it may cause issues while loading the model.
-          Instead pause it during training/evaluation within an epoch.
+          Instead pause it during training / evaluation within an epoch.
 
     :param loss_criterion_train: Training loss criterion
     :param loss_criterion_eval: Evaluation loss criterion
@@ -113,7 +112,7 @@ def train_model(
     if epochs is None:
         epochs = config.epochs
 
-    # Either both `val_loader` and `val_logger` must be provided or none (for no evaluation)
+    # Either both `val_loader` and `val_logger` must be provided or neither (for no evaluation)
     assert not ((val_loader is None) ^ (val_logger is None))
     do_evaluation = val_loader is not None
 
@@ -122,6 +121,10 @@ def train_model(
         config.use_scheduler_after_epoch or config.use_scheduler_after_step
     ) and scheduler.__class__.__name__ == "ReduceLROnPlateau":
         raise ValueError("Scheduler `ReduceLROnPlateau` is currently not supported.")
+
+    # Get loss reduction parameters if using sample weighting
+    loss_reduction_train = config.loss_kwargs.get("reduction_train", "mean") if config.sample_weighting_train else None
+    loss_reduction_eval = config.loss_kwargs.get("reduction_val", "mean") if config.sample_weighting_eval else None
 
     # Load trained model if required
     start_epoch, best_epoch = 0, 0
@@ -160,6 +163,7 @@ def train_model(
                 scheduler=scheduler if config.use_scheduler_after_step else None,
                 epochs=epochs,
                 sample_weighting=sample_weighting_train,
+                loss_reduction=loss_reduction_train,
                 decouple_fn=decouple_fn_train,
             )
 
@@ -171,6 +175,7 @@ def train_model(
                 loss_criterion=loss_criterion_eval,
                 eval_criteria=eval_criteria,
                 sample_weighting=sample_weighting_eval,
+                loss_reduction=loss_reduction_eval,
                 decouple_fn=decouple_fn_eval,
                 return_keys=[],
             )
@@ -190,6 +195,7 @@ def train_model(
                     loss_criterion=loss_criterion_eval,
                     eval_criteria=eval_criteria,
                     sample_weighting=sample_weighting_eval,
+                    loss_reduction=loss_reduction_eval,
                     decouple_fn=decouple_fn_eval,
                     return_keys=[],
                 )
@@ -310,6 +316,7 @@ def train_epoch(
     scheduler: Optional[object] = None,
     epochs: Optional[int] = None,
     sample_weighting: Optional[bool] = False,
+    loss_reduction: Optional[str] = None,
     decouple_fn: Optional[_DecoupleFnTrain] = None,
 ) -> _StringDict:
     """
@@ -328,6 +335,7 @@ def train_epoch(
         scheduler=scheduler,
         epochs=epochs,
         sample_weighting=sample_weighting,
+        loss_reduction=loss_reduction,
         decouple_fn=decouple_fn,
     )
 
@@ -340,6 +348,7 @@ def evaluate_epoch(
     loss_criterion: _Loss,
     eval_criteria: _EvalCriterionOrCriteria,
     sample_weighting: Optional[bool] = False,
+    loss_reduction: Optional[str] = None,
     decouple_fn: Optional[_DecoupleFnTrain] = None,
     return_keys: Optional[List[str]] = None,
 ) -> _StringDict:
@@ -357,6 +366,7 @@ def evaluate_epoch(
         loss_criterion=loss_criterion,
         eval_criteria=eval_criteria,
         sample_weighting=sample_weighting,
+        loss_reduction=loss_reduction,
         decouple_fn=decouple_fn,
         return_keys=return_keys,
     )
@@ -402,6 +412,7 @@ def perform_one_epoch(
     threshold_prob: Optional[float] = None,
     epochs: Optional[int] = None,
     sample_weighting: Optional[bool] = False,
+    loss_reduction: Optional[str] = None,
     decouple_fn: Optional[_DecoupleFn] = None,
     return_keys: Optional[List[str]] = None,
 ) -> _StringDict:
@@ -414,20 +425,26 @@ def perform_one_epoch(
         and probabilities if it's a classification model.
 
     :param phase: Type of pass to perform over data
-                  Choices = "train" | "eval" | "test"
+                  Choices = `"train"` | `"eval"` | `"test"`
     :param scheduler: Pass this only if it's a scheduler that requires taking a step
-                      after each batch step/iteration (e.g. CyclicLR), otherwise None
+                      after each batch step / iteration (e.g. CyclicLR), otherwise None
     :param sample_weighting: Whether sample weighting is enabled or not.
                              NOTE: To use this feature, you must provide the weights
                                    in the dataloader decoupling function. See
                                    `decouple_batch_train()` for more details.
+    :param loss_reduction: The reduction to apply to the element-wise losses
+                           if using sample weighting.
+                           Choices: `"mean"` | `"sum"`
+                           NOTE: This parameter is ignored if not using sample
+                                 weighting, since the `loss_criterion` will
+                                 already factor in the reduction in that case.
     :param return_keys: Additional objects to return in the return dictionary.
                         - For `phase="train"`, this argument will be ignored and
                           the losses will always be returned.
                         - For `phase="eval"`, the losses and evaluation metrics
                           will always be returned. Additionally, you may specify
                           any of `["outputs", "targets"]` in this argument.
-                        - For `phase="test"`, you may specify any of
+                        - For `phase=="test"`, you may specify any of
                           `["outputs", "probs", "preds"]` in this argument,
                           otherwise an empty dictionary will be returned.
                         If None, all applicable additional keys will be
@@ -504,6 +521,15 @@ def perform_one_epoch(
     elif phase != "test":
         raise ValueError(f"Param 'phase' ('{phase}') must be one of {ALLOWED_PHASES}.")
 
+    # Get loss reduction function if using sample weighting
+    if sample_weighting:
+        assert loss_reduction in LOSS_REDUCTIONS, (
+            f"The `reduction` ('{loss_reduction}') for the loss criterion must "
+            f"be one of {LOSS_REDUCTIONS} if you want to use sample weighting."
+        )
+        loss_reduction_dict = {"mean": torch.mean, "sum": torch.sum}
+        loss_reduction_fn = loss_reduction_dict[loss_reduction]
+
     # Get bool dict of return keys
     _return_keys = _get_return_key_dict()
 
@@ -516,7 +542,7 @@ def perform_one_epoch(
         assert IS_TRAINING, f"Param `epochs` ({epochs}) can only be provided in training phase."
         epochs_str = f"/{epochs}"
 
-    # Set model in training/eval mode as required
+    # Set model in training / eval mode as required
     model.train(mode=IS_TRAINING)
 
     # Get required dataloader params
@@ -539,7 +565,7 @@ def perform_one_epoch(
             # Get inputs for testing
             if phase == "test":
                 inputs = send_batch_to_device(decouple_fn(batch), device)
-            else:  # Get inputs, targets, and optionally sample weights for training/evaluation
+            else:  # Get inputs, targets, and optionally sample weights for training / evaluation
                 batch = send_batch_to_device(decouple_fn(batch, sample_weighting=sample_weighting), device)
                 if sample_weighting:
                     inputs, targets, sample_weights = batch
@@ -583,7 +609,7 @@ def perform_one_epoch(
                 # Compute and store loss
                 loss = loss_criterion(outputs, targets)
                 if sample_weighting:
-                    loss = (loss * sample_weights / sample_weights.sum()).sum()
+                    loss = loss_reduction_fn(loss * sample_weights / sample_weights.sum())
                 loss_value = loss.item()
                 return_dict["losses"].append(loss_value)
 
@@ -653,7 +679,7 @@ def decouple_batch_train(batch: _Batch, sample_weighting: Optional[bool] = False
     If sample weights are to be used, they
     will assume the third index.
 
-    Used commonly during training/evaluation.
+    Used commonly during training / evaluation.
 
     This is required because often other things
     are also passed in the batch for debugging.
@@ -710,9 +736,10 @@ def save_model(
         - Optimizer and scheduler state dicts (if provided)
 
     :param checkpoint_type: Type of checkpoint to load
-                            Choices = "state" | "model"
-                            Default = "state"
-    :returns name of checkpoint file
+                            Choices = `"state"` | `"model"`
+                            Default = `"state"`
+
+    :return Name of checkpoint file
     """
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
@@ -789,7 +816,7 @@ def load_model(
     It can load either:
       - the entire model
       - or just its state dict into a pre-defined model
-        Note: Input model should be pre-defined in this case.
+        NOTE: Input model should be pre-defined in this case.
               This routine only updates its state.
     Additionally, it loads the following variables:
         - Current training config
@@ -798,7 +825,7 @@ def load_model(
           losses and eval metrics so far
         - Optimizer and scheduler (if provided) state dicts
 
-    Note: Input optimizer and scheduler should be pre-defined
+    NOTE: Input optimizer and scheduler should be pre-defined
           if their states are to be updated.
 
     :param model: Must be None if the whole model is to be loaded,
@@ -898,7 +925,7 @@ def load_optimizer_and_scheduler(
         obj: Union[Optimizer, object], key: str = "optimizer"
     ) -> Union[Optional[Optimizer], Optional[object]]:
         """
-        Properly load state dict of optimizer/scheduler.
+        Properly load state dict of optimizer / scheduler.
         """
         state_dict = checkpoint.get(key)
         if state_dict is not None:
@@ -926,7 +953,7 @@ def remove_model(
     checkpoint_type: Optional[str] = "state",
 ) -> None:
     """
-    Remove a checkpoint/model at a given epoch.
+    Remove a checkpoint / model at a given epoch.
     Used in early stopping if better performance
     is observed at a subsequent epoch.
 
@@ -935,8 +962,8 @@ def remove_model(
                              generate a unique string for the
                              checkpoint name
     :param checkpoint_type: Type of checkpoint to load
-                            Choices = "state" | "model"
-                            Default = "state"
+                            Choices = `"state"` | `"model"`
+                            Default = `"state"`
     """
     # Validate checkpoint_type
     validate_checkpoint_type(checkpoint_type)
@@ -1003,7 +1030,7 @@ class EarlyStopping:
         :param criterion: Name of early stopping criterion
                           If criterion is supported ineherently, you may choose to
                           not provide any of the other params and use the default ones.
-        :param mode: Whether to "maximize" or "minimize" the `criterion`
+        :param mode: Whether to `"maximize"` or `"minimize"` the `criterion`
         :param min_delta: Minimum difference in metric required to prevent early stopping
         :param patience: No. of epochs (or steps) over which to monitor early stopping
         :param best_val: Best possible value of metric (if any)
@@ -1045,7 +1072,7 @@ class EarlyStopping:
         else:
             # Non-default params must be provided for unsupported criteria
             for k, v in kwargs.items():
-                if k not in self.DEFAULT_PARAMS.keys():
+                if k not in self.DEFAULT_PARAMS:
                     assert v is not None, (
                         f"The only criteria currently supported by "
                         f"default are {self.SUPPORTED_CRITERIA}, "
@@ -1058,9 +1085,9 @@ class EarlyStopping:
 
     def _validate_params(self):
         """
-        Check validity of mode of optimization.
+        Check the validity of mode of optimization.
         """
-        supported_modes = self.SUPPORTED_MODES.keys()
+        supported_modes = list(self.SUPPORTED_MODES)
         if self.mode not in supported_modes:
             raise ValueError(f"Param 'mode' ('{self.mode}') must be one of {supported_modes}.")
         if self.best_val is not None and self.best_val_tol is None:
