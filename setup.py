@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
     # Application info
     name="pytorch_common",
-    version="1.5.5",  # NOTE: Do not edit manually - will increment via bumpversion
+    version="1.5.4",  # NOTE: Do not edit manually - will increment via bumpversion
     author="Mihir Rana",
     author_email="ranamihir@gmail.com",
     description="Repo for common PyTorch code",
