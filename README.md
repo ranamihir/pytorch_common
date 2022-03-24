@@ -9,32 +9,40 @@
     </a>
 </p>
 
-`pytorch-common` is a lightweight wrapper that contains PyTorch code that is common and (hopefully) helpful to most projects built on PyTorch. It is built with 3 main principles in mind:
+
+# Overview
+
+This repository contains PyTorch code that is common and (hopefully) helpful to most projects built on PyTorch.
+
+It is a lightweight wrapper that contains PyTorch code that is common and (hopefully) helpful to most projects built on PyTorch. It is built with 3 main principles in mind:
 - Make use of PyTorch available to people without much in-depth knowledge of it while providing enormous flexibility and support for hardcore users
 - Under-the-hood optimization for fast and memory efficient performance
 - Ability to change all settings (e.g. model, loss, metrics, devices, hyperparameters, artifact directories, etc.) directly from config
+
 
 # Features
 
 In a nutshell, it has code for:
   - Training / testing models
+    - Option to retrain on all data (without performing evaluation on a separate data set)
   - Logging all common losses / eval metrics
   - `BasePyTorchDataset`, which has functions for:
     - Printing summary + useful statistics
-    - Over-/under-sampling rows
-    - Properly saving/loading/removing datasets (using appropriate pickle modules)
+    - Over- / under-sampling rows
+    - Properly saving / loading / removing datasets (using appropriate pickle modules)
   - `BasePyTorchModel`, which has:
     - `initialize_model()`:
       - Prints number of params + architecture
       - Allows initializing (all / given) weights for Conv, BatchNorm, Linear, Embedding layers
-    - Provision to freeze/unfreeze (all / given) weights of model
+    - Provision to freeze / unfreeze (all / given) weights of model
   - Sending model to device(s)
-  - Saving/loading/removing/copying state dict / model checkpoints
+  - Saving / loading / removing / copying state dict / model checkpoints
   - Disable above mentioned checkpointing from config for faster development
   - Early stopping
-  - Properly sending model/optimizer/batch to device(s)
-  - Defining custom train/test loss and evaluation criteria directly from config
-    - Supports most common losses/metrics for regression and binary/multi-class/multi-label classification
+  - Sample weighting
+  - Properly sending model / optimizer / batch to device(s)
+  - Defining custom train / test loss and evaluation criteria directly from config
+    - Supports most common losses / metrics for regression and binary / multi-class / multi-label classification
     - May give as many as you like
   - Cleanly stopping training at any point without losing progress
   - Make predictions
@@ -43,73 +51,80 @@ In a nutshell, it has code for:
   - Loading back best (or any) model and printing + plotting all losses + eval metrics
   - etc.
 
+
 # Installation
-To install this package, you must have [pytorch](https://pytorch.org/) (and [transformers](https://github.com/huggingface/transformers) for accessing NLP-based functionalities) installed.
-If you don't already have it, you can create a conda environment by running:
+To install this package, you must have [pytorch](https://pytorch.org/) (and [transformers](https://github.com/huggingface/transformers) for accessing NLP-based functionalities) installed. Then you can simply install this package from source:
 ```bash
-conda env create -f requirements.yaml`
-pip install -e . # or ".[nlp]" if required
-```
-which will create an environment called `pytorch_common` for you with all the required dependencies.
-
-
-The package can then be installed from source:
-```bash
-git clone git@github.com:ranamihir/pytorch_common
+git clone git@github.com:ranamihir/pytorch_common.git
 cd pytorch_common
+conda env create -f requirements.yaml  # If you don't already have a pytorch-enabled conda environment
+conda activate pytorch_common  # <-- Replace with your environment name
 pip install .
 ```
+which will create an environment called `pytorch_common` for you with all the required dependencies and this package installed.
 
 If you'd like access to the NLP-related functionalities (specifically for [transformers](https://github.com/huggingface/transformers/)), make sure to install it as below instead:
 ```bash
 pip install ".[nlp]"
 ```
 
+
 # Usage
 
-The default [config](https://github.com/ranamihir/pytorch_common/blob/master/pytorch_common/configs/config.yaml) can be loaded, and overridden with a user-specified dictionary, as follows:
-```python
-from pytorch_common.config import load_pytorch_common_config
+Training a very simple (dummy) model is as easy as:
 
-# Create your own config (or load from a yaml file)
-config_dict = {"batch_size_per_gpu": 5, "device": "cpu", "epochs": 2, "lr": 1e-3, "disable_checkpointing": True}
-
-# Load the deault pytorch_common config, and then override it with your own custom one
-config = load_pytorch_common_config(config_dict)
-```
-
-Then, training a (dummy) model is as easy as:
 ```python
 from torch.utils.data import DataLoader
-from torch.optim import SGD
 
-from pytorch_common.additional_configs import BaseDatasetConfig, BaseModelConfig
-from pytorch_common.datasets import create_dataset
+from pytorch_common.config import load_pytorch_common_config
 from pytorch_common.metrics import get_loss_eval_criteria
-from pytorch_common.models import create_model
 from pytorch_common.train_utils import train_model
 from pytorch_common.utils import get_model_performance_trackers
 
-# Create your own objects here
-dataset_config = BaseDatasetConfig({"size": 5, "dim": 1, "num_classes": 2})
-model_config = BaseModelConfig({"in_dim": 1, "num_classes": 2})
-dataset = create_dataset("multi_class_dataset", dataset_config)
-train_loader = DataLoader(dataset, batch_size=config.train_batch_size)
-val_loader = DataLoader(dataset, batch_size=config.eval_batch_size)
-model = create_model("single_layer_classifier", model_config)
-optimizer = SGD(model.parameters(), lr=config.lr)
+# Load default pytorch_common config and override with your settings
+project_config_dict = ...
+config = load_pytorch_common_config(project_config_dict)
 
-# Use `pytorch_common` to get loss/eval criteria, initialize loggers, and train the model
+# Create your own training objects here
+train_loader = ...
+val_loader = ...
+model = ...
+optimizer = ...
+
+# Use `pytorch_common` to get loss / eval criteria, initialize loggers, and train the model
 loss_criterion_train, loss_criterion_eval, eval_criteria = get_loss_eval_criteria(config, reduction="mean")
 train_logger, val_logger = get_model_performance_trackers(config)
 return_dict = train_model(
     model, config, train_loader, val_loader, optimizer, loss_criterion_train, loss_criterion_eval, eval_criteria, train_logger, val_logger
 )
 ```
-For more details on getting started, check out the [basic usage notebook](https://github.com/ranamihir/pytorch_common/blob/master/notebooks/basic_usage.ipynb) and other examples in the [notebooks](https://github.com/ranamihir/pytorch_common/blob/master/notebooks/) folder.
+
+More detailed examples highlighting the full functionality of this package can be found in the [examples](https://github.com/ranamihir/pytorch_common/tree/master/examples) directory.
+
+## Config
+
+A powerful advantage of using this repository is the ability to change a large number of settings related to PyTorch, and more generally, deep learning, directly from YAML, instead of having to worry about making code changes.
+
+To do this, all you need to do is invoke the `load_pytorch_common_config()` function (with your project dictionary as input, if required). This will allow you to edit all `pytorch_common` supported settings in your project dictionary / YAML, or use the default ones for those not specified. E.g.:
+
+```python
+>>> from pytorch_common.config import load_pytorch_common_config
+
+>>> config = load_pytorch_common_config()  # Use default settings
+>>> print(config.batch_size_per_gpu)
+32
+>>> dictionary = {"vocab_size": 10_000, "batch_size_per_gpu": 64}  # Override default settings and / or add project specific settings here
+>>> config = load_pytorch_common_config(dictionary)
+>>> print(config.batch_size_per_gpu)
+64
+>>> print(config.vocab_size)
+10000
+```
+
+The list of all supported configuration settings can be found [here](https://github.com/ranamihir/pytorch_common/blob/master/pytorch_common/configs/config.yaml).
+
 
 # Testing
-
 Several unit tests are present in the [tests](https://github.com/ranamihir/pytorch_common/tree/master/tests) directory. You may manually run them with:
 
 ```bash
@@ -129,8 +144,8 @@ chmod +x install-hooks.sh
 
 In the future, I intend to move the tests to CI.
 
-# To-do's
 
+# To-do's
 I have some enhancements in mind which I haven't gotten around to adding to this repo yet:
   - Adding automatic mixed precision training (AMP) to enable it directly from config
   - Enabling distributed training across servers
@@ -140,6 +155,6 @@ I have some enhancements in mind which I haven't gotten around to adding to this
 
 This repo is a personal project, and as such, has not been as heavily tested. It is (and will likely always be) a work-in-progress, as I try my best to keep it current with the advancements in PyTorch.
 
-If you come across any bugs, or have questions/suggestions, please consider opening an issue, [reaching out to me](mailto:ranamihir@gmail.com), or better yet, sending across a PR. :)
+If you come across any bugs, or have questions / suggestions, please consider opening an issue, [reaching out to me](mailto:ranamihir@gmail.com), or better yet, sending across a PR. :)
 
 Author: [Mihir Rana](https://github.com/ranamihir)

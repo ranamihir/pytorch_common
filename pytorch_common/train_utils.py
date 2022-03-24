@@ -217,19 +217,17 @@ def train_model(
 
                     # Replace model checkpoint if required
                     if not config.disable_checkpointing:
-                        logger.info("Replacing current best model checkpoint...")
-                        best_checkpoint_file = save_model(
-                            model,
-                            config,
-                            epoch,
-                            train_logger,
-                            val_logger,
-                            optimizer,
-                            scheduler,
-                            config_info_dict,
+                        replace_checkpoint(
+                            model=model,
+                            config=config,
+                            new_epoch=epoch,
+                            old_epoch=best_epoch,
+                            train_logger=train_logger,
+                            val_logger=val_logger,
+                            optimizer=optimizer,
+                            scheduler=scheduler,
+                            config_info_dict=config_info_dict,
                         )
-                        remove_model(config, best_epoch, config_info_dict)
-                        logger.info("Done.")
 
                     best_epoch = epoch  # Update best epoch
 
@@ -239,9 +237,23 @@ def train_model(
                     logger.info(f"Stopping early after {stop_epoch} epochs.")
                     break
 
+            # Replace model checkpoint if required
+            elif not config.disable_checkpointing:
+                replace_checkpoint(
+                    model=model,
+                    config=config,
+                    new_epoch=epoch,
+                    old_epoch=epoch-1,
+                    train_logger=train_logger,
+                    val_logger=val_logger,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
+                    config_info_dict=config_info_dict,
+                )
+
             stop_epoch = epoch  # Update last epoch trained
         except KeyboardInterrupt:  # Option to quit training with keyboard interrupt
-            logger.warning("Keyboard Interrupted!")
+            logger.warning("Keyboard Interrupted! Pausing training.")
             stop_epoch = epoch - 1  # Current epoch training incomplete
             break
 
@@ -610,6 +622,8 @@ def perform_one_epoch(
                 loss = loss_criterion(outputs, targets)
                 if sample_weighting:
                     loss = loss_reduction_fn(loss * sample_weights / sample_weights.sum())
+                if torch.isnan(loss).any().item():
+                    logger.warning("NaN value encountered for loss.")
                 loss_value = loss.item()
                 return_dict["losses"].append(loss_value)
 
@@ -974,6 +988,8 @@ def remove_model(
         logger.info(f"Removing {checkpoint_type} checkpoint '{checkpoint_path}'...")
         remove_object(checkpoint_path)
         logger.info("Done.")
+    elif epoch > 0:
+        logger.warning(f"Could not remove checkpoint '{checkpoint_path}' since it doesn't exist.")
 
 
 def get_checkpoint_type_from_file(checkpoint_file: str) -> str:
@@ -999,6 +1015,38 @@ def validate_checkpoint_type(checkpoint_type: str) -> None:
         f"'checkpoint_type' ('{checkpoint_type}') not understood (likely "
         f"from the file name provided). It must be one of {ALLOWED_CHECKPOINT_TYPES}."
     )
+
+
+def replace_checkpoint(
+    model: nn.Module,
+    config: _Config,
+    new_epoch: int,
+    old_epoch: int,
+    train_logger: Optional[ModelTracker] = None,
+    val_logger: Optional[ModelTracker] = None,
+    optimizer: Optional[Optimizer] = None,
+    scheduler: Optional[object] = None,
+    config_info_dict: Optional[_StringDict] = None,
+) -> str:
+    """
+    Save the `new` model checkpoint and
+    delet the `old` one (if it exists).
+    """
+    logger.info("Replacing current best model checkpoint...")
+    best_checkpoint_file = save_model(
+        model,
+        config,
+        new_epoch,
+        train_logger,
+        val_logger,
+        optimizer,
+        scheduler,
+        config_info_dict,
+    )
+    remove_model(config, old_epoch, config_info_dict)
+    logger.info("Done.")
+
+    return best_checkpoint_file
 
 
 class EarlyStopping:
